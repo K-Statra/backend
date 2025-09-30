@@ -1,0 +1,25 @@
+{
+  "name": "k-statra-project",
+  "version": "1.0.0",
+  "description": "K-Statra 기본 Node.js 프로젝트",
+  "main": "src/index.js",
+  "scripts": {
+  "start": "node src/index.js",
+  "dev": "nodemon src/index.js",
+  "test": "echo \"No tests yet\" && exit 0"
+  },
+  "main": "src/index.js", 
+  "keywords": ["k-statra", "node", "express"],
+  "author": "Choi JungSuk",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.12.2",
+    "cheerio": "^1.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
