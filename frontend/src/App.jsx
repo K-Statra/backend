@@ -43,6 +43,7 @@ function NotFound() {
 }
 
 export default function App() {
+  console.log('K-Statra v1.0.2 - Production Build (Env Check)');
   const { t, lang } = useI18n()
   const location = useLocation()
   const navigate = useNavigate()
