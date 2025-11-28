@@ -1,16 +1,29 @@
-﻿import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
-export async function connectDB() {
+async function connectDB() {
   const uri = process.env.MONGODB_URI;
   if (!uri) {
-    console.warn('[DB] MONGODB_URI 가 .env 에 없습니다. (나중에 설정 예정)');
+    console.warn('[DB] Missing MONGODB_URI in .env');
     return;
   }
+  const opts = {
+    // Atlas Flex/serverless friendly defaults; override via env as needed
+    maxPoolSize: Number(process.env.MONGODB_MAX_POOL_SIZE || 10),
+    minPoolSize: Number(process.env.MONGODB_MIN_POOL_SIZE || 0),
+    maxIdleTimeMS: Number(process.env.MONGODB_MAX_IDLE_TIME_MS || 30000),
+    serverSelectionTimeoutMS: Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || 10000),
+    socketTimeoutMS: Number(process.env.MONGODB_SOCKET_TIMEOUT_MS || 45000),
+    retryWrites: true,
+    w: 'majority',
+  };
   try {
-    await mongoose.connect(uri);
-    console.log('[DB] MongoDB connected');
+    await mongoose.connect(uri, opts);
+    console.log('MongoDB connected');
   } catch (err) {
-    console.error('[DB] connection error', err);
+    console.error('[DB] connection error', err.message);
     process.exit(1);
   }
 }
+
+module.exports = { connectDB };
+
