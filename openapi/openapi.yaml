@@ -1,0 +1,1414 @@
+openapi: 3.0.3
+info:
+  title: B2B Matching API
+  version: 0.1.2
+  description: Companies & Buyers CRUD (현재 구현된 엔드포인트만 문서화)
+servers:
+  - url: http://127.0.0.1:4000
+
+paths:
+  /ready:
+    get:
+      summary: Readiness probe
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "ready" }
+        "503":
+          description: Not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /companies:
+    get:
+      summary: List companies
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Name/ProfileText contains (case-insensitive)
+        - in: query
+          name: industry
+          schema: { type: string }
+        - in: query
+          name: tag
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [updatedAt, name, nameNumeric]
+            default: updatedAt
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        "200":
+          description: Paged list of companies
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyListResponse"
+              example:
+                page: 1
+                limit: 10
+                total: 2
+                totalPages: 1
+                data:
+                  - _id: "68e70c4df504cb972fa7be40"
+                    name: "SeoulTech Co"
+                    industry: "IT"
+                    tags: ["b2b", "cloud"]
+                  - _id: "68e70c4df504cb972fa7be41"
+                    name: "HealthPlus"
+                    industry: "Healthcare"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Create a company
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+              example:
+                _id: "68e70c4df504cb972fa7be40"
+                name: "SeoulTech Co"
+                industry: "IT"
+        "400":
+          description: Validation error
+
+  /companies/{id}:
+    parameters:
+      - $ref: "#/components/parameters/CompanyId"
+    get:
+      summary: Get a company by ID
+      responses:
+        "200":
+          description: A company
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+              example:
+                _id: "68e70c4df504cb972fa7be40"
+                name: "SeoulTech Co"
+                industry: "IT"
+        "400":
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /companies/{id}/images:
+    parameters:
+      - $ref: "#/components/parameters/CompanyId"
+    get:
+      summary: List images of a company
+      responses:
+        "200":
+          description: Images
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Image"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Add an image by URL/metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImageCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Image"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "404":
+          description: Company not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /companies/{id}/images/{imageId}:
+    parameters:
+      - $ref: "#/components/parameters/CompanyId"
+      - name: imageId
+        in: path
+        required: true
+        description: 24-hex MongoDB ObjectId of the image
+        schema:
+          type: string
+          pattern: "^[a-fA-F0-9]{24}$"
+    delete:
+      summary: Delete an image
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Company or image not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      summary: Update a company (partial)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompanyUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Company"
+              example:
+                _id: "68e70c4df504cb972fa7be40"
+                name: "SeoulTech Co"
+                industry: "Finance"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a company
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /buyers:
+    get:
+      summary: List buyers
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: country
+          schema: { type: string }
+        - in: query
+          name: industry
+          schema: { type: string }
+        - in: query
+          name: tag
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [updatedAt, name]
+            default: updatedAt
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        "200":
+          description: Paged list of buyers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuyerListResponse"
+              example:
+                page: 1
+                limit: 10
+                total: 2
+                totalPages: 1
+                data:
+                  - _id: "68e70c4df504cb972fa7be99"
+                    name: "OverseasBuyer Inc."
+                    country: "US"
+                    industries: ["Retail", "IT"]
+                  - _id: "68e70c4df504cb972fa7be98"
+                    name: "Tokyo Imports"
+                    country: "JP"
+    post:
+      summary: Create a buyer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Buyer"
+              example:
+                _id: "68e70c4df504cb972fa7be99"
+                name: "OverseasBuyer Inc."
+                country: "US"
+
+  /buyers/{id}:
+    parameters:
+      - $ref: "#/components/parameters/CompanyId"
+    get:
+      summary: Get a buyer by ID
+      responses:
+        "200":
+          description: A buyer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Buyer"
+              example:
+                _id: "68e70c4df504cb972fa7be99"
+                name: "OverseasBuyer Inc."
+                country: "US"
+        "400":
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      summary: Update a buyer (partial)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyerUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Buyer"
+              example:
+                _id: "68e70c4df504cb972fa7be99"
+                name: "OverseasBuyer Inc."
+                country: "KR"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete a buyer
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /matches:
+    get:
+      summary: Rule-based matches for a buyer
+      parameters:
+        - in: query
+          name: buyerId
+          required: true
+          description: 24-hex MongoDB ObjectId of the buyer
+          schema:
+            type: string
+            pattern: "^[a-fA-F0-9]{24}$"
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: Top-N matches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  query:
+                    type: object
+                    properties:
+                      buyerId: { type: string }
+                      limit: { type: integer }
+                  count: { type: integer }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        score: { type: number, example: 7.5 }
+                        reasons:
+                          type: array
+                          items: { type: string }
+                        company:
+                          $ref: "#/components/schemas/Company"
+              example:
+                query: { buyerId: "68e70c4df504cb972fa7be99", limit: 3 }
+                count: 3
+                data:
+                  - score: 6.5
+                    reasons: ["tags overlap x1", "industry match", "recently updated"]
+                    company: { _id: "68e70c4df504cb972fa7be40", name: "SeedCo_1" }
+                  - score: 4.8
+                    reasons: ["needs-offerings overlap x1", "recently updated"]
+                    company: { _id: "68e70c4df504cb972fa7be41", name: "SeedCo_2" }
+                  - score: 3.1
+                    reasons: ["recently updated"]
+                    company: { _id: "68e70c4df504cb972fa7be42", name: "SeedCo_3" }
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+              example:
+                message: "Validation error"
+                details:
+                  - message: "\"buyerId\" is required"
+                    path: ["buyerId"]
+        "404":
+          description: Buyer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Buyer not found"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /payments:
+    post:
+      summary: Create a payment request
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+          description: Unique key to ensure idempotent creation
+        - in: header
+          name: Accept-Language
+          required: false
+          schema: { type: string, example: "ko,en;q=0.8" }
+          description: Optional. If set, guide text language will follow the preferred locale (ko or en).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentCreate"
+            example:
+              amount: 1
+              currency: XRP
+              buyerId: "68e70c4df504cb972fa7be99"
+              companyId: "68e70c4df504cb972fa7be40"
+              memo: "Match intro fee"
+      responses:
+        "201":
+          description: Created with guide
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentCreateResponse"
+              example:
+                payment:
+                  _id: "68e7110df504cb972fa7bf10"
+                  buyerId: "68e70c4df504cb972fa7be99"
+                  companyId: "68e70c4df504cb972fa7be40"
+                  amount: 1
+                  currency: XRP
+                  status: PENDING
+                  provider: xrpl-testnet
+                  providerRef: "xrpl_inv_68e7110df504cb972fa7bf10"
+                  memo: "Match intro fee"
+                  createdAt: "2025-10-13T08:00:00.000Z"
+                  invoice:
+                    deeplink: "ripple:rXXXX...?amount=1&dt=123456"
+                    qr: "ripple:rXXXX...?amount=1&dt=123456"
+                    destAddress: "rXXXX"
+                    destTag: 123456
+                    expiresAt: "2025-10-13T08:15:00.000Z"
+                    expiresInSec: 870
+                  quote:
+                    baseCurrency: XRP
+                    quoteCurrency: XRP
+                    rate: 1
+                    amountQuote: 1
+                    expiresAt: "2025-10-13T08:15:00.000Z"
+                guide:
+                  title: "결제 안내"
+                  steps:
+                    - key: payment.step.mobile_deeplink
+                      default: "모바일 지갑에서 딥링크를 열어 결제를 승인하세요."
+                    - key: payment.step.desktop_qr
+                      default: "데스크톱 사용자는 지갑 앱으로 QR을 스캔하여 결제하세요."
+                    - key: payment.step.expiry_notice
+                      default: "결제 유효시간 내에 완료되지 않으면 만료됩니다."
+                  texts:
+                    - "모바일 지갑에서 딥링크를 열어 결제를 승인하세요."
+                    - "데스크톱 사용자는 지갑 앱으로 QR을 스캔하여 결제하세요."
+                    - "결제 유효시간 내에 완료되지 않으면 만료됩니다."
+                  deeplink: "ripple:rXXXX...?amount=1&dt=123456"
+                  qr: "ripple:rXXXX...?amount=1&dt=123456"
+                  expiresInSec: 870
+                  locale: ko
+        "400":
+          description: Bad Request / Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+              example:
+                message: "Validation error"
+                details:
+                  - message: "\"amount\" must be a positive number"
+                    path: ["amount"]
+        "409":
+          description: Idempotency key conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Idempotency key conflict"
+
+  /payments/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: 24-hex MongoDB ObjectId
+        schema:
+          type: string
+          pattern: "^[a-fA-F0-9]{24}$"
+    get:
+      summary: Get a payment status
+      responses:
+        "200":
+          description: Payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Manually refresh payment status from provider
+      operationId: refreshPayment
+      responses:
+        "200":
+          description: Payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+              example:
+                _id: "68e7110df504cb972fa7bf10"
+                status: "PENDING"
+                quote:
+                  expiresAt: "2025-10-13T08:15:00.000Z"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Not found"
+        "409":
+          description: Quote expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Quote expired. Please create a new payment."
+
+  /payments/webhook:
+    post:
+      summary: Payment provider webhook
+      parameters:
+        - in: header
+          name: X-Signature
+          required: true
+          description: HMAC-SHA256 signature in format `sha256=<hex>` over the raw body using shared secret
+          schema: { type: string }
+        - in: header
+          name: X-Signature-Version
+          required: false
+          schema: { type: string, enum: ["v1"] }
+          description: If set to `v1`, signature is computed over `ts.nonce.SHA256(body)`
+        - in: header
+          name: X-Signature-Timestamp
+          required: false
+          schema: { type: string }
+          description: Unix ms timestamp (required if `X-Signature-Version: v1`)
+        - in: header
+          name: X-Signature-Nonce
+          required: false
+          schema: { type: string }
+          description: Random nonce (required if `X-Signature-Version: v1`)
+      requestBody:
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+
+  /payments/xumm/webhook:
+    post:
+      summary: XUMM payload webhook (skeleton)
+      parameters:
+        - in: header
+          name: X-Xumm-Signature
+          required: true
+          schema: { type: string }
+          description: HMAC-SHA256 signature `sha256=<hex>` of the raw body using shared secret
+      requestBody:
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example: { ok: true }
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                invalidHeader:
+                  summary: Invalid signature header
+                  value: { message: "Invalid signature header" }
+                missingNonce:
+                  summary: Missing timestamp/nonce for v1
+                  value: { message: "Missing signature timestamp/nonce" }
+        "401":
+          description: Unauthorized (signature)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Signature verification failed"
+        "409":
+          description: Replay detected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Replay detected"
+        "500":
+          description: Secret not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Webhook secret not configured"
+
+  /admin/payments:
+    get:
+      summary: Admin - list payments
+      parameters:
+        - in: header
+          name: X-Admin-Token
+          required: true
+          schema: { type: string }
+        - in: query
+          name: buyerId
+          schema: { type: string }
+          description: Filter by buyerId (24-hex)
+        - in: query
+          name: companyId
+          schema: { type: string }
+          description: Filter by companyId (24-hex)
+        - in: query
+          name: status
+          schema: { type: string, enum: [CREATED, PENDING, PAID, FAILED, CANCELLED] }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+          description: Filter by createdAt >= from (ISO)
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+          description: Filter by createdAt <= to (ISO)
+        - in: query
+          name: page
+          schema: { type: integer, default: 1, minimum: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: Paged payments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page: { type: integer }
+                  limit: { type: integer }
+                  total: { type: integer }
+                  totalPages: { type: integer }
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Payment"
+              example:
+                page: 1
+                limit: 20
+                total: 2
+                totalPages: 1
+                data:
+                  - _id: "68e7110df504cb972fa7bf10"
+                    status: PENDING
+                  - _id: "68e7110df504cb972fa7bf11"
+                    status: PAID
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                message: "Unauthorized"
+    
+  /admin/payments/stats:
+    get:
+      summary: Admin - payment stats (last 7 days)
+      parameters:
+        - in: header
+          name: X-Admin-Token
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Stats
+
+  /admin/audit:
+    get:
+      summary: Admin - audit logs
+      parameters:
+        - in: header
+          name: X-Admin-Token
+          required: true
+          schema: { type: string }
+        - in: query
+          name: entityType
+          schema: { type: string, default: Payment }
+        - in: query
+          name: entityId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1, minimum: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: Paged audit logs
+
+  /admin/matches:
+    get:
+      summary: Admin - list match logs
+      parameters:
+        - in: header
+          name: X-Admin-Token
+          required: true
+          schema: { type: string }
+        - in: query
+          name: buyerId
+          schema: { type: string, pattern: "^[a-fA-F0-9]{24}$" }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1, minimum: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: Paged match logs
+
+  /admin/stats:
+    get:
+      summary: Admin - general system stats
+      parameters:
+        - in: header
+          name: X-Admin-Token
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: System counts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  companies: { type: integer }
+                  buyers: { type: integer }
+                  payments: { type: integer }
+                  matches: { type: integer }
+
+components:
+  parameters:
+    CompanyId:
+      name: id
+      in: path
+      required: true
+      description: 24-hex MongoDB ObjectId
+      schema:
+        type: string
+        pattern: "^[a-fA-F0-9]{24}$"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+        stack: { type: string, nullable: true }
+      required: [ message ]
+      example:
+        message: "Not Found"
+
+    ValidationError:
+      type: object
+      properties:
+        message: { type: string, example: "Validation error" }
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              message: { type: string }
+              path:
+                oneOf:
+                  - type: array
+                    items: { type: string }
+                  - type: string
+      required: [ message ]
+      example:
+        message: "Validation error"
+        details:
+          - message: "\"buyerId\" must be a valid 24-hex string"
+            path: ["buyerId"]
+    Company:
+      type: object
+      properties:
+        _id: { type: string, example: "68e70c4df504cb972fa7be40" }
+        name: { type: string, example: "SeedCo_20" }
+        industry: { type: string, example: "IT" }
+        offerings:
+          type: array
+          items: { type: string }
+          example: ["Consulting", "Data Service"]
+        needs:
+          type: array
+          items: { type: string }
+          example: ["Partnership", "Hiring"]
+        tags:
+          type: array
+          items: { type: string }
+          example: ["b2b", "cloud"]
+        profileText: { type: string }
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/Image"
+        embedding:
+          type: array
+          description: Optional normalized text embedding vector for hybrid matching
+          items: { type: number }
+          example: [0.01, -0.02, 0.03]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [ _id, name ]
+
+    CompanyCreate:
+      type: object
+      properties:
+        name: { type: string }
+        industry: { type: string }
+        offerings: { type: array, items: { type: string } }
+        needs: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        profileText: { type: string }
+      required: [ name ]
+
+    CompanyUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        industry: { type: string }
+        offerings: { type: array, items: { type: string } }
+        needs: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        profileText: { type: string }
+      description: One or more fields to update
+
+    CompanyListResponse:
+      type: object
+      properties:
+        page: { type: integer, example: 1 }
+        limit: { type: integer, example: 10 }
+        total: { type: integer, example: 19 }
+        totalPages: { type: integer, example: 2 }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Company"
+
+    Buyer:
+      type: object
+      properties:
+        _id: { type: string, example: "68e70c4df504cb972fa7be99" }
+        name: { type: string, example: "OverseasBuyer Inc." }
+        country: { type: string, example: "US" }
+        industries:
+          type: array
+          items: { type: string }
+          example: ["Retail", "IT"]
+        needs:
+          type: array
+          items: { type: string }
+          example: ["Distributor", "OEM"]
+        tags:
+          type: array
+          items: { type: string }
+          example: ["ai", "cloud"]
+        profileText: { type: string }
+        embedding:
+          type: array
+          description: Optional normalized text embedding vector for hybrid matching
+          items: { type: number }
+          example: [0.02, 0.01, -0.04]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [ _id, name ]
+
+    BuyerCreate:
+      type: object
+      properties:
+        name: { type: string }
+        country: { type: string }
+        industries: { type: array, items: { type: string } }
+        needs: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        profileText: { type: string }
+      required: [ name ]
+
+    BuyerUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        country: { type: string }
+        industries: { type: array, items: { type: string } }
+        needs: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+        profileText: { type: string }
+      description: One or more fields to update
+
+    BuyerListResponse:
+      type: object
+      properties:
+        page: { type: integer, example: 1 }
+        limit: { type: integer, example: 10 }
+        total: { type: integer, example: 0 }
+        totalPages: { type: integer, example: 0 }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Buyer"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    Payment:
+      type: object
+      properties:
+        _id: { type: string }
+        buyerId: { type: string }
+        companyId: { type: string }
+        amount: { type: number }
+        currency: { type: string, example: "XRP" }
+        status: { type: string, enum: ["CREATED", "PENDING", "PAID", "FAILED", "CANCELLED"] }
+        memo: { type: string }
+        createdAt: { type: string, format: date-time }
+        provider: { type: string, example: "xrpl-testnet" }
+        providerRef: { type: string, example: "invoice_..." }
+        idempotencyKey: { type: string }
+        invoice:
+          type: object
+          properties:
+            qr: { type: string }
+            deeplink: { type: string }
+            expiresAt: { type: string, format: date-time }
+            destAddress: { type: string }
+            destTag: { type: integer }
+        quote:
+          type: object
+          properties:
+            baseCurrency: { type: string }
+            quoteCurrency: { type: string }
+            rate: { type: number }
+            amountQuote: { type: number }
+            expiresAt: { type: string, format: date-time }
+      required: [ _id, buyerId, companyId, amount, currency, status ]
+
+    PaymentCreate:
+      type: object
+      properties:
+        amount: { type: number }
+        currency: { type: string, enum: ["XRP", "USD", "KRW"], default: "XRP" }
+        buyerId: { type: string }
+        companyId: { type: string }
+        memo: { type: string }
+      required: [ amount, buyerId, companyId ]
+
+    Image:
+      type: object
+      properties:
+        _id: { type: string }
+        url: { type: string, format: uri }
+        caption: { type: string }
+        alt: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        clipEmbedding:
+          type: array
+          items: { type: number }
+      required: [ _id, url ]
+
+    ImageCreate:
+      type: object
+      properties:
+        url: { type: string, format: uri }
+        caption: { type: string }
+        alt: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+      required: [ url ]
+    PaymentCreateResponse:
+      type: object
+      properties:
+        payment:
+          allOf:
+            - $ref: "#/components/schemas/Payment"
+            - type: object
+              properties:
+                invoice:
+                  type: object
+                  properties:
+                    expiresInSec: { type: integer, example: 780 }
+        guide:
+          type: object
+          properties:
+            title: { type: string, example: "결제 안내" }
+            steps:
+              type: array
+              items:
+                type: object
+                properties:
+                  key: { type: string, example: "payment.step.mobile_deeplink" }
+                  default: { type: string, example: "모바일 지갑에서 딥링크를 열어 결제를 승인하세요." }
+            texts:
+              type: array
+              items: { type: string }
+            deeplink: { type: string, example: "ripple:rXXX...?amount=1&dt=123" }
+            qr: { type: string, example: "ripple:rXXX...?amount=1&dt=123" }
+            expiresInSec: { type: integer, example: 780 }
+            locale: { type: string, example: "ko" }
+      required: [ payment ]
+
+  /payments/xumm/webhook:
+    post:
+      summary: XUMM/Xaman payload webhook
+      description: Receives XUMM payload status callbacks and maps them to payment state.
+      parameters:
+        - in: header
+          name: X-Xumm-Signature
+          required: true
+          description: HMAC-SHA256 signature in format `sha256=<hex>` over the raw body using shared secret
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                uuid: { type: string }
+                status: { type: string, example: "SIGNED" }
+                paymentId: { type: string, description: "Optional hint to locate payment" }
+      responses:
+        "200":
+          description: Acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "400":
+          description: Bad Request / Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized (signature)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Payment not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /admin/payments:
+    get:
+      summary: List payments (admin)
+      parameters:
+        - in: header
+          name: X-Admin-Token
+          required: true
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [CREATED, PENDING, PAID, FAILED, CANCELLED] }
+        - in: query
+          name: buyerId
+          schema: { type: string, pattern: "^[a-fA-F0-9]{24}$" }
+        - in: query
+          name: companyId
+          schema: { type: string, pattern: "^[a-fA-F0-9]{24}$" }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Paged list of payments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page: { type: integer }
+                  limit: { type: integer }
+                  total: { type: integer }
+                  totalPages: { type: integer }
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Payment"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /admin/payments/stats:
+    get:
+      summary: Payment stats (last 7 days)
+      parameters:
+        - in: header
+          name: X-Admin-Token
+          required: true
+          schema: { type: string }
+        - in: query
+          name: buyerId
+          schema: { type: string, pattern: "^[a-fA-F0-9]{24}$" }
+        - in: query
+          name: companyId
+          schema: { type: string, pattern: "^[a-fA-F0-9]{24}$" }
+        - in: query
+          name: from
+          required: false
+          schema: { type: string, format: date-time }
+          description: ISO datetime start (defaults to now-7d)
+        - in: query
+          name: to
+          required: false
+          schema: { type: string, format: date-time }
+          description: ISO datetime end (defaults to now)
+      responses:
+        "200":
+          description: Stats by status, currency, and currency+status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  since: { type: string, format: date-time }
+                  until: { type: string, format: date-time }
+                  byStatus:
+                    type: object
+                    additionalProperties: { type: integer }
+                  byCurrency:
+                    type: object
+                    additionalProperties: { type: integer }
+                  byCurrencyStatus:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      additionalProperties: { type: integer }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /admin/payments/export:
+    get:
+      summary: Export payments CSV (admin)
+      parameters:
+        - in: header
+          name: X-Admin-Token
+          required: true
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [CREATED, PENDING, PAID, FAILED, CANCELLED] }
+        - in: query
+          name: buyerId
+          schema: { type: string, pattern: "^[a-fA-F0-9]{24}$" }
+        - in: query
+          name: companyId
+          schema: { type: string, pattern: "^[a-fA-F0-9]{24}$" }
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: CSV content
+          content:
+            text/csv:
+              schema:
+                type: string
+                example: "_id,buyerId,companyId,amount,currency,status,provider,providerRef,createdAt\n..."
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /analytics/dashboard:
+    get:
+      summary: Dashboard summary metrics
+      tags: [analytics]
+      responses:
+        '200':
+          description: Counts for dashboard cards
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalPartners: { type: integer, example: 45 }
+                  activeDeals: { type: integer, example: 12 }
+                  pendingPayments: { type: integer, example: 8 }
+                  completedDeals: { type: integer, example: 37 }
+        default:
+          $ref: '#/components/responses/Error'
+
+  /analytics/industries/top:
+    get:
+      summary: Top industries by partner count
+      tags: [analytics]
+      responses:
+        '200':
+          description: Aggregated industries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name: { type: string, example: 'K-Beauty' }
+                    partners: { type: integer, example: 8 }
+                    revenue: { type: number, example: 3200000 }
+        default:
+          $ref: '#/components/responses/Error'
+
+  /analytics/transactions/recent:
+    get:
+      summary: Recent payments for analytics UI
+      tags: [analytics]
+      responses:
+        '200':
+          description: Recent payment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, example: '64f5a3...' }
+                    company: { type: string, example: 'BeautyTech Korea' }
+                    amount: { type: number, example: 50000 }
+                    currency: { type: string, example: 'XRP' }
+                    status: { type: string, example: 'PAID' }
+                    memo: { type: string, example: 'Premium skincare line' }
+                    createdAt: { type: string, format: date-time }
+        default:
+          $ref: '#/components/responses/Error'

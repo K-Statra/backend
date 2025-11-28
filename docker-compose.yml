@@ -1,0 +1,27 @@
+version: "3.9"
+services:
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build: .
+    depends_on:
+      - mongo
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - MONGODB_URI=mongodb://mongo:27017/k_statra
+      - CORS_ORIGINS=*
+      - RATE_LIMIT_MAX=120
+    ports:
+      - "4000:4000"
+    command: ["node", "src/index.js"]
+
+volumes:
+  mongo_data:
+

@@ -6,3 +6,7 @@ logs
 .vscode/
 .idea/
 .DS_Store
+*.pid
+*.err
+tmp.txt
+uploads/

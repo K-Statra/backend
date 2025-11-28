@@ -4,12 +4,18 @@
   "description": "K-Statra 기본 Node.js 프로젝트",
   "main": "src/index.js",
   "scripts": {
-  "start": "node src/index.js",
-  "dev": "nodemon src/index.js",
-  "test": "echo \"No tests yet\" && exit 0"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "node test/run.js",
+    "seed:companies": "node scripts/seed.js",
+    "seed:buyers": "node scripts/seed_buyers.js",
+    "seed:payments": "node scripts/seed_payments.js"
   },
-  "main": "src/index.js", 
-  "keywords": ["k-statra", "node", "express"],
+  "keywords": [
+    "k-statra",
+    "node",
+    "express"
+  ],
   "author": "Choi JungSuk",
   "license": "ISC",
   "dependencies": {
@@ -17,9 +23,20 @@
     "cheerio": "^1.1.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "joi": "^18.0.1",
+    "mongoose": "^8.19.3",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.18.3",
+    "xrpl": "^4.4.3",
+    "yamljs": "^0.3.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
-  }
+  },
+  "multer": "^2.0.2"
 }
