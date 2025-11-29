@@ -159,7 +159,7 @@ async function searchCodex(payload) {
 async function searchAntigravity(payload) {
   if (!ANTIGRAVITY_BASE) throw new Error('Antigravity base URL not configured')
   const base = ANTIGRAVITY_BASE.replace(/\/$/, '')
-  const qs = new URLSearchParams({ limit: '6', ...payload })
+  const qs = new URLSearchParams({ limit: '50', ...payload })
   const response = await fetch(`${base}/partners/search?${qs.toString()}`, {
     headers: ANTIGRAVITY_KEY ? { Authorization: `Bearer ${ANTIGRAVITY_KEY}` } : undefined,
   })
@@ -212,6 +212,8 @@ export default function PartnerSearch() {
   const [companyError, setCompanyError] = useState('')
   const [searchProviderUsed, setSearchProviderUsed] = useState('')
   const [aiResponse, setAiResponse] = useState('')
+  const [page, setPage] = useState(1)
+  const ITEMS_PER_PAGE = 5
 
   const [filters, setFilters] = useState({ industry: '', country: '', size: '', partnership: '' })
   const [selectedCompany, setSelectedCompany] = useState(null)
@@ -294,7 +296,8 @@ export default function PartnerSearch() {
       const sanitizedFilters = Object.fromEntries(
         Object.entries(filterValues || {}).filter(([, value]) => Boolean(value))
       )
-      const payload = { q: term.trim(), limit: 6, ...sanitizedFilters }
+      // Fetch more to handle client-side pagination for now, or implement server pagination later
+      const payload = { q: term.trim(), limit: 50, ...sanitizedFilters }
       const { data, provider, fallback, aiResponse: aiMsg } = await searchPartners(payload)
       setPreview(data || [])
       setAiResponse(aiMsg || '')
@@ -309,6 +312,7 @@ export default function PartnerSearch() {
     } catch (err) {
       setCompanyError(err.message || 'Failed to load companies')
       setPreview([])
+      setPage(1)
     } finally {
       setLoadingCompanies(false)
     }
@@ -386,6 +390,9 @@ export default function PartnerSearch() {
       })
     }
   }
+
+  const displayCompanies = preview.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(preview.length / ITEMS_PER_PAGE)
 
   return (
     <div className="partner-layout">
@@ -518,15 +525,37 @@ export default function PartnerSearch() {
               {aiResponse}
             </div>
           )}
-          <div className="results-grid">
+          <div className="results-grid" style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
             {displayCompanies.map((company) => (
               <CompanyResultCard
                 key={company._id}
                 company={company}
-                onDetails={() => handleCompanyDetails(company)}
+                onDetails={() => setSelectedCompany(company)}
               />
             ))}
           </div>
+
+          {preview.length > ITEMS_PER_PAGE && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '2rem' }}>
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #e5e7eb', borderRadius: '6px', background: page === 1 ? '#f3f4f6' : 'white', cursor: page === 1 ? 'not-allowed' : 'pointer' }}
+              >
+                Previous
+              </button>
+              <span style={{ display: 'flex', alignItems: 'center' }}>
+                Page {page} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #e5e7eb', borderRadius: '6px', background: page === totalPages ? '#f3f4f6' : 'white', cursor: page === totalPages ? 'not-allowed' : 'pointer' }}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </section>
 
 
