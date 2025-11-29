@@ -58,6 +58,9 @@ const consultantOptions = [
   { value: 'trade-document', label: '무역서류 지원 (Trade Documents)' },
 ]
 
+const PROD_API = 'https://web-production-9ceeb.up.railway.app';
+const API_BASE = import.meta?.env?.VITE_API_BASE || (import.meta.env.PROD ? PROD_API : 'http://localhost:4000');
+
 const SEARCH_PROVIDER = 'antigravity'
 const ANTIGRAVITY_BASE = API_BASE
 const ANTIGRAVITY_KEY = import.meta.env.VITE_ANTIGRAVITY_KEY || ''
