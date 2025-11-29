@@ -229,6 +229,7 @@ const keys = [
   'search_provider_hybrid',
   'assistant_service_title',
   'assistant_service_desc',
+  'assistant_request_button',
 ];
 
 const humanize = (key) =>
@@ -443,6 +444,7 @@ Object.assign(en, {
   search_provider_hybrid: 'hybrid',
   assistant_service_title: 'Need expert help?',
   assistant_service_desc: 'Select a service to request help from an expert.',
+  assistant_request_button: 'Request Consultation',
 });
 
 const ko = {
@@ -619,6 +621,7 @@ const ko = {
   search_provider_hybrid: 'hybrid',
   assistant_service_title: '전문가의 도움이 필요하신가요?',
   assistant_service_desc: '원하시는 서비스를 선택하여 전문가에게 도움을 요청하세요.',
+  assistant_request_button: '상담 신청',
 };
 
 export const dict = {
