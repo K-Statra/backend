@@ -66,7 +66,9 @@ router.get('/search', async (req, res, next) => {
             // 2. RAG (Generation)
             if (results.length > 0) {
                 try {
-                    const context = results.map((c, i) =>
+                    // Optimize: Use only top 3 results for RAG context to speed up generation
+                    const topResults = results.slice(0, 3);
+                    const context = topResults.map((c, i) =>
                         `${i + 1}. ${c.name} (${c.location?.country || 'Unknown'}): ${c.industry}, ${c.profileText?.substring(0, 150)}...`
                     ).join('\n');
 
