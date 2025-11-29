@@ -16,10 +16,14 @@ const sidebarPresets = {
   ],
   industry: [
     { value: '', label: 'All industries' },
-    { value: 'AI & Data', label: 'AI & Data' },
-    { value: 'Beauty & Lifestyle', label: 'Beauty & Lifestyle' },
-    { value: 'Healthcare', label: 'Healthcare' },
-    { value: 'Manufacturing', label: 'Manufacturing' },
+    { value: 'IT / AI / SaaS', label: 'IT / AI / SaaS' },
+    { value: 'Healthcare / Bio / Medical', label: 'Healthcare / Bio / Medical' },
+    { value: 'Green Energy / Climate Tech / Smart City', label: 'Green Energy / Climate Tech / Smart City' },
+    { value: 'Mobility / Automation / Manufacturing', label: 'Mobility / Automation / Manufacturing' },
+    { value: 'Beauty / Consumer Goods / Food', label: 'Beauty / Consumer Goods / Food' },
+    { value: 'Content / Culture / Edutech', label: 'Content / Culture / Edutech' },
+    { value: 'Fintech / Smart Finance', label: 'Fintech / Smart Finance' },
+    { value: 'Other', label: 'Other' },
   ],
   country: [
     { value: '', label: 'All countries' },
