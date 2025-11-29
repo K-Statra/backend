@@ -60,84 +60,41 @@ export default function CompanyResultCard({ company, onDetails }) {
   const website = getWebsite(c)
   const contactName = getPrimaryContact(c)
   const contactEmail = getContactEmail(c)
-  const confidenceScore = getAccuracyScore(c)
   const tags = c.tags || c.offerings || c.needs || []
-  const heroImage = getHeroImage(c)
-  const heroUrl = typeof heroImage === 'string' ? heroImage : heroImage.url
-  const heroAlt = typeof heroImage === 'string' ? c.name || 'K-Statra company image' : heroImage.alt || c.name
 
   return (
-    <article className="result-card">
-      <div className="result-hero">
-        <img src={heroUrl} alt={heroAlt} loading="lazy" />
-      </div>
-      <div className="result-card-head">
+    <article className="result-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1.5rem', borderBottom: '1px solid #e5e7eb', borderRadius: 0, boxShadow: 'none' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h3>{c.name || t('company_placeholder_name')}</h3>
-          <div className="muted small">{location || c.industry || t('company_placeholder_industry')}</div>
-        </div>
-        <div className="result-card-badges">
-          {c.country && (
-            <Badge tone="primary" key="country">
-              {c.country}
-            </Badge>
-          )}
-          {c.industry && (
-            <Badge tone="muted" key="industry">
-              {c.industry}
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {website && (
-        <a className="result-link" href={website} target="_blank" rel="noreferrer">
-          {website.replace(/^https?:\/\//i, '')}
-        </a>
-      )}
-
-      <div className="result-contact">
-        {contactName && (
-          <div>
-            <div className="muted small">{t('primary_contact')}</div>
-            <div>{contactName}</div>
+          <h3 style={{ fontSize: '1.25rem', marginBottom: '0.25rem', color: '#111827' }}>
+            <button onClick={onDetails} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 'bold', color: 'inherit', textDecoration: 'underline' }}>
+              {c.name || t('company_placeholder_name')}
+            </button>
+          </h3>
+          <div className="muted small" style={{ fontSize: '0.9rem' }}>
+            {c.industry} • {location}
           </div>
-        )}
-        {contactEmail && (
-          <div>
-            <div className="muted small">{t('contact_email')}</div>
-            <a className="result-link" href={`mailto:${contactEmail}`}>
-              {contactEmail}
-            </a>
-          </div>
+        </div>
+        {website && (
+          <a className="result-link" href={website} target="_blank" rel="noreferrer" style={{ fontSize: '0.9rem', color: '#2563eb' }}>
+            {t('detail_website')} &rarr;
+          </a>
         )}
       </div>
+
+      <p style={{ fontSize: '0.95rem', color: '#4b5563', lineHeight: 1.5, margin: '0.5rem 0' }}>
+        {c.profileText ? (c.profileText.length > 200 ? c.profileText.substring(0, 200) + '...' : c.profileText) : t('detail_not_provided')}
+      </p>
 
       {tags.length > 0 && (
-        <div className="result-card-tags">
-          {tags.slice(0, 6).map((tag) => (
-            <span key={tag} className="result-tag">
+        <div className="result-card-tags" style={{ marginTop: '0.5rem' }}>
+          {tags.slice(0, 5).map((tag) => (
+            <span key={tag} className="result-tag" style={{ background: '#f3f4f6', color: '#374151', fontSize: '0.8rem', padding: '0.2rem 0.6rem', borderRadius: '999px' }}>
               {tag}
             </span>
           ))}
         </div>
       )}
-
-      {confidenceScore !== null && (
-        <div className="confidence-block">
-          <div className="row space">
-            <span className="muted small">{t('confidence_score')}</span>
-            <strong>{confidenceScore}%</strong>
-          </div>
-          <div className="confidence-meter" aria-hidden="true">
-            <span className="confidence-meter-fill" style={{ width: `${confidenceScore}%` }} />
-          </div>
-        </div>
-      )}
-
-      <div className="result-card-actions">
-        <Button onClick={onDetails}>{t('cta_view_details')}</Button>
-      </div>
     </article>
   )
 }
