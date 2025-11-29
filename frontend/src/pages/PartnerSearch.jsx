@@ -9,14 +9,10 @@ import { track } from '../utils/analytics.js'
 const sidebarPresets = {
   partnership: [
     { value: '', label: 'All partnership types' },
+    { value: 'Buyer', label: 'Buyer / Distributor' },
     { value: 'Supplier', label: 'Supplier / Vendor' },
-    { value: 'Customer', label: 'Customer / Buyer' },
-    { value: 'Distributor', label: 'Distributor / Reseller' },
-    { value: 'Manufacturer', label: 'Manufacturer / OEM' },
-    { value: 'Service', label: 'Service Provider' },
+    { value: 'Manufacturer', label: 'Manufacturer' },
     { value: 'Technology', label: 'Technology Partner' },
-    { value: 'Logistics', label: 'Logistics Partner' },
-    { value: 'Strategic', label: 'Strategic Partner' },
   ],
   industry: [
     { value: '', label: 'All industries' },
