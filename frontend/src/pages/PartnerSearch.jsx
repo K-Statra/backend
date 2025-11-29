@@ -58,9 +58,8 @@ const consultantOptions = [
   { value: 'trade-document', label: '무역서류 지원 (Trade Documents)' },
 ]
 
-const SEARCH_PROVIDER = (import.meta.env.VITE_SEARCH_PROVIDER || 'codex').toLowerCase()
-const ANTIGRAVITY_BASE =
-  import.meta.env.VITE_ANTIGRAVITY_BASE || import.meta.env.VITE_ANTIGRAVITY_URL || ''
+const SEARCH_PROVIDER = 'antigravity'
+const ANTIGRAVITY_BASE = API_BASE
 const ANTIGRAVITY_KEY = import.meta.env.VITE_ANTIGRAVITY_KEY || ''
 
 function formatCompanyLocation(company = {}) {
@@ -400,7 +399,10 @@ export default function PartnerSearch() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('search_keyword_placeholder')}
+            placeholder={
+              t('search_placeholder') ||
+              '예: K-뷰티 상품을 미국에 수출하고 싶은데, LA 지역의 수입상을 추천해줘.'
+            }
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 runSearch()
