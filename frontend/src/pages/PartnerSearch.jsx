@@ -170,7 +170,8 @@ async function searchAntigravity(payload) {
   const json = await response.json()
   const raw = Array.isArray(json?.data) ? json.data : Array.isArray(json?.results) ? json.results : []
   const mapped = raw.map(normalizeAntigravityCompany).filter((c) => c._id && c.name)
-  return { provider: 'antigravity', data: mapped }
+  const mapped = raw.map(normalizeAntigravityCompany).filter((c) => c._id && c.name)
+  return { provider: 'antigravity', data: mapped, aiResponse: json.aiResponse }
 }
 
 function mergeHybrid(codexResult = [], agResult = []) {
@@ -209,7 +210,8 @@ export default function PartnerSearch() {
   const [preview, setPreview] = useState([])
   const [loadingCompanies, setLoadingCompanies] = useState(false)
   const [companyError, setCompanyError] = useState('')
-  const [searchProviderUsed, setSearchProviderUsed] = useState(SEARCH_PROVIDER)
+  const [searchProviderUsed, setSearchProviderUsed] = useState('')
+  const [aiResponse, setAiResponse] = useState('')
 
   const [filters, setFilters] = useState({ industry: '', country: '', size: '', partnership: '' })
   const [selectedCompany, setSelectedCompany] = useState(null)
@@ -293,8 +295,9 @@ export default function PartnerSearch() {
         Object.entries(filterValues || {}).filter(([, value]) => Boolean(value))
       )
       const payload = { q: term.trim(), limit: 6, ...sanitizedFilters }
-      const { data, provider, fallback } = await searchPartners(payload)
+      const { data, provider, fallback, aiResponse: aiMsg } = await searchPartners(payload)
       setPreview(data || [])
+      setAiResponse(aiMsg || '')
       setSearchProviderUsed(provider || SEARCH_PROVIDER)
       track('search_results_loaded', {
         provider: provider || SEARCH_PROVIDER,
@@ -495,6 +498,24 @@ export default function PartnerSearch() {
           {!companyError && !loadingCompanies && displayCompanies.length === 0 && (
             <div className="muted mt-3" role="status">
               {t('quick_lookup_empty')}
+            </div>
+          )}
+          {aiResponse && (
+            <div className="ai-response-card" style={{
+              background: '#f0f9ff',
+              border: '1px solid #bae6fd',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              marginBottom: '2rem',
+              whiteSpace: 'pre-wrap',
+              lineHeight: '1.6',
+              color: '#0369a1'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                <span style={{ fontSize: '1.2rem' }}>🤖</span>
+                <span>AI Recommendation</span>
+              </div>
+              {aiResponse}
             </div>
           )}
           <div className="results-grid">
