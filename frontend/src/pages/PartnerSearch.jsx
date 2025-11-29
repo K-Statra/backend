@@ -467,22 +467,7 @@ export default function PartnerSearch() {
           </div>
         </section>
 
-        <section className="card consultant-card">
-          <div className="row space">
-            <div>
-              <h3>{t('assistant_cta_title')}</h3>
-              <p className="muted small">{t('assistant_cta_body')}</p>
-            </div>
-            <Button
-              onClick={() => {
-                track('consultant_help_click')
-                setConsultModal(true)
-              }}
-            >
-              {t('assistant_cta_button')}
-            </Button>
-          </div>
-        </section>
+
 
 
 
