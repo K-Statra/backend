@@ -27,10 +27,13 @@ const sidebarPresets = {
   ],
   country: [
     { value: '', label: 'All countries' },
-    { value: 'South Korea', label: 'South Korea' },
-    { value: 'Japan', label: 'Japan' },
     { value: 'United States', label: 'United States' },
+    { value: 'China', label: 'China' },
+    { value: 'Japan', label: 'Japan' },
     { value: 'Germany', label: 'Germany' },
+    { value: 'Singapore', label: 'Singapore' },
+    { value: 'Vietnam', label: 'Vietnam' },
+    { value: 'Other', label: 'Other' },
   ],
   size: [
     { value: '', label: 'Any size' },
