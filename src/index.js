@@ -18,6 +18,7 @@ const { connectDB } = require('./config/db');
 const healthRouter = require('./routes/health');
 const readyRouter = require('./routes/ready');
 const companiesRouter = require('./routes/companies');
+const partnersRouter = require('./routes/partners');
 const buyersRouter = require('./routes/buyers');
 const adminRouter = require('./routes/admin');
 const insightsRouter = require('./routes/insights');
@@ -45,7 +46,7 @@ if (String(process.env.ENABLE_CSP || 'false').toLowerCase() === 'true') {
   );
 }
 
-// ??¥é? ??????
+// ??ï¿½ï¿½? ??????
 // CORS (CORS_ORIGINS=comma-separated). fallback: allow all
 const corsOrigins = (process.env.CORS_ORIGINS || '*')
   .split(',')
@@ -95,10 +96,11 @@ app.get('/', (req, res) => {
   res.send('K-Statra API is running.');
 });
 
-// ????? ??? (app ???? ???¨¨? ???)
+// ????? ??? (app ???? ???ï¿½ï¿½? ???)
 app.use('/health', healthRouter);
 app.use('/ready', readyRouter);
 app.use('/companies', companiesRouter);
+app.use('/partners', partnersRouter);
 app.use('/buyers', buyersRouter); // ???: buyers ???? ???
 app.use('/matches', matchesRouter);
 app.use('/companies/:companyId/images', companyImagesRouter);

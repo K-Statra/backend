@@ -230,6 +230,7 @@ const keys = [
   'assistant_service_title',
   'assistant_service_desc',
   'assistant_request_button',
+  'search_placeholder',
 ];
 
 const humanize = (key) =>
@@ -445,6 +446,7 @@ Object.assign(en, {
   assistant_service_title: 'Need expert help?',
   assistant_service_desc: 'Select a service to request help from an expert.',
   assistant_request_button: 'Request Consultation',
+  search_placeholder: 'Ex: I want to export K-Beauty products to the US, recommend importers in LA.',
 });
 
 const ko = {
@@ -622,6 +624,7 @@ const ko = {
   assistant_service_title: '전문가의 도움이 필요하신가요?',
   assistant_service_desc: '원하시는 서비스를 선택하여 전문가에게 도움을 요청하세요.',
   assistant_request_button: '상담 신청',
+  search_placeholder: '예: K-뷰티 상품을 미국에 수출하고 싶은데, LA 지역의 수입상을 추천해줘.',
 };
 
 export const dict = {
