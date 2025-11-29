@@ -502,7 +502,7 @@ export default function PartnerSearch() {
               }}
               style={{ height: 'fit-content', alignSelf: 'flex-end' }}
             >
-              {t('assistant_cta_button') || '상담 신청'}
+              {t('assistant_request_button')}
             </Button>
           </div>
         </section>
@@ -711,7 +711,10 @@ export default function PartnerSearch() {
           setConsultModal(false)
           setConsultStatus({ submitting: false, success: false, error: '' })
         }}
-        title={t('assistant_modal_title')}
+        title={
+          consultantOptions.find((opt) => opt.value === consultForm.serviceType)?.label ||
+          t('assistant_modal_title')
+        }
         footer={
           <Button
             variant="secondary"
