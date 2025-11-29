@@ -48,25 +48,10 @@ const consultantServices = {
   aftercare: 'Deal aftercare',
 }
 
-const consultantServiceCards = [
-  {
-    id: 'regional-consulting',
-    titleKey: 'assistant_service_regional_title',
-    descriptionKey: 'assistant_service_regional_desc',
-    actionKey: 'assistant_service_regional_action',
-  },
-  {
-    id: 'origin-support',
-    titleKey: 'assistant_service_origin_title',
-    descriptionKey: 'assistant_service_origin_desc',
-    actionKey: 'assistant_service_origin_action',
-  },
-  {
-    id: 'aftercare',
-    titleKey: 'assistant_service_aftercare_title',
-    descriptionKey: 'assistant_service_aftercare_desc',
-    actionKey: 'assistant_service_aftercare_action',
-  },
+const consultantOptions = [
+  { value: 'export-agency', label: '수출대행 에이전트 (Export Agency)' },
+  { value: 'regional-consulting', label: '지역전문가 컨설팅 (Regional Expert)' },
+  { value: 'trade-document', label: '무역서류 지원 (Trade Documents)' },
 ]
 
 const SEARCH_PROVIDER = (import.meta.env.VITE_SEARCH_PROVIDER || 'codex').toLowerCase()
@@ -227,6 +212,7 @@ export default function PartnerSearch() {
   const [consultModal, setConsultModal] = useState(false)
   const [consultForm, setConsultForm] = useState({ name: '', email: '', details: '', serviceType: 'matching-assistant' })
   const [consultStatus, setConsultStatus] = useState({ submitting: false, success: false, error: '' })
+  const [selectedService, setSelectedService] = useState(consultantOptions[0].value)
 
   const { t, lang } = useI18n()
   const hasRealResults = preview.length > 0
@@ -498,23 +484,42 @@ export default function PartnerSearch() {
           </div>
         </section>
 
-        <section className="card consultant-card grid">
-          {consultantServiceCards.map((card) => (
-            <article key={card.id} className="service-card">
-              <h4>{t(card.titleKey)}</h4>
-              <p className="muted small">{t(card.descriptionKey)}</p>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => {
-                  track('consultant_service_click', { service: card.id })
-                  setConsultModal(true)
-                }}
-              >
-                {t(card.actionKey)}
-              </Button>
-            </article>
-          ))}
+
+
+        <section className="card consultant-card">
+          <div className="row space" style={{ alignItems: 'flex-end' }}>
+            <div style={{ flex: 1, marginRight: '1rem' }}>
+              <h3>{t('assistant_service_title') || '전문가 서비스 (Expert Services)'}</h3>
+              <p className="muted small" style={{ marginBottom: '1rem' }}>
+                {t('assistant_service_desc') || '원하시는 서비스를 선택하여 전문가에게 도움을 요청하세요.'}
+              </p>
+              <label className="filter-group" style={{ marginBottom: 0 }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>
+                  서비스 선택 (Select Service)
+                </span>
+                <select
+                  value={selectedService}
+                  onChange={(e) => setSelectedService(e.target.value)}
+                  style={{ width: '100%', maxWidth: '400px', padding: '0.6rem' }}
+                >
+                  {consultantOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <Button
+              onClick={() => {
+                track('consultant_service_click', { service: selectedService })
+                openConsultModal(selectedService)
+              }}
+              style={{ height: 'fit-content', alignSelf: 'flex-end' }}
+            >
+              {t('assistant_cta_button') || '상담 신청'}
+            </Button>
+          </div>
         </section>
 
         <Modal
