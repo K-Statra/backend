@@ -397,22 +397,7 @@ export default function PartnerSearch() {
           </h2>
           <p className="muted small">{t('sidebar_description')}</p>
         </div>
-        <label className="filter-group">
-          <span>{t('search_keyword_label')}</span>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={
-              t('search_placeholder') ||
-              '예: K-뷰티 상품을 미국에 수출하고 싶은데, LA 지역의 수입상을 추천해줘.'
-            }
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                runSearch()
-              }
-            }}
-          />
-        </label>
+
         <div className="filter-stack">
           {filterConfig.map((filter) => (
             <label className="filter-group" key={filter.key}>
@@ -438,11 +423,58 @@ export default function PartnerSearch() {
       </aside>
 
       <section className="search-content">
-        <section className="card hero">
-          <h1 style={lang === 'ko' ? { fontSize: '1.8rem', lineHeight: 1.3, whiteSpace: 'nowrap' } : undefined}>
+        <section className="card hero" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+          <h1 style={lang === 'ko' ? { fontSize: '2rem', lineHeight: 1.3, marginBottom: '1rem' } : { fontSize: '2rem', marginBottom: '1rem' }}>
             {t('dashboard_title')}
           </h1>
-          <p style={lang === 'ko' ? { fontSize: '1rem', lineHeight: 1.4 } : undefined}>{t('dashboard_subtitle')}</p>
+          <p style={lang === 'ko' ? { fontSize: '1.1rem', lineHeight: 1.5, marginBottom: '2rem', color: '#6b7280' } : { fontSize: '1.1rem', marginBottom: '2rem', color: '#6b7280' }}>
+            {t('dashboard_subtitle')}
+          </p>
+          <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={
+                t('search_placeholder') ||
+                '예: K-뷰티 상품을 미국에 수출하고 싶은데, LA 지역의 수입상을 추천해줘.'
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  runSearch()
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '1rem 1.5rem',
+                fontSize: '1.1rem',
+                borderRadius: '999px',
+                border: '2px solid #e5e7eb',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                outline: 'none',
+                transition: 'all 0.2s',
+              }}
+              onFocus={(e) => (e.target.style.borderColor = '#2563eb')}
+              onBlur={(e) => (e.target.style.borderColor = '#e5e7eb')}
+            />
+            <button
+              onClick={runSearch}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '999px',
+                padding: '0.6rem 1.5rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {t('search_button')}
+            </button>
+          </div>
         </section>
 
         <section className="card results-panel">
