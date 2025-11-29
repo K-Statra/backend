@@ -1,8 +1,4 @@
-import Button from './Button.jsx'
-import Badge from './Badge.jsx'
 import { useI18n } from '../i18n/I18nProvider.jsx'
-
-const PLACEHOLDER_IMAGE = 'https://placehold.co/360x200?text=K-Statra'
 
 function getLocation(company) {
   const parts = [company.city, company.state, company.country, company.location]
@@ -27,30 +23,6 @@ function getContactEmail(company) {
     company.contactEmail ||
     ''
   )
-}
-
-function getAccuracyScore(company) {
-  const candidates = [
-    company.matchAccuracy,
-    company.accuracyScore,
-    company.confidence,
-    company.confidenceScore,
-    company.score,
-    company.matchScore,
-    company.matchingScore,
-  ]
-  const first = candidates.find((value) => value !== undefined && value !== null)
-  const raw = Number(first)
-  if (!Number.isFinite(raw)) return 82
-  if (raw > 1) return Math.max(0, Math.min(100, Math.round(raw)))
-  return Math.max(0, Math.min(100, Math.round(raw * 100)))
-}
-
-function getHeroImage(company) {
-  if (Array.isArray(company.images) && company.images.length > 0) return company.images[0]
-  if (company.coverImage) return company.coverImage
-  if (company.heroImage) return company.heroImage
-  return { url: PLACEHOLDER_IMAGE, alt: 'K-Statra default image' }
 }
 
 export default function CompanyResultCard({ company, onDetails }) {

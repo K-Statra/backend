@@ -170,7 +170,6 @@ async function searchAntigravity(payload) {
   const json = await response.json()
   const raw = Array.isArray(json?.data) ? json.data : Array.isArray(json?.results) ? json.results : []
   const mapped = raw.map(normalizeAntigravityCompany).filter((c) => c._id && c.name)
-  const mapped = raw.map(normalizeAntigravityCompany).filter((c) => c._id && c.name)
   return { provider: 'antigravity', data: mapped, aiResponse: json.aiResponse }
 }
 
@@ -226,7 +225,6 @@ export default function PartnerSearch() {
 
   const { t, lang } = useI18n()
   const hasRealResults = preview.length > 0
-  const displayCompanies = hasRealResults ? preview : []
   const handleCompanyDetails = (company) => {
     setSelectedCompany(company)
     setFeedback({ rating: 0, comments: '' })
