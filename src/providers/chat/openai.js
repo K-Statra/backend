@@ -31,7 +31,7 @@ async function chat(messages = [], options = {}) {
                     Authorization: `Bearer ${apiKey}`,
                     'Content-Type': 'application/json',
                 },
-                timeout: 30000, // 30s timeout
+                timeout: 10000, // 10s timeout
             }
         );
 
