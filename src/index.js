@@ -55,22 +55,22 @@ const corsOrigins = (process.env.CORS_ORIGINS || '*')
 const corsOptions = corsOrigins.includes('*')
   ? { origin: true }
   : {
-      origin: function (origin, callback) {
-        if (!origin || corsOrigins.indexOf(origin) !== -1) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
-      },
-      credentials: true,
-    };
+    origin: function (origin, callback) {
+      if (!origin || corsOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  };
 app.use(cors(corsOptions));
 app.use(express.json());
 
 // Request ID & structured logging
 app.use(requestId);
 // HTTP metrics (counts + durations)
-app.use(metricsMiddleware);
+// app.use(metricsMiddleware);
 morgan.token('id', (req) => req.id || '-');
 app.use(
   morgan(':id :method :url :status :res[content-length] - :response-time ms', {
@@ -157,7 +157,7 @@ app.use((err, req, res, next) => {
         url: req.originalUrl,
         details: (err.details || []).map((d) => ({ message: d.message, path: d.path })),
       });
-    } catch (_) {}
+    } catch (_) { }
     return res.status(400).json({
       message: 'Validation error',
       details: err.details.map((d) => ({ message: d.message, path: d.path })),
@@ -183,9 +183,16 @@ app.use((err, req, res, next) => {
       message: payload.message,
       stack: err && err.stack,
     });
-  } catch (_) {}
+  } catch (_) { }
 
   res.status(status).json(payload);
 });
 
 
+
+
+
+
+
+ 
+ 

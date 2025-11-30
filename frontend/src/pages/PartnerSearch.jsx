@@ -66,12 +66,23 @@ const ANTIGRAVITY_BASE = API_BASE
 const ANTIGRAVITY_KEY = import.meta.env.VITE_ANTIGRAVITY_KEY || ''
 
 function formatCompanyLocation(company = {}) {
-  const parts = [company.city, company.state, company.country]
+  const parts = []
   const loc = company.location
-  if (typeof loc === 'string') parts.push(loc)
-  else if (loc && typeof loc === 'object') {
-    parts.push(loc.city, loc.state, loc.country, loc.label)
+
+  if (company.city) parts.push(company.city)
+  if (company.state) parts.push(company.state)
+  if (company.country) parts.push(company.country)
+
+  if (loc && typeof loc === 'object') {
+    if (loc.city && !parts.includes(loc.city)) parts.push(loc.city)
+    if (loc.state && !parts.includes(loc.state)) parts.push(loc.state)
+    if (loc.country && !parts.includes(loc.country)) parts.push(loc.country)
+    // Avoid pushing the entire object or undefined labels
+    if (typeof loc.label === 'string') parts.push(loc.label)
+  } else if (typeof loc === 'string') {
+    parts.push(loc)
   }
+
   return parts.filter(Boolean).join(', ')
 }
 
@@ -439,27 +450,37 @@ export default function PartnerSearch() {
             {t('dashboard_subtitle')}
           </p>
           <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
-            <input
+            <textarea
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                e.target.style.height = 'auto'
+                e.target.style.height = `${e.target.scrollHeight}px`
+              }}
               placeholder={
                 t('search_placeholder') ||
                 '예: K-뷰티 상품을 미국에 수출하고 싶은데, LA 지역의 수입상을 추천해줘.'
               }
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
                   runSearch()
                 }
               }}
               style={{
                 width: '100%',
-                padding: '1rem 1.5rem',
+                padding: '1rem 3.5rem 1rem 1.5rem', // Right padding for button
                 fontSize: '1.1rem',
-                borderRadius: '999px',
+                borderRadius: '24px',
                 border: '2px solid #e5e7eb',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
                 outline: 'none',
                 transition: 'all 0.2s',
+                resize: 'none',
+                minHeight: '60px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                lineHeight: '1.5'
               }}
               onFocus={(e) => (e.target.style.borderColor = '#2563eb')}
               onBlur={(e) => (e.target.style.borderColor = '#e5e7eb')}
@@ -505,32 +526,83 @@ export default function PartnerSearch() {
               {t('quick_lookup_empty')}
             </div>
           )}
-          {aiResponse && (
-            <div className="ai-response-card" style={{
-              background: '#f0f9ff',
-              border: '1px solid #bae6fd',
-              borderRadius: '12px',
-              padding: '1.5rem',
-              marginBottom: '2rem',
-              whiteSpace: 'pre-wrap',
-              lineHeight: '1.6',
-              color: '#0369a1'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                <span style={{ fontSize: '1.2rem' }}>🤖</span>
-                <span>AI Recommendation</span>
-              </div>
-              {aiResponse}
-            </div>
-          )}
-          <div className="results-grid" style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {displayCompanies.map((company) => (
-              <CompanyResultCard
-                key={company._id}
-                company={company}
-                onDetails={() => setSelectedCompany(company)}
-              />
-            ))}
+          {/* AI Response Box Removed to avoid duplication */}
+          {/* {aiResponse && ( ... )} */}
+
+          {/* AI Response Box Removed to avoid duplication */}
+          {/* {aiResponse && ( ... )} */}
+
+          <div className="results-table-wrapper" style={{ overflowX: 'auto' }}>
+            <table className="results-table" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                  <th style={{ padding: '1rem', width: '25%', color: '#374151' }}>{t('table_header_company') || '업체명 (Company)'}</th>
+                  <th style={{ padding: '1rem', width: '45%', color: '#374151' }}>{t('table_header_overview') || '업체 개요 (Overview)'}</th>
+                  <th style={{ padding: '1rem', width: '30%', color: '#374151' }}>{t('table_header_reason') || '추천 사유 (Why Recommended)'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayCompanies.map((company) => (
+                  <tr
+                    key={company._id}
+                    onClick={() => setSelectedCompany(company)}
+                    style={{
+                      borderBottom: '1px solid #f3f4f6',
+                      cursor: 'pointer',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <td style={{ padding: '1.5rem 1rem', verticalAlign: 'top' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.25rem', color: '#111827' }}>
+                        {company.name}
+                      </div>
+                      <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                        {formatCompanyLocation(company)}
+                      </div>
+                      {extractWebsite(company) && (
+                        <a
+                          href={extractWebsite(company)}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ fontSize: '0.85rem', color: '#2563eb', display: 'block', marginBottom: '0.75rem', textDecoration: 'none' }}
+                        >
+                          {extractWebsite(company).replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                        </a>
+                      )}
+                      <div style={{ marginTop: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.25rem', color: '#059669', fontWeight: 600 }}>
+                          <span>Match Score</span>
+                          <span>{getAccuracyScore(company)}%</span>
+                        </div>
+                        <div style={{ background: '#e5e7eb', borderRadius: '4px', height: '6px', width: '100%', overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${getAccuracyScore(company)}%`,
+                            background: '#10b981',
+                            height: '100%',
+                            borderRadius: '4px'
+                          }}></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '1.5rem 1rem', verticalAlign: 'top', color: '#4b5563', lineHeight: '1.6' }}>
+                      {company.profileText || company.description || (
+                        <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>{t('no_info') || '정보 없음'}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '1.5rem 1rem', verticalAlign: 'top', color: '#4b5563', lineHeight: '1.6' }}>
+                      <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+                        {getMatchRecommendation(company) || (
+                          <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>{t('no_recommendation') || 'AI 추천 사유가 없습니다.'}</span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {preview.length > ITEMS_PER_PAGE && (
