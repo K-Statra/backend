@@ -572,6 +572,40 @@ export default function PartnerSearch() {
                           {extractWebsite(company).replace(/^https?:\/\//, '').replace(/\/$/, '')}
                         </a>
                       )}
+
+                      <div style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCompanyDetails(company)
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0.4rem 0.8rem',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            color: '#2563eb',
+                            backgroundColor: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#dbeafe'
+                            e.currentTarget.style.borderColor = '#93c5fd'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#eff6ff'
+                            e.currentTarget.style.borderColor = '#bfdbfe'
+                          }}
+                        >
+                          {t('view_details') || '상세 보기'}
+                        </button>
+                      </div>
                       <div style={{ marginTop: 'auto' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.25rem', color: '#059669', fontWeight: 600 }}>
                           <span>Match Score</span>
