@@ -68,6 +68,33 @@ export default function CompanyResultCard({ company, onDetails }) {
         </div>
       )}
 
+      {c.dart && c.dart.revenueConsolidated && (
+        <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#0f172a' }}>
+              📊 {t('financials') || 'Financials'} ({c.dart.fiscalYear})
+            </span>
+            <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '999px', fontWeight: '600' }}>
+              Verified by DART
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.85rem' }}>
+            <div>
+              <span style={{ color: '#64748b' }}>{t('revenue') || 'Revenue'}:</span>{' '}
+              <span style={{ fontWeight: '600', color: '#334155' }}>
+                ₩{(c.dart.revenueConsolidated / 1000000000000).toFixed(1)}T
+              </span>
+            </div>
+            <div>
+              <span style={{ color: '#64748b' }}>{t('profit') || 'Op. Profit'}:</span>{' '}
+              <span style={{ fontWeight: '600', color: c.dart.operatingProfitConsolidated > 0 ? '#16a34a' : '#dc2626' }}>
+                ₩{(c.dart.operatingProfitConsolidated / 1000000000000).toFixed(1)}T
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ marginTop: '1rem' }}>
         <button
           type="button"
@@ -88,6 +115,7 @@ export default function CompanyResultCard({ company, onDetails }) {
             borderRadius: '6px',
             cursor: 'pointer',
             transition: 'all 0.2s',
+            width: '100%'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = '#dbeafe'

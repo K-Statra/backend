@@ -59,7 +59,9 @@ const consultantOptions = [
 ]
 
 const PROD_API = 'https://web-production-9ceeb.up.railway.app';
-const API_BASE = import.meta?.env?.VITE_API_BASE || (import.meta.env.PROD ? PROD_API : 'http://localhost:4000');
+// FORCE LOCALHOST FOR DEBUGGING
+const API_BASE = 'http://localhost:4000';
+// const API_BASE = import.meta?.env?.VITE_API_BASE || (import.meta.env.PROD ? PROD_API : 'http://localhost:4000');
 
 const SEARCH_PROVIDER = 'antigravity'
 const ANTIGRAVITY_BASE = API_BASE
@@ -179,8 +181,10 @@ async function searchAntigravity(payload) {
     throw new Error(message)
   }
   const json = await response.json()
+  console.log('[PartnerSearch] searchAntigravity raw json:', json);
   const raw = Array.isArray(json?.data) ? json.data : Array.isArray(json?.results) ? json.results : []
   const mapped = raw.map(normalizeAntigravityCompany).filter((c) => c._id && c.name)
+  console.log('[PartnerSearch] mapped data:', mapped);
   return { provider: 'antigravity', data: mapped, aiResponse: json.aiResponse }
 }
 
@@ -308,6 +312,7 @@ export default function PartnerSearch() {
       // Fetch more to handle client-side pagination for now, or implement server pagination later
       const payload = { q: term.trim(), limit: 50, ...sanitizedFilters }
       const { data, provider, fallback, aiResponse: aiMsg } = await searchPartners(payload)
+      console.log('[PartnerSearch] searchPartners result:', { dataLength: data?.length, provider, fallback });
       setPreview(data || [])
       setAiResponse(aiMsg || '')
       setSearchProviderUsed(provider || SEARCH_PROVIDER)
@@ -768,6 +773,77 @@ export default function PartnerSearch() {
                   </div>
                 </section>
               )}
+              {/* --- New Sections Start --- */}
+              {selectedCompany.dart && (
+                <section className="detail-section">
+                  <h4>{t('detail_financials') || '재무 정보 (Financials)'}</h4>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                          <th style={{ padding: '0.5rem' }}>Category</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right' }}>Consolidated (연결)</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right' }}>Separate (별도)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '0.5rem' }}>Revenue (매출액)</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{selectedCompany.dart.revenueConsolidated?.toLocaleString() || '-'}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>{selectedCompany.dart.revenueSeparate?.toLocaleString() || '-'}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '0.5rem' }}>Op. Profit (영업이익)</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: selectedCompany.dart.operatingProfitConsolidated > 0 ? '#059669' : '#dc2626' }}>
+                            {selectedCompany.dart.operatingProfitConsolidated?.toLocaleString() || '-'}
+                          </td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: selectedCompany.dart.operatingProfitSeparate > 0 ? '#059669' : '#dc2626' }}>
+                            {selectedCompany.dart.operatingProfitSeparate?.toLocaleString() || '-'}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '0.5rem' }}>Net Income (당기순이익)</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 600 }}>{selectedCompany.dart.netIncomeConsolidated?.toLocaleString() || '-'}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 600 }}>{selectedCompany.dart.netIncomeSeparate?.toLocaleString() || '-'}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem', textAlign: 'right' }}>
+                    Source: {selectedCompany.dart.source} ({selectedCompany.dart.fiscalYear})
+                  </div>
+                </section>
+              )}
+
+              {selectedCompany.activities && selectedCompany.activities.length > 0 && (
+                <section className="detail-section">
+                  <h4>{t('detail_activities') || '주요 활동 (Activities)'}</h4>
+                  <ul style={{ paddingLeft: '1.2rem', margin: 0 }}>
+                    {selectedCompany.activities.map((act, idx) => (
+                      <li key={idx} style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>
+                        <strong>[{act.type.toUpperCase()}]</strong> {act.description}
+                        {act.date && <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({new Date(act.date).toLocaleDateString()})</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {selectedCompany.products && selectedCompany.products.length > 0 && (
+                <section className="detail-section">
+                  <h4>{t('detail_products') || '제품 정보 (Products)'}</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.5rem' }}>
+                    {selectedCompany.products.map((prod, idx) => (
+                      <div key={idx} style={{ border: '1px solid #e5e7eb', borderRadius: '6px', padding: '0.5rem' }}>
+                        {prod.imageUrl && <img src={prod.imageUrl} alt={prod.name} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px', marginBottom: '0.25rem' }} />}
+                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{prod.name}</div>
+                        {prod.description && <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{prod.description}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {/* --- New Sections End --- */}
 
               {analysisEntries.length > 0 && (
                 <section className="detail-section matching-analysis">

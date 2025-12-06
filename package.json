@@ -30,12 +30,15 @@
     "mongoose": "^8.19.3",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
+    "opendart": "^1.0.2",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.18.3",
+    "xml2js": "^0.6.2",
     "xrpl": "^4.4.3",
     "yamljs": "^0.3.0"
   },
   "devDependencies": {
+    "adm-zip": "^0.5.16",
     "nodemon": "^3.1.10"
   },
   "multer": "^2.0.2"

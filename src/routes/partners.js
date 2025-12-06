@@ -30,7 +30,7 @@ router.get('/search', async (req, res, next) => {
             Output only one word: "DB" or "WEB".
             `;
 
-            const decision = await chat(routerPrompt);
+            const decision = await chat([{ role: 'user', content: routerPrompt }]);
             console.log(`[Router] Decision: ${decision}`);
 
             if (decision && decision.trim().toUpperCase().includes('WEB')) {
@@ -87,9 +87,31 @@ router.get('/search', async (req, res, next) => {
             dbResults = await Company.aggregate(pipeline);
         }
 
+        // 1.5. Fallback to Regex if Vector Search returned nothing
+        // This ensures we find data even if embeddings are missing (e.g., Mock Data)
+        if (!forceWebSearch && dbResults.length === 0 && q) {
+            console.log(`[Search] Vector search empty. Trying Regex fallback for: "${q}"`);
+            const filter = {};
+            filter.$or = [
+                { name: { $regex: q, $options: 'i' } },
+                { profileText: { $regex: q, $options: 'i' } },
+                { tags: { $regex: q, $options: 'i' } } // Also search tags
+            ];
+
+            if (industry) filter.industry = industry;
+            if (country) filter['location.country'] = country;
+            if (partnership) filter.tags = partnership;
+            if (size) filter.sizeBucket = size;
+
+            dbResults = await Company.find(filter).limit(parseInt(limit)).lean();
+            // Assign a "fake" high score so it doesn't trigger web fallback immediately
+            dbResults = dbResults.map(r => ({ ...r, score: 0.9 }));
+        }
+
         // 2. Evaluate DB Results
-        // Fallback if Router forced Web OR if DB results are weak
-        const shouldFallbackToWeb = forceWebSearch || dbResults.length < 3 || (dbResults[0] && dbResults[0].score < 0.85);
+        // Fallback if Router forced Web OR if DB results are truly empty
+        // (Relaxed condition: Only go to web if we have ZERO DB results)
+        const shouldFallbackToWeb = forceWebSearch || dbResults.length === 0;
 
         if (shouldFallbackToWeb && q) {
             console.log(`[Search] Fallback triggered (Force: ${forceWebSearch}, Count: ${dbResults.length}), searching Web...`);
@@ -117,25 +139,6 @@ router.get('/search', async (req, res, next) => {
             });
         }
 
-        // 3. If DB results are good enough, return them
-        // Fallback to Regex if vector search failed completely but we still want to try DB
-        if (dbResults.length === 0) {
-            const filter = {};
-            if (q) {
-                filter.$or = [
-                    { name: { $regex: q, $options: 'i' } },
-                    { profileText: { $regex: q, $options: 'i' } }
-                ];
-            }
-            if (industry) filter.industry = industry;
-            if (country) filter['location.country'] = country;
-            if (partnership) filter.tags = partnership;
-            if (size) filter.sizeBucket = size;
-
-            dbResults = await Company.find(filter).limit(parseInt(limit)).lean();
-            dbResults = dbResults.map(r => ({ ...r, score: 0.5 }));
-        }
-
         // Generate AI Response for DB results
         let aiResponse = "";
         if (q && dbResults.length > 0) {
@@ -155,7 +158,7 @@ router.get('/search', async (req, res, next) => {
             Response (in the same language as the query, keep it professional and concise):
             `;
 
-            aiResponse = await chat(prompt);
+            aiResponse = await chat([{ role: 'user', content: prompt }]);
         }
 
         res.json({

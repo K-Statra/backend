@@ -15,7 +15,7 @@ async function embed(text = '') {
   }
 
   const payload = {
-    input: String(text || ''),
+    input: text, // Allow string or array of strings
     model,
   };
 
@@ -33,8 +33,15 @@ async function embed(text = '') {
       }
     );
 
-    const data = res.data && res.data.data && res.data.data[0];
-    const vec = (data && Array.isArray(data.embedding)) ? data.embedding : [];
+    const data = res.data && res.data.data;
+
+    // Handle batch response (Array of embeddings)
+    if (Array.isArray(text) && Array.isArray(data)) {
+      return data.sort((a, b) => a.index - b.index).map(item => item.embedding);
+    }
+
+    // Handle single response
+    const vec = (data && data[0] && Array.isArray(data[0].embedding)) ? data[0].embedding : [];
     const out = [];
     for (let i = 0; i < vec.length; i++) {
       const v = Number(vec[i]);
@@ -48,7 +55,7 @@ async function embed(text = '') {
         const msg = err.response && err.response.data ? JSON.stringify(err.response.data) : err.message;
         // eslint-disable-next-line no-console
         console.warn(`[openai] embed error status=${status || '-'} msg=${msg}`);
-      } catch (_) {}
+      } catch (_) { }
     }
     return [];
   }

@@ -16,12 +16,25 @@ async function connectDB() {
     retryWrites: true,
     w: 'majority',
   };
+
+  mongoose.connection.on('connected', () => {
+    console.log('[DB] Mongoose connected to DB');
+  });
+
+  mongoose.connection.on('error', (err) => {
+    console.error('[DB] Mongoose connection error:', err.message);
+  });
+
+  mongoose.connection.on('disconnected', () => {
+    console.warn('[DB] Mongoose disconnected');
+  });
+
   try {
     await mongoose.connect(uri, opts);
-    console.log('MongoDB connected');
+    // console.log('MongoDB connected'); // Handled by event listener
   } catch (err) {
-    console.error('[DB] connection error', err.message);
-    process.exit(1);
+    console.error('[DB] Initial connection error', err.message);
+    throw err;
   }
 }
 

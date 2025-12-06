@@ -57,6 +57,63 @@ const companySchema = new mongoose.Schema({
     ],
     default: [],
   },
+  // --- Layer 2: Product Layer ---
+  products: {
+    type: [
+      new mongoose.Schema(
+        {
+          name: { type: String, required: true },
+          description: String,
+          imageUrl: String,
+          catalogUrl: String,
+        },
+        { _id: true, id: false }
+      ),
+    ],
+    default: [],
+  },
+
+  // --- Layer 3: Activity Layer ---
+  activities: {
+    type: [
+      new mongoose.Schema(
+        {
+          type: { type: String, enum: ['export', 'award', 'exhibition', 'article', 'other'], required: true },
+          description: String,
+          date: Date,
+          url: String,
+        },
+        { _id: true, id: false }
+      ),
+    ],
+    default: [],
+  },
+
+  // --- Layer 4: Finance & Disclosure Layer (Open DART) ---
+  dart: {
+    corpCode: String, // DART unique code
+    bizRegistrationNum: String,
+
+    // Financials (IFRS)
+    fiscalYear: String,
+    reportDate: Date,
+    reportType: String, // e.g., '11013': 1Q, '11012': Half, '11014': 3Q, '11011': Annual
+    isIFRS: { type: Boolean, default: true },
+
+    // Consolidated (연결)
+    revenueConsolidated: Number,
+    operatingProfitConsolidated: Number,
+    netIncomeConsolidated: Number,
+
+    // Separate (별도)
+    revenueSeparate: Number,
+    operatingProfitSeparate: Number,
+    netIncomeSeparate: Number,
+
+    source: { type: String, default: 'Financial Supervisory Service Open DART System' },
+    lastUpdated: Date,
+  },
+
   embedding: { type: [Number], default: [] },
   updatedAt: { type: Date, default: Date.now },
 })
