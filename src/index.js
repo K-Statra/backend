@@ -114,16 +114,18 @@ app.use('/analytics', insightsRouter);
 const PORT = process.env.PORT || 4000;
 
 // DB ???? ?? ???? ????(????)
-(async () => {
+// DB Connection with Retry Logic
+const connectWithRetry = async (attempt = 1) => {
   try {
     const { logger } = require('./utils/logger');
-    logger.info('[bootstrap] calling connectDB');
+    logger.info(`[bootstrap] calling connectDB (attempt ${attempt})`);
     await connectDB();
     logger.info('[bootstrap] DB connected');
 
     app.listen(PORT, () => {
       logger.info(`API Server listening at http://localhost:${PORT}`);
     });
+
     try {
       const { startPaymentPoller } = require('./services/paymentPoller');
       startPaymentPoller();
@@ -131,10 +133,33 @@ const PORT = process.env.PORT || 4000;
       logger.warn(`[bootstrap] payment poller not started: ${err.message}`);
     }
   } catch (err) {
-    console.error('DB ???? ????:', err);
-    process.exit(1);
+    const { logger } = require('./utils/logger');
+    logger.error(`[bootstrap] DB connection failed: ${err.message}`);
+
+    // Retry logic
+    const retryDelay = Math.min(1000 * Math.pow(2, attempt), 30000); // Max 30s
+    logger.info(`[bootstrap] Retrying in ${retryDelay / 1000}s...`);
+
+    setTimeout(() => {
+      connectWithRetry(attempt + 1);
+    }, retryDelay);
   }
-})();
+};
+
+connectWithRetry();
+
+// Global Error Handlers
+process.on('uncaughtException', (err) => {
+  const { logger } = require('./utils/logger');
+  logger.error('[FATAL] Uncaught Exception:', err);
+  // Do NOT exit, just log. 
+  // In a containerized env, you might want to exit, but user requested "don't close screen".
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  const { logger } = require('./utils/logger');
+  logger.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // 404 Not Found handler (after all routes)
 app.use((req, res) => {
@@ -194,5 +219,5 @@ app.use((err, req, res, next) => {
 
 
 
- 
- 
+
+
