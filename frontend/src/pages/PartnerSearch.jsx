@@ -161,6 +161,7 @@ function normalizeAntigravityCompany(item = {}) {
     website: item.website || item.url || item.site || '',
     sizeBucket: item.size || item.employeeCountRange || item.companySize,
     images: item.images || [],
+    ai_reasoning: item.ai_reasoning || '',
   }
 }
 
@@ -172,7 +173,10 @@ async function searchCodex(payload) {
 async function searchAntigravity(payload) {
   if (!ANTIGRAVITY_BASE) throw new Error('Antigravity base URL not configured')
   const base = ANTIGRAVITY_BASE.replace(/\/$/, '')
+
+  // Pass q parameter correctly
   const qs = new URLSearchParams({ limit: '50', ...payload })
+  if (payload.q) qs.set('q', payload.q);
   const response = await fetch(`${base}/partners/search?${qs.toString()}`, {
     headers: ANTIGRAVITY_KEY ? { Authorization: `Bearer ${ANTIGRAVITY_KEY}` } : undefined,
   })

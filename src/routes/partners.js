@@ -108,6 +108,20 @@ router.get('/search', async (req, res, next) => {
             dbResults = dbResults.map(r => ({ ...r, score: 0.9 }));
         }
 
+        // 1.8. Browsing Mode (No Query, Only Filters)
+        if (!forceWebSearch && !q && (industry || country || partnership || size)) {
+            console.log(`[Search] Browsing mode (Filters only)`);
+            const filter = {};
+            if (industry) filter.industry = industry;
+            if (country) filter['location.country'] = country;
+            if (partnership) filter.tags = partnership;
+            if (size) filter.sizeBucket = size;
+
+            dbResults = await Company.find(filter).limit(parseInt(limit)).sort({ createdAt: -1 }).lean();
+            // Assign default score
+            dbResults = dbResults.map(r => ({ ...r, score: 1.0 }));
+        }
+
         // 2. Evaluate DB Results
         // Fallback if Router forced Web OR if DB results are truly empty
         // (Relaxed condition: Only go to web if we have ZERO DB results)
