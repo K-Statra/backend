@@ -50,7 +50,8 @@ router.get('/debug', async (req, res) => {
             embedding: {
                 status: embeddingStatus,
                 error: embeddingError
-            }
+            },
+            sampleData: await Company.find({}, { name: 1, industry: 1, profileText: 1 }).limit(5).lean()
         });
     } catch (err) {
         res.status(500).json({ error: err.message, stack: err.stack });
