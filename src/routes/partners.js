@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const { Company } = require('../models/Company');
 const { embed } = require('../providers/embeddings');
 const { chat } = require('../providers/chat/openai');
@@ -15,6 +16,46 @@ const INDUSTRY_MAPPING = {
     'Fintech / Smart Finance': ['Fintech / Smart Finance', 'Finance'],
     'Other': ['Other', '(Unspecified)']
 };
+
+
+// DEBUG ENDPOINT
+router.get('/debug', async (req, res) => {
+    try {
+        const dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
+        const docCount = await Company.countDocuments();
+
+        let embeddingStatus = 'Not Tested';
+        let embeddingError = null;
+        try {
+            const v = await embed('test');
+            embeddingStatus = `Success (Length: ${v.length})`;
+        } catch (e) {
+            embeddingStatus = 'Failed';
+            embeddingError = e.message;
+        }
+
+        res.json({
+            status: 'ok',
+            version: '1.2-debug-fix', // Verify deployment
+            env: {
+                ATLAS_VECTOR_INDEX: process.env.ATLAS_VECTOR_INDEX || '(not set)',
+                OPENAI_API_KEY_EXISTS: !!process.env.OPENAI_API_KEY,
+                MONGO_URI_CONFIGURED: !!process.env.MONGODB_URI,
+                NODE_ENV: process.env.NODE_ENV
+            },
+            db: {
+                status: dbStatus,
+                companyCount: docCount
+            },
+            embedding: {
+                status: embeddingStatus,
+                error: embeddingError
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message, stack: err.stack });
+    }
+});
 
 router.get('/search', async (req, res, next) => {
     try {
