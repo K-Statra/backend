@@ -226,6 +226,13 @@ router.get('/search', async (req, res, next) => {
             dbResults = dbResults.map(r => ({ ...r, score: 1.0 }));
         }
 
+        // 1.9. Default "Show All" Mode (No Query, No Filters)
+        if (!forceWebSearch && !q && dbResults.length === 0) {
+            console.log(`[Search] Default mode (Show All)`);
+            dbResults = await Company.find({}).sort({ createdAt: -1 }).limit(parseInt(limit)).lean();
+            dbResults = dbResults.map(r => ({ ...r, score: 1.0 }));
+        }
+
         // 2. Evaluate DB Results
         // Fallback if Router forced Web OR if DB results are truly empty
         // (Relaxed condition: Only go to web if we have ZERO DB results)
