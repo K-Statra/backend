@@ -5,6 +5,17 @@ const { embed } = require('../providers/embeddings');
 const { chat } = require('../providers/chat/openai');
 const { searchWeb } = require('../providers/search/tavily');
 
+const INDUSTRY_MAPPING = {
+    'IT / AI / SaaS': ['IT / AI / SaaS', 'Tech & Electronics', 'Software'],
+    'Healthcare / Bio / Medical': ['Healthcare / Bio / Medical', 'Health & Bio', 'Medical'],
+    'Green Energy / Climate Tech / Smart City': ['Green Energy / Climate Tech / Smart City', 'Energy & Environment'],
+    'Mobility / Automation / Manufacturing': ['Mobility / Automation / Manufacturing', 'Industrial & Manufacturing', 'Mobility'],
+    'Beauty / Consumer Goods / Food': ['Beauty / Consumer Goods / Food', 'Beauty & Cosmetics', 'Food & Beverage', 'Consumer Goods'],
+    'Content / Culture / Edutech': ['Content / Culture / Edutech', 'Content', 'Education'],
+    'Fintech / Smart Finance': ['Fintech / Smart Finance', 'Finance'],
+    'Other': ['Other', '(Unspecified)']
+};
+
 router.get('/search', async (req, res, next) => {
     try {
         const { q, limit = 10, industry, country, partnership, size } = req.query;
@@ -43,10 +54,18 @@ router.get('/search', async (req, res, next) => {
         let vector = [];
 
         if (!forceWebSearch && q) {
-            vector = await embed(q);
+            try {
+                vector = await embed(q);
+                console.log(`[Search] Generated embedding for "${q}", length: ${vector.length}`);
+            } catch (embedError) {
+                console.error("[Search] Embedding generation failed:", embedError);
+                // Fallback will handle this since vector will be empty/undefined
+            }
         }
 
-        if (!forceWebSearch && vector.length > 0) {
+        if (!forceWebSearch && vector && vector.length > 0) {
+            console.log(`[Search] Running Vector Search... Index: ${process.env.ATLAS_VECTOR_INDEX || 'vector_index'}`);
+
             const pipeline = [
                 {
                     $vectorSearch: {
@@ -54,16 +73,27 @@ router.get('/search', async (req, res, next) => {
                         path: 'embedding',
                         queryVector: vector,
                         numCandidates: 100,
-                        limit: parseInt(limit)
+                        limit: parseInt(limit) * 2 // Fetch more candidates to allow for post-filtering
                     }
                 }
             ];
 
             const matchStage = {};
-            if (industry) matchStage.industry = industry;
+            if (industry) {
+                if (INDUSTRY_MAPPING[industry]) {
+                    // Use $in for mapped industries
+                    matchStage.industry = { $in: INDUSTRY_MAPPING[industry] };
+                } else {
+                    // Direct match
+                    matchStage.industry = industry;
+                }
+            }
             if (country) matchStage['location.country'] = country;
             if (partnership) matchStage.tags = partnership;
             if (size) matchStage.sizeBucket = size;
+
+            // Log the match stage for debugging
+            console.log(`[Search] Match Filters:`, JSON.stringify(matchStage));
 
             if (Object.keys(matchStage).length > 0) {
                 pipeline.push({ $match: matchStage });
@@ -84,35 +114,61 @@ router.get('/search', async (req, res, next) => {
                 }
             });
 
-            dbResults = await Company.aggregate(pipeline);
+            // Limit final results
+            pipeline.push({ $limit: parseInt(limit) });
+
+            try {
+                dbResults = await Company.aggregate(pipeline);
+                console.log(`[Search] Vector search returned ${dbResults.length} results.`);
+            } catch (aggError) {
+                console.error("[Search] Vector search aggregation failed:", aggError);
+                // Fallback will trigger if dbResults is empty
+            }
         }
 
-        // 1.5. Fallback to Regex if Vector Search returned nothing
+        // 1.5. Fallback to Regex if Vector Search returned nothing or failed
         // This ensures we find data even if embeddings are missing (e.g., Mock Data)
         if (!forceWebSearch && dbResults.length === 0 && q) {
-            console.log(`[Search] Vector search empty. Trying Regex fallback for: "${q}"`);
+            console.log(`[Search] Vector search yielded 0 results. Triggering Regex Fallback for: "${q}"`);
             const filter = {};
             filter.$or = [
                 { name: { $regex: q, $options: 'i' } },
                 { profileText: { $regex: q, $options: 'i' } },
-                { tags: { $regex: q, $options: 'i' } } // Also search tags
+                { tags: { $regex: q, $options: 'i' } }, // Also search tags
+                { industry: { $regex: q, $options: 'i' } } // Also search industry
             ];
 
-            if (industry) filter.industry = industry;
+            if (industry) {
+                if (INDUSTRY_MAPPING[industry]) {
+                    filter.industry = { $in: INDUSTRY_MAPPING[industry] };
+                } else {
+                    filter.industry = industry;
+                }
+            }
             if (country) filter['location.country'] = country;
             if (partnership) filter.tags = partnership;
             if (size) filter.sizeBucket = size;
 
+            console.log(`[Search] Regex Filter:`, JSON.stringify(filter));
+
             dbResults = await Company.find(filter).limit(parseInt(limit)).lean();
+            console.log(`[Search] Regex search returned ${dbResults.length} results.`);
+
             // Assign a "fake" high score so it doesn't trigger web fallback immediately
-            dbResults = dbResults.map(r => ({ ...r, score: 0.9 }));
+            dbResults = dbResults.map(r => ({ ...r, score: 0.85 }));
         }
 
         // 1.8. Browsing Mode (No Query, Only Filters)
         if (!forceWebSearch && !q && (industry || country || partnership || size)) {
             console.log(`[Search] Browsing mode (Filters only)`);
             const filter = {};
-            if (industry) filter.industry = industry;
+            if (industry) {
+                if (INDUSTRY_MAPPING[industry]) {
+                    filter.industry = { $in: INDUSTRY_MAPPING[industry] };
+                } else {
+                    filter.industry = industry;
+                }
+            }
             if (country) filter['location.country'] = country;
             if (partnership) filter.tags = partnership;
             if (size) filter.sizeBucket = size;
