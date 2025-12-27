@@ -51,7 +51,13 @@ router.get('/debug', async (req, res) => {
                 status: embeddingStatus,
                 error: embeddingError
             },
-            sampleData: await Company.find({}, { name: 1, industry: 1, profileText: 1 }).limit(5).lean()
+            sampleData: await Company.find({}, { name: 1, industry: 1, profileText: 1 }).limit(5).lean(),
+            industryStats: await Company.aggregate([
+                { $group: { _id: "$industry", count: { $sum: 1 } } },
+                { $sort: { count: -1 } },
+                { $limit: 20 }
+            ]),
+            embeddingCount: await Company.countDocuments({ embedding: { $exists: true, $not: { $size: 0 } } })
         });
     } catch (err) {
         res.status(500).json({ error: err.message, stack: err.stack });
