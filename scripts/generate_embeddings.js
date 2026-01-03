@@ -4,6 +4,9 @@ const { connectDB } = require('../src/config/db');
 const { Company } = require('../src/models/Company');
 const { embed } = require('../src/providers/embeddings');
 
+const SLEEP_MS = 200; // Sleep between batches to avoid rate limits
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 async function generateEmbeddings() {
     try {
         await connectDB();
@@ -16,19 +19,18 @@ async function generateEmbeddings() {
         console.log(`Finding companies without embeddings (Limit: ${limit})...`);
 
         // Find companies where embedding is empty or missing
-        // We use a cursor to stream data instead of loading all into memory
         const cursor = Company.find({
             $or: [
                 { embedding: { $exists: false } },
-                { embedding: { $size: 0 } }
+                { embedding: { $size: 0 } },
+                { embedding: null }
             ]
-        }).limit(limit).cursor();
+        }).limit(limit).batchSize(100).cursor();
 
         let batch = [];
-        const BATCH_SIZE = 100; // OpenAI batch size
+        const BATCH_SIZE = 50; // Reduced batch size for safety
         let totalProcessed = 0;
         let successCount = 0;
-        let failCount = 0;
 
         console.log('Starting batch generation...');
 
@@ -38,9 +40,10 @@ async function generateEmbeddings() {
             if (batch.length >= BATCH_SIZE) {
                 await processBatch(batch);
                 totalProcessed += batch.length;
-                successCount += batch.length; // Simplified tracking
+                successCount += batch.length; // Approximate
                 process.stdout.write(`\rProcessed: ${totalProcessed}`);
                 batch = [];
+                await sleep(SLEEP_MS);
             }
         }
 
@@ -72,11 +75,22 @@ async function processBatch(companies) {
                 c.offerings && c.offerings.length > 0 ? `Offerings: ${c.offerings.join(', ')}` : '',
                 c.needs && c.needs.length > 0 ? `Needs: ${c.needs.join(', ')}` : ''
             ];
-            return parts.filter(Boolean).join('\n') || c.name; // Fallback to name
+            return parts.filter(Boolean).join('\n').substring(0, 8000); // Truncate just in case
         });
 
-        // 2. Call API (Batch)
-        const embeddings = await embed(texts);
+        // 2. Call API (Batch) with retry
+        let embeddings = [];
+        let retries = 3;
+        while (retries > 0) {
+            try {
+                embeddings = await embed(texts);
+                if (embeddings && embeddings.length === companies.length) break;
+            } catch (e) {
+                console.error(`\nAPI Error (Retries left: ${retries}): ${e.message}`);
+                await sleep(2000);
+            }
+            retries--;
+        }
 
         if (!embeddings || embeddings.length !== companies.length) {
             console.error(`\nBatch failed: Expected ${companies.length} embeddings, got ${embeddings ? embeddings.length : 0}`);
