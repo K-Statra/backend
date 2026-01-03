@@ -286,10 +286,24 @@ router.get('/search', async (req, res, next) => {
             aiResponse = await chat([{ role: 'user', content: prompt }]);
         }
 
+        // Determine if result came from Vector or Regex
+        // We know it fell back to regex if we are here and forceWebSearch is false
+        // But wait, the previous code structure is a bit linear. 
+        // Let's rely on the fact that if 'score' is 0.85 (Regex) or 1.0 (Browsable) vs others.
+        // Or simply set a header based on logic flow.
+        const searchType = dbResults.length > 0 && dbResults[0].score === 0.85 ? 'REGEX' :
+            dbResults.length > 0 && dbResults[0].score === 1.0 ? 'BROWSE' : 'VECTOR';
+
+        res.set('X-Search-Type', searchType);
+
         res.json({
             data: dbResults,
             aiResponse: aiResponse,
-            provider: 'db'
+            provider: 'db',
+            debug: {
+                searchType,
+                count: dbResults.length
+            }
         });
 
     } catch (err) {
