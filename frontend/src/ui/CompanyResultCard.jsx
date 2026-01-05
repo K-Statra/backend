@@ -40,9 +40,61 @@ export default function CompanyResultCard({ company, onDetails }) {
         <div>
           <h3 style={{ fontSize: '1.25rem', marginBottom: '0.25rem', color: '#111827' }}>
             <button onClick={onDetails} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 'bold', color: 'inherit', textDecoration: 'underline' }}>
-              {c.name || t('company_placeholder_name')}
+              {c.nameEn ? `${c.nameEn} (${c.name})` : c.name || t('company_placeholder_name')}
             </button>
           </h3>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+            {/* DART Badge */}
+            {c.dart && c.dart.corpCode && (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '0.25rem 0.6rem',
+                backgroundColor: '#f0fdf4', // green-50
+                color: '#15803d', // green-700
+                border: '1px solid #bbf7d0', // green-200
+                borderRadius: '4px',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                gap: '0.25rem'
+              }} title={t('dart_verified_desc') || 'Listed in Korean DART System'}>
+                <span>✓</span> {t('dart_listed') || 'DART 공시기업'}
+              </span>
+            )}
+
+            {/* AI Badge */}
+            {(c.ai_reasoning || (c.matchRecommendation && !c.matchRecommendation.includes('No specific'))) && (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '0.25rem 0.6rem',
+                backgroundColor: '#eef2ff', // indigo-50
+                color: '#4338ca', // indigo-700
+                border: '1px solid #c7d2fe', // indigo-200
+                borderRadius: '4px',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                gap: '0.25rem'
+              }}>
+                <span>✨</span> {t('ai_pick') || 'AI Pick'}
+              </span>
+            )}
+          </div>
+
+          {c.ai_reasoning && (
+            <div style={{
+              marginBottom: '0.5rem',
+              padding: '0.5rem 0.75rem',
+              background: '#faf5ff', // purple-50
+              border: '1px solid #e9d5ff', // purple-200
+              borderRadius: '6px',
+              fontSize: '0.85rem',
+              color: '#6b21a8', // purple-800
+              lineHeight: '1.4'
+            }}>
+              <strong>AI Why:</strong> {c.ai_reasoning}
+            </div>
+          )}
           <div className="muted small" style={{ fontSize: '0.9rem' }}>
             {c.industry} • {location}
           </div>

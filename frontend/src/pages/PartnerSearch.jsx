@@ -723,7 +723,45 @@ export default function PartnerSearch() {
         >
           {selectedCompany && (
             <div className="company-detail">
-              <div className="muted small">{selectedCompany.industry || t('detail_industry_placeholder')}</div>
+              <div className="muted small" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <span>{selectedCompany.industry || t('detail_industry_placeholder')}</span>
+
+                {/* DART Badge */}
+                {selectedCompany.dart && selectedCompany.dart.corpCode && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.2rem 0.5rem',
+                    backgroundColor: '#f0fdf4', // green-50
+                    color: '#15803d', // green-700
+                    border: '1px solid #bbf7d0', // green-200
+                    borderRadius: '4px',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    gap: '0.25rem'
+                  }} title={t('dart_verified_desc') || 'Listed in Korean DART System'}>
+                    <span>✓</span> {t('dart_listed') || 'DART 공시기업'}
+                  </span>
+                )}
+
+                {/* AI Badge */}
+                {(selectedCompany.ai_reasoning || (selectedCompany.matchRecommendation && !selectedCompany.matchRecommendation.includes('No specific'))) && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.2rem 0.5rem',
+                    backgroundColor: '#eef2ff', // indigo-50
+                    color: '#4338ca', // indigo-700
+                    border: '1px solid #c7d2fe', // indigo-200
+                    borderRadius: '4px',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    gap: '0.25rem'
+                  }}>
+                    <span>✨</span> {t('ai_pick') || 'AI Pick'}
+                  </span>
+                )}
+              </div>
               <section className="detail-section">
                 <h4>{t('detail_company_info')}</h4>
                 <div className="detail-line">
