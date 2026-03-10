@@ -161,7 +161,9 @@ function normalizeAntigravityCompany(item = {}) {
     website: item.website || item.url || item.site || '',
     sizeBucket: item.size || item.employeeCountRange || item.companySize,
     images: item.images || [],
+    images: item.images || [],
     ai_reasoning: item.ai_reasoning || '',
+    dart: item.dart, // Pass DART data through
   }
 }
 
@@ -535,11 +537,16 @@ export default function PartnerSearch() {
               {t('quick_lookup_empty')}
             </div>
           )}
-          {/* AI Response Box Removed to avoid duplication */}
-          {/* {aiResponse && ( ... )} */}
-
-          {/* AI Response Box Removed to avoid duplication */}
-          {/* {aiResponse && ( ... )} */}
+          {aiResponse && (
+            <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1.5rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#166534', fontWeight: 'bold' }}>
+                <span>✨</span> AI Insight
+              </div>
+              <div style={{ color: '#166534', lineHeight: '1.6' }}>
+                {aiResponse}
+              </div>
+            </div>
+          )}
 
           <div className="results-table-wrapper" style={{ overflowX: 'auto' }}>
             <table className="results-table" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
@@ -564,8 +571,26 @@ export default function PartnerSearch() {
                     onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
                     <td style={{ padding: '1.5rem 1rem', verticalAlign: 'top' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.25rem', color: '#111827' }}>
-                        {company.name}
+                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.25rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <span>{company.name}</span>
+                        {/* DART Badge in List View */}
+                        {company.dart && company.dart.corpCode && (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0.1rem 0.4rem',
+                            backgroundColor: '#f0fdf4', // green-50
+                            color: '#15803d', // green-700
+                            border: '1px solid #bbf7d0', // green-200
+                            borderRadius: '4px',
+                            fontSize: '0.7rem',
+                            fontWeight: '600',
+                            gap: '0.2rem',
+                            whiteSpace: 'nowrap'
+                          }} title={t('dart_verified_desc') || 'Listed in Korean DART System'}>
+                            <span>✓</span> {t('dart_listed') || 'DART 공시기업'}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>
                         {formatCompanyLocation(company)}

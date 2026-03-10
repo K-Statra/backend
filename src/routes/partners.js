@@ -1,5 +1,5 @@
 const express = require('express');
-const router = express.Router();
+const router = express.Router(); // Restart Trigger: 01-05 13:20
 const mongoose = require('mongoose');
 const { Company } = require('../models/Company');
 const { embed } = require('../providers/embeddings');
@@ -76,24 +76,58 @@ router.get('/search', async (req, res, next) => {
         // If the query is clearly about something else (e.g., Automotive, Construction), skip DB.
 
         let forceWebSearch = false;
+        let predictedIndustry = null;
+        let extractedKeyword = q; // Default to full query
+
         if (q) {
             const routerPrompt = `
-            You are a search router for a B2B matching platform specialized in "K-Beauty, Cosmetics, Food, and Consumer Goods".
+            You are a search query analyzer for K-Statra, a B2B matching platform containing 100,000+ Korean companies across all industries (including automotive, manufacturing, IT, etc).
             User Query: "${q}"
             
-            Task: Determine if this query falls within our specialized domain.
-            - If the query is about Beauty, Cosmetics, Skincare, Makeup, Food, Supplements, or general Consumer Goods, output "DB".
-            - If the query is about Automotive, Machinery, Construction, IT, Electronics, or any other unrelated industry, output "WEB".
-            - If unsure, output "DB".
+            Task 1: Extract the most important core noun/keyword from the query to be used for a text database search.
+            Task 2: If the query strongly matches a specific industry, identify it. Otherwise, use "ALL".
             
-            Output only one word: "DB" or "WEB".
+            Available Industries (Optional):
+            - Beauty & Cosmetics
+            - Food & Beverage
+            - Health & Bio
+            - Consumer Goods
+            - Mobility & Automotive
+            - Manufacturing
+            - IT & Software
+            
+            Instructions:
+            1. Output MUST be strictly in the format: "DB:<Industry>|<Keyword>"
+            2. If you cannot determine a specific industry, use "DB:ALL|<Keyword>".
+            3. DO NOT output "WEB". All searches should go to the Database now.
+            4. The <Keyword> should be 1-2 words maximum (e.g. from "한국의 자동차부품 수출업체를 추천해 줘", extract "자동차부품").
+            
+            Examples:
+            - "Amore Pacific" -> "DB:Beauty & Cosmetics|Amore"
+            - "한국의 자동차부품 수출업체를 추천해 줘" -> "DB:Mobility & Automotive|자동차부품"
+            - "AI tech startups" -> "DB:IT & Software|AI"
+            
+            Output only one line.
             `;
 
             const decision = await chat([{ role: 'user', content: routerPrompt }]);
-            console.log(`[Router] Decision: ${decision}`);
+            console.log(`[Router] Raw Decision: ${decision}`);
 
-            if (decision && decision.trim().toUpperCase().includes('WEB')) {
-                forceWebSearch = true;
+            if (decision) {
+                const cleanDecision = decision.trim();
+                if (cleanDecision.startsWith('DB:')) {
+                    const parts = cleanDecision.replace('DB:', '').split('|');
+                    const ind = parts[0]?.trim();
+                    const kw = parts[1]?.trim();
+
+                    if (ind && ind !== 'ALL') {
+                        predictedIndustry = ind;
+                    }
+                    if (kw) {
+                        extractedKeyword = kw;
+                        console.log(`[Router] Extracted Keyword for fallback: "${extractedKeyword}"`);
+                    }
+                }
             }
         }
 
@@ -140,6 +174,29 @@ router.get('/search', async (req, res, next) => {
             if (partnership) matchStage.tags = partnership;
             if (size) matchStage.sizeBucket = size;
 
+            // [SMART ROUTING] If AI predicted a specific industry (e.g. "Beauty & Cosmetics" for "Amorepacific"),
+            // and the user didn't manually select one, ENFORCE it to remove noise (e.g. Food, Medical).
+            if (!matchStage.industry && predictedIndustry) {
+                console.log(`[Search] Applying Predicted Industry Filter: "${predictedIndustry}"`);
+                // Use mapping if available to cover sub-categories or variations
+                if (INDUSTRY_MAPPING[predictedIndustry]) {
+                    matchStage.industry = { $in: INDUSTRY_MAPPING[predictedIndustry] };
+                } else {
+                    matchStage.industry = predictedIndustry;
+                }
+            }
+
+            // [FIX] Exclude purely financial/investment firms from general vector search
+            // This prevents "Pacific Fund" from matching "Amore Pacific"
+            if (!matchStage.industry) {
+                matchStage.industry = { $not: { $regex: /Investment|Fund|Asset|Capital/i } };
+                // Also filter by NAME because many have "Unspecified" industry but clearly have "Fund" in name
+                matchStage.name = { $not: { $regex: /Investment|Fund|Asset|Capital/i } };
+            } else if (typeof matchStage.industry === 'string') {
+                // If industry is already set (e.g. "Beauty"), we don't need to exclude, 
+                // assuming "Beauty" doesn't overlap with "Fund".
+            }
+
             // Log the match stage for debugging
             console.log(`[Search] Match Filters:`, JSON.stringify(matchStage));
 
@@ -158,7 +215,9 @@ router.get('/search', async (req, res, next) => {
                     sizeBucket: 1,
                     matchRecommendation: 1,
                     matchAnalysis: 1,
-                    score: { $meta: 'vectorSearchScore' }
+                    score: { $meta: 'vectorSearchScore' },
+                    dart: 1,
+                    culturalTraits: 1
                 }
             });
 
@@ -175,15 +234,20 @@ router.get('/search', async (req, res, next) => {
         }
 
         // 1.5. Fallback to Regex if Vector Search returned nothing or failed
-        // This ensures we find data even if embeddings are missing (e.g., Mock Data)
-        if (!forceWebSearch && dbResults.length === 0 && q) {
-            console.log(`[Search] Vector search yielded 0 results. Triggering Regex Fallback for: "${q}"`);
+        // This ensures we find data even if embeddings are missing (e.g., Mock Data or newly ingested DART data)
+        if (!forceWebSearch && dbResults.length === 0 && extractedKeyword) {
+            console.log(`[Search] Vector search yielded 0 results. Triggering Regex Fallback using keyword: "${extractedKeyword}"`);
             const filter = {};
+
+            // Create a smart regex that looks for the extracted keyword instead of the full conversational sentence
+            const regexQuery = { $regex: extractedKeyword, $options: 'i' };
+
             filter.$or = [
-                { name: { $regex: q, $options: 'i' } },
-                { profileText: { $regex: q, $options: 'i' } },
-                { tags: { $regex: q, $options: 'i' } }, // Also search tags
-                { industry: { $regex: q, $options: 'i' } } // Also search industry
+                { name: regexQuery },
+                { nameEn: regexQuery },
+                { profileText: regexQuery },
+                { tags: regexQuery },
+                { industry: regexQuery }
             ];
 
             if (industry) {
@@ -198,6 +262,9 @@ router.get('/search', async (req, res, next) => {
             if (size) filter.sizeBucket = size;
 
             console.log(`[Search] Regex Filter:`, JSON.stringify(filter));
+
+            // We no longer exclude investment/funds aggressively here because DART contains valid companies across all sectors.
+            // We rely on the search term or user filters to narrow it down.
 
             dbResults = await Company.find(filter).limit(parseInt(limit)).lean();
             console.log(`[Search] Regex search returned ${dbResults.length} results.`);
