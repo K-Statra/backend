@@ -79,10 +79,10 @@ router.get('/search', async (req, res, next) => {
         let predictedIndustry = null;
         let extractedKeyword = q; // Default to full query
         let tavilyQuery = q; // Optimized query for Tavily web search
+        let detectedIntent = 'company'; // 'buyer', 'seller', or 'company'
 
-        // [QUERY TRANSFORMER] Converts Korean buyer queries into targeted English B2B company searches.
-        // e.g. "멕시코의 자동차부품 수입업체를 추천해 줘" → "Mexico automotive parts importer distributor company B2B"
-        function buildTavilyQuery(originalQuery) {
+        // [QUERY TRANSFORMER] Converts Korean buyer/seller queries into targeted English B2B searches.
+        function buildTavilyQuery(originalQuery, intent) {
             const qL = originalQuery.toLowerCase();
 
             const regionMap = [
@@ -121,36 +121,57 @@ router.get('/search', async (req, res, next) => {
                 if (qL.includes(key.toLowerCase())) { productEn = p.en || key; break; }
             }
 
-            const isBuyer = ['수입업체', '수입상', '바이어', '구매자', 'importer', 'buyer'].some(k => qL.includes(k));
-            const buyerType = isBuyer ? 'importer distributor buyer' : 'company';
+            if (intent === 'buyer') {
+                const head = regionEn ? `${regionEn} ` : '';
+                const prod = productEn ? `${productEn} ` : '';
+                return `${head}${prod}importer distributor buyer B2B company -supplier -seller contact`;
+            } else if (intent === 'seller') {
+                const head = regionEn ? `${regionEn} ` : '';
+                const prod = productEn ? `${productEn} ` : '';
+                return `${head}${prod}exporter supplier manufacturer factory B2B -importer`;
+            }
 
-            if (regionEn && productEn) return `${regionEn} ${productEn} ${buyerType} company B2B contact`;
-            if (regionEn) return `${regionEn} ${buyerType} company Korea import B2B`;
-            if (productEn) return `${productEn} ${buyerType} international company`;
-            return originalQuery; // Fallback to original
+            return originalQuery;
         }
 
         if (q) {
-            // [SMART ROUTER] Lightweight keyword-based intent detector.
             const regionKeywords = [
                 '아프리카', '중남미', '중동', '동남아', '유럽', '미국', '일본', '중국', '인도', '브라질', '멕시코',
                 '베트남', '태국', '인도네시아',
                 'africa', 'latin america', 'middle east', 'southeast asia', 'europe', 'usa', 'america',
                 'japan', 'china', 'india', 'brazil', 'mexico', 'vietnam', 'thailand', 'indonesia'
             ];
-            const buyerIntentKeywords = [
+            const koreaKeywords = ['한국', '국내', '남한', '코리아', 'korea', 'south korea'];
+
+            const buyerKeywords = [
                 '수입업체', '수입사', '수입상', '바이어', '구매자', '해외바이어', '해외구매자',
                 'importer', 'importers', 'buyer', 'buyers', 'purchaser', 'distributor'
+            ];
+            const sellerKeywords = [
+                '수출업체', '수출사', '수출상', '공급업체', '공급사', '제조업체', '제조사',
+                'exporter', 'exporters', 'supplier', 'suppliers', 'manufacturer', 'seller'
             ];
 
             const qLower = q.toLowerCase();
             const hasRegion = regionKeywords.some(kw => qLower.includes(kw.toLowerCase()));
-            const hasBuyerIntent = buyerIntentKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+            const isKorea = koreaKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+            const hasBuyerIntent = buyerKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+            const hasSellerIntent = sellerKeywords.some(kw => qLower.includes(kw.toLowerCase()));
 
-            if (hasBuyerIntent) {
+            if (hasBuyerIntent) detectedIntent = 'buyer';
+            else if (hasSellerIntent) detectedIntent = 'seller';
+
+            // ROUTER LOGIC:
+            // 1. If explicit Korea search -> ALWAYS DB
+            // 2. If Foreign Region + (Buyer or Seller Intent) -> ALWAYS Web
+            // 3. Else -> DB
+            if (isKorea) {
+                forceWebSearch = false;
+                console.log(`[Search] KOREAN CONTEXT DETECTED — Routing to Domestic DB.`);
+            } else if (hasRegion && (hasBuyerIntent || hasSellerIntent)) {
                 forceWebSearch = true;
-                tavilyQuery = buildTavilyQuery(q);
-                console.log(`[Search] FOREIGN BUYER INTENT — Tavily query: "${tavilyQuery}"`);
+                tavilyQuery = buildTavilyQuery(q, detectedIntent);
+                console.log(`[Search] FOREIGN ${detectedIntent.toUpperCase()} INTENT — Tavily query: "${tavilyQuery}"`);
             }
 
             extractedKeyword = q;
@@ -338,18 +359,42 @@ router.get('/search', async (req, res, next) => {
             const rawResults = webResults.results || [];
             const aiResponse = webResults.answer || "Here are the results found on the web.";
 
-            const mappedWebResults = rawResults.map((item, index) => ({
-                _id: `web_${index}`,
-                name: item.title,
-                industry: 'Web Result',
-                location: { country: 'Global', city: '' },
-                profileText: item.content,
-                website: item.url,
-                tags: ['Web'],
-                matchRecommendation: 'Discovered via real-time web search.',
-                matchAnalysis: [],
-                score: item.score || 0.9
-            }));
+            const mappedWebResults = rawResults.map((item, index) => {
+                let score = item.score || 0.9;
+                const title = (item.title || "").toLowerCase();
+                const content = (item.content || "").toLowerCase();
+
+                // RE-SCORING LOGIC per user requirements
+                if (detectedIntent === 'buyer') {
+                    // Penalty for suppliers when looking for buyers
+                    if (title.includes('supplier') || title.includes('seller') || title.includes('manufacturer')) score -= 0.3;
+                    if (content.includes('we supply') || content.includes('manufacturer of')) score -= 0.2;
+                    // Boost for importers
+                    if (title.includes('importer') || title.includes('distributor') || title.includes('buyer')) score += 0.1;
+                } else if (detectedIntent === 'seller') {
+                    // Boost for sellers/suppliers
+                    if (title.includes('supplier') || title.includes('exporter') || title.includes('manufacturer')) score += 0.1;
+                    // Penalty for pure importers
+                    if (title.includes('importer only')) score -= 0.2;
+                }
+
+                return {
+                    _id: `web_${index}`,
+                    name: item.title,
+                    industry: 'Web Result',
+                    location: { country: 'Global', city: '' },
+                    profileText: item.content,
+                    website: item.url,
+                    tags: ['Web'],
+                    matchRecommendation: `Discovered via real-time web search for ${detectedIntent}.`,
+                    matchAnalysis: [],
+                    score: Math.min(1.0, Math.max(0.1, score))
+                };
+            });
+
+            // Sort by new score
+            mappedWebResults.sort((a, b) => b.score - a.score);
+
 
             return res.json({
                 data: mappedWebResults,
