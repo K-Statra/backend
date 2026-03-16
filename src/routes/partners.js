@@ -124,7 +124,8 @@ router.get('/search', async (req, res, next) => {
             if (intent === 'buyer') {
                 const head = regionEn ? `${regionEn} ` : '';
                 const prod = productEn ? `${productEn} ` : '';
-                return `${head}${prod}importer distributor buyer B2B company -supplier -seller contact`;
+                // Stronger negative keywords to filter manufacturers
+                return `${head}${prod}importer distributor buyer B2B company -supplier -seller -manufacturer -factory -exporter -producer contact`;
             } else if (intent === 'seller') {
                 const head = regionEn ? `${regionEn} ` : '';
                 const prod = productEn ? `${productEn} ` : '';
@@ -182,16 +183,24 @@ router.get('/search', async (req, res, next) => {
         let vector = [];
 
         if (!forceWebSearch && q) {
+            // Simple cleaner to strip filler words for better embedding focus
+            const cleanQuery = (text) => {
+                return text.replace(/(recommend me|please find|show me|find me|how about|search for|찾아줘|추천해줘|알려줘|보여줘)/gi, '').trim();
+            };
+            const strippedQ = cleanQuery(q) || q;
+
             try {
-                vector = await embed(q);
-                console.log(`[Search] Generated embedding for "${q}", length: ${vector.length}`);
+                console.time(`[Search] Embedding: ${strippedQ.substring(0, 20)}`);
+                vector = await embed(strippedQ);
+                console.timeEnd(`[Search] Embedding: ${strippedQ.substring(0, 20)}`);
+                console.log(`[Search] Generated embedding for stripped query, length: ${vector.length}`);
             } catch (embedError) {
                 console.error("[Search] Embedding generation failed:", embedError);
-                // Fallback will handle this since vector will be empty/undefined
             }
         }
 
         if (!forceWebSearch && vector && vector.length > 0) {
+            console.time('[Search] DB Vector Query');
             console.log(`[Search] Running Vector Search... Index: ${process.env.ATLAS_VECTOR_INDEX || 'vector_index'}`);
 
             const pipeline = [
@@ -272,10 +281,12 @@ router.get('/search', async (req, res, next) => {
 
             try {
                 dbResults = await Company.aggregate(pipeline);
-                console.log(`[Search] Vector search returned ${dbResults.length} results.`);
-            } catch (aggError) {
-                console.error("[Search] Vector search aggregation failed:", aggError);
-                // Fallback will trigger if dbResults is empty
+                console.timeEnd('[Search] DB Vector Query');
+                console.log(`[Search] Vector search returned ${dbResults.length} initial candidates.`);
+            } catch (searchError) {
+                console.error("[Search] Vector search error:", searchError);
+                console.timeEnd('[Search] DB Vector Query');
+                dbResults = [];
             }
         }
 
@@ -366,11 +377,18 @@ router.get('/search', async (req, res, next) => {
 
                 // RE-SCORING LOGIC per user requirements
                 if (detectedIntent === 'buyer') {
-                    // Penalty for suppliers when looking for buyers
-                    if (title.includes('supplier') || title.includes('seller') || title.includes('manufacturer')) score -= 0.3;
-                    if (content.includes('we supply') || content.includes('manufacturer of')) score -= 0.2;
+                    // Penalty for manufacturers/exporters/suppliers when looking for buyers
+                    const buyerPenalties = ['supplier', 'seller', 'manufacturer', 'factory', 'exporter', 'producer', 'industrial', 'plant'];
+                    if (buyerPenalties.some(p => title.includes(p))) score -= 0.4;
+                    if (buyerPenalties.some(p => content.includes(p))) score -= 0.2;
+
                     // Boost for importers
-                    if (title.includes('importer') || title.includes('distributor') || title.includes('buyer')) score += 0.1;
+                    const boosTerms = ['importer', 'distributor', 'buyer', 'procurement', 'purchasing', 'trading'];
+                    if (boosTerms.some(b => title.includes(b))) score += 0.2;
+                    if (boosTerms.some(b => content.includes(b))) score += 0.1;
+
+                    // Extra penalty for phrases like "we supply" or "manufacturer of"
+                    if (content.includes('manufacture of') || content.includes('supply of') || content.includes('products from')) score -= 0.2;
                 } else if (detectedIntent === 'seller') {
                     // Boost for sellers/suppliers
                     if (title.includes('supplier') || title.includes('exporter') || title.includes('manufacturer')) score += 0.1;
