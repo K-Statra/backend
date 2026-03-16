@@ -80,20 +80,27 @@ router.get('/search', async (req, res, next) => {
         let extractedKeyword = q; // Default to full query
 
         if (q) {
-            /* 
-            // [OPTIMIZED] Commented out Intent Router to prevent 10-second delays.
-            const routerPrompt = \`
-            You are a search query analyzer for K-Statra, a B2B matching platform containing 100,000+ Korean companies across all industries (including automotive, manufacturing, IT, etc).
-            User Query: "\${q}"
-            
-            Task 1: Extract the most important core noun/keyword from the query...
-            ...
-            \`;
+            // [SMART ROUTER] Lightweight keyword-based intent detector.
+            // If the query is about finding FOREIGN BUYERS or IMPORTERS,
+            // skip the Korean company DB and go straight to Tavily web search.
+            const regionKeywords = [
+                '아프리카', '중남미', '중동', '동남아', '유럽', '미국', '일본', '중국', '인도', '브라질', '멕시코',
+                'africa', 'latin america', 'middle east', 'southeast asia', 'europe', 'usa', 'america', 'japan', 'china', 'india', 'brazil', 'mexico'
+            ];
+            const buyerIntentKeywords = [
+                '수입업체', '수입사', '수입상', '바이어', '구매자', '해외바이어', '해외구매자',
+                'importer', 'importers', 'buyer', 'buyers', 'purchaser', 'distributor'
+            ];
 
-            const decision = await chat([{ role: 'user', content: routerPrompt }]);
-            ...
-            */
-            // Default fallback
+            const qLower = q.toLowerCase();
+            const hasRegion = regionKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+            const hasBuyerIntent = buyerIntentKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+
+            if (hasBuyerIntent || (hasRegion && hasBuyerIntent)) {
+                forceWebSearch = true;
+                console.log(`[Search] FOREIGN BUYER INTENT DETECTED — Routing to Tavily. (Region: ${hasRegion}, Buyer: ${hasBuyerIntent})`);
+            }
+
             extractedKeyword = q;
         }
 
