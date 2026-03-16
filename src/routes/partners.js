@@ -80,55 +80,21 @@ router.get('/search', async (req, res, next) => {
         let extractedKeyword = q; // Default to full query
 
         if (q) {
-            const routerPrompt = `
+            /* 
+            // [OPTIMIZED] Commented out Intent Router to prevent 10-second delays.
+            const routerPrompt = \`
             You are a search query analyzer for K-Statra, a B2B matching platform containing 100,000+ Korean companies across all industries (including automotive, manufacturing, IT, etc).
-            User Query: "${q}"
+            User Query: "\${q}"
             
-            Task 1: Extract the most important core noun/keyword from the query to be used for a text database search.
-            Task 2: If the query strongly matches a specific industry, identify it. Otherwise, use "ALL".
-            
-            Available Industries (Optional):
-            - Beauty & Cosmetics
-            - Food & Beverage
-            - Health & Bio
-            - Consumer Goods
-            - Mobility & Automotive
-            - Manufacturing
-            - IT & Software
-            
-            Instructions:
-            1. Output MUST be strictly in the format: "DB:<Industry>|<Keyword>"
-            2. If you cannot determine a specific industry, use "DB:ALL|<Keyword>".
-            3. DO NOT output "WEB". All searches should go to the Database now.
-            4. The <Keyword> should be 1-2 words maximum (e.g. from "한국의 자동차부품 수출업체를 추천해 줘", extract "자동차부품").
-            
-            Examples:
-            - "Amore Pacific" -> "DB:Beauty & Cosmetics|Amore"
-            - "한국의 자동차부품 수출업체를 추천해 줘" -> "DB:Mobility & Automotive|자동차부품"
-            - "AI tech startups" -> "DB:IT & Software|AI"
-            
-            Output only one line.
-            `;
+            Task 1: Extract the most important core noun/keyword from the query...
+            ...
+            \`;
 
             const decision = await chat([{ role: 'user', content: routerPrompt }]);
-            console.log(`[Router] Raw Decision: ${decision}`);
-
-            if (decision) {
-                const cleanDecision = decision.trim();
-                if (cleanDecision.startsWith('DB:')) {
-                    const parts = cleanDecision.replace('DB:', '').split('|');
-                    const ind = parts[0]?.trim();
-                    const kw = parts[1]?.trim();
-
-                    if (ind && ind !== 'ALL') {
-                        predictedIndustry = ind;
-                    }
-                    if (kw) {
-                        extractedKeyword = kw;
-                        console.log(`[Router] Extracted Keyword for fallback: "${extractedKeyword}"`);
-                    }
-                }
-            }
+            ...
+            */
+            // Default fallback
+            extractedKeyword = q;
         }
 
         // 1. Try DB Search (Vector + Filter) - ONLY if Router says DB
@@ -333,25 +299,28 @@ router.get('/search', async (req, res, next) => {
 
         // Generate AI Response for DB results
         let aiResponse = "";
+        /*
+        // [OPTIMIZED] Commented out synchronous AI summary generation to prevent timeout.
         if (q && dbResults.length > 0) {
             const context = dbResults.slice(0, 5).map(c =>
                 `- ${c.name} (${c.industry}, ${c.location.city}): ${c.profileText}`
             ).join('\n');
 
-            const prompt = `
+            const prompt = \`
             User Query: "${q}"
             
             Based on the following candidate companies, provide a brief, helpful recommendation to the user.
             Explain why these specific companies might be good matches.
             
             Candidates:
-            ${context}
+            \${context}
             
             Response (in the same language as the query, keep it professional and concise):
-            `;
+            \`;
 
             aiResponse = await chat([{ role: 'user', content: prompt }]);
         }
+        */
 
         // Determine if result came from Vector or Regex
         // We know it fell back to regex if we are here and forceWebSearch is false
