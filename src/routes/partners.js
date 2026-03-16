@@ -78,14 +78,65 @@ router.get('/search', async (req, res, next) => {
         let forceWebSearch = false;
         let predictedIndustry = null;
         let extractedKeyword = q; // Default to full query
+        let tavilyQuery = q; // Optimized query for Tavily web search
+
+        // [QUERY TRANSFORMER] Converts Korean buyer queries into targeted English B2B company searches.
+        // e.g. "멕시코의 자동차부품 수입업체를 추천해 줘" → "Mexico automotive parts importer distributor company B2B"
+        function buildTavilyQuery(originalQuery) {
+            const qL = originalQuery.toLowerCase();
+
+            const regionMap = [
+                { kr: '아프리카', en: 'Africa' }, { kr: '중남미', en: 'Latin America' },
+                { kr: '중동', en: 'Middle East' }, { kr: '동남아', en: 'Southeast Asia' },
+                { kr: '유럽', en: 'Europe' }, { kr: '미국', en: 'USA' },
+                { kr: '일본', en: 'Japan' }, { kr: '중국', en: 'China' },
+                { kr: '인도', en: 'India' }, { kr: '브라질', en: 'Brazil' },
+                { kr: '멕시코', en: 'Mexico' }, { kr: '베트남', en: 'Vietnam' },
+                { kr: '태국', en: 'Thailand' }, { kr: '인도네시아', en: 'Indonesia' },
+                { en: 'africa' }, { en: 'latin america' }, { en: 'middle east' },
+                { en: 'southeast asia' }, { en: 'europe' }, { en: 'brazil' }, { en: 'mexico' },
+                { en: 'vietnam' }, { en: 'thailand' }, { en: 'indonesia' },
+            ];
+
+            const productMap = [
+                { kr: '자동차부품', en: 'automotive parts' }, { kr: '자동차 부품', en: 'automotive parts' },
+                { kr: '화장품', en: 'cosmetics beauty' }, { kr: '뷰티', en: 'beauty cosmetics' },
+                { kr: '식품', en: 'food products' }, { kr: '의류', en: 'clothing apparel' },
+                { kr: '전자', en: 'electronics' }, { kr: '기계', en: 'machinery equipment' },
+                { kr: '철강', en: 'steel metal' }, { kr: '섬유', en: 'textile fabric' },
+                { kr: '화학', en: 'chemical' }, { kr: '의료기기', en: 'medical devices' },
+                { kr: '건설', en: 'construction materials' }, { kr: '반도체', en: 'semiconductor' },
+                { en: 'auto part' }, { en: 'cosmetic' }, { en: 'electronic' },
+            ];
+
+            let regionEn = '';
+            for (const r of regionMap) {
+                const key = r.kr || r.en;
+                if (qL.includes(key.toLowerCase())) { regionEn = r.en || key; break; }
+            }
+
+            let productEn = '';
+            for (const p of productMap) {
+                const key = p.kr || p.en;
+                if (qL.includes(key.toLowerCase())) { productEn = p.en || key; break; }
+            }
+
+            const isBuyer = ['수입업체', '수입상', '바이어', '구매자', 'importer', 'buyer'].some(k => qL.includes(k));
+            const buyerType = isBuyer ? 'importer distributor buyer' : 'company';
+
+            if (regionEn && productEn) return `${regionEn} ${productEn} ${buyerType} company B2B contact`;
+            if (regionEn) return `${regionEn} ${buyerType} company Korea import B2B`;
+            if (productEn) return `${productEn} ${buyerType} international company`;
+            return originalQuery; // Fallback to original
+        }
 
         if (q) {
             // [SMART ROUTER] Lightweight keyword-based intent detector.
-            // If the query is about finding FOREIGN BUYERS or IMPORTERS,
-            // skip the Korean company DB and go straight to Tavily web search.
             const regionKeywords = [
                 '아프리카', '중남미', '중동', '동남아', '유럽', '미국', '일본', '중국', '인도', '브라질', '멕시코',
-                'africa', 'latin america', 'middle east', 'southeast asia', 'europe', 'usa', 'america', 'japan', 'china', 'india', 'brazil', 'mexico'
+                '베트남', '태국', '인도네시아',
+                'africa', 'latin america', 'middle east', 'southeast asia', 'europe', 'usa', 'america',
+                'japan', 'china', 'india', 'brazil', 'mexico', 'vietnam', 'thailand', 'indonesia'
             ];
             const buyerIntentKeywords = [
                 '수입업체', '수입사', '수입상', '바이어', '구매자', '해외바이어', '해외구매자',
@@ -96,9 +147,10 @@ router.get('/search', async (req, res, next) => {
             const hasRegion = regionKeywords.some(kw => qLower.includes(kw.toLowerCase()));
             const hasBuyerIntent = buyerIntentKeywords.some(kw => qLower.includes(kw.toLowerCase()));
 
-            if (hasBuyerIntent || (hasRegion && hasBuyerIntent)) {
+            if (hasBuyerIntent) {
                 forceWebSearch = true;
-                console.log(`[Search] FOREIGN BUYER INTENT DETECTED — Routing to Tavily. (Region: ${hasRegion}, Buyer: ${hasBuyerIntent})`);
+                tavilyQuery = buildTavilyQuery(q);
+                console.log(`[Search] FOREIGN BUYER INTENT — Tavily query: "${tavilyQuery}"`);
             }
 
             extractedKeyword = q;
@@ -280,7 +332,9 @@ router.get('/search', async (req, res, next) => {
 
         if (shouldFallbackToWeb && q) {
             console.log(`[Search] Fallback triggered (Force: ${forceWebSearch}, Count: ${dbResults.length}), searching Web...`);
-            const webResults = await searchWeb(q);
+            console.log(`[Search] Tavily query: "${tavilyQuery}"`);
+            const webResults = await searchWeb(tavilyQuery);
+
             const rawResults = webResults.results || [];
             const aiResponse = webResults.answer || "Here are the results found on the web.";
 
