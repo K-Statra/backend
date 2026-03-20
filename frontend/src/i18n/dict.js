@@ -231,6 +231,7 @@ const keys = [
   'assistant_service_desc',
   'assistant_request_button',
   'search_placeholder',
+  'apply_filters',
 ];
 
 const humanize = (key) =>
@@ -259,6 +260,7 @@ Object.assign(en, {
   search_keyword_label: 'Company or keyword',
   search_keyword_placeholder: 'Search Korean suppliers, keywords, or tags',
   search_button: 'Search',
+  apply_filters: 'Apply filters',
   search_results_title: 'Search results',
   search_results_label: 'companies found',
   quick_lookup_empty: 'No results yet. Adjust your filters or add company data.',
@@ -472,6 +474,7 @@ const ko = {
   search_keyword_label: '기업·키워드',
   search_keyword_placeholder: '한국 공급업체 이름이나 태그를 입력하세요',
   search_button: '검색',
+  apply_filters: '필터 적용',
   search_results_title: '검색 결과',
   search_results_label: '개 기업',
   quick_lookup_empty: '결과가 없습니다. 필터를 조정하거나 데이터를 추가하세요.',

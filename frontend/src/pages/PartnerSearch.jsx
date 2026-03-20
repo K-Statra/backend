@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 import Button from '../ui/Button.jsx'
 import { useI18n } from '../i18n/I18nProvider.jsx'
@@ -59,9 +59,8 @@ const consultantOptions = [
 ]
 
 const PROD_API = 'https://web-production-9ceeb.up.railway.app';
-// FORCE LOCALHOST FOR DEBUGGING
-// const API_BASE = 'http://localhost:4000';
-const API_BASE = import.meta?.env?.VITE_API_BASE || (import.meta.env.PROD ? PROD_API : 'http://localhost:4000');
+const API_BASE = 'http://localhost:4000'; // FORCED LOCAL FOR DEBUGGING
+// const API_BASE = import.meta?.env?.VITE_API_BASE || (import.meta.env.PROD ? PROD_API : 'http://localhost:4000');
 
 const SEARCH_PROVIDER = 'antigravity'
 const ANTIGRAVITY_BASE = API_BASE
@@ -339,7 +338,7 @@ export default function PartnerSearch() {
   }
 
   useEffect(() => {
-    loadPreview()
+    // loadPreview() - Disabled auto-load to prevent 114s hang on initial access
   }, [])
 
   const filterConfig = useMemo(
@@ -444,7 +443,7 @@ export default function PartnerSearch() {
         </div>
         <div className="sidebar-actions">
           <Button onClick={runSearch} loading={loadingCompanies}>
-            {t('search_button')}
+            {t('apply_filters')}
           </Button>
           <button type="button" className="link-btn" onClick={resetFilters}>
             {t('reset_filters')}
@@ -460,7 +459,7 @@ export default function PartnerSearch() {
           <p style={lang === 'ko' ? { fontSize: '1.1rem', lineHeight: 1.5, marginBottom: '2rem', color: '#6b7280' } : { fontSize: '1.1rem', marginBottom: '2rem', color: '#6b7280' }}>
             {t('dashboard_subtitle')}
           </p>
-          <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative' }}>
+          <div className="search-bar-container">
             <textarea
               value={search}
               onChange={(e) => {
@@ -478,39 +477,13 @@ export default function PartnerSearch() {
                   runSearch()
                 }
               }}
-              style={{
-                width: '100%',
-                padding: '1rem 3.5rem 1rem 1.5rem', // Right padding for button
-                fontSize: '1.1rem',
-                borderRadius: '24px',
-                border: '2px solid #e5e7eb',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                outline: 'none',
-                transition: 'all 0.2s',
-                resize: 'none',
-                minHeight: '60px',
-                maxHeight: '200px',
-                overflowY: 'auto',
-                lineHeight: '1.5'
-              }}
+              className="search-textarea"
               onFocus={(e) => (e.target.style.borderColor = '#2563eb')}
               onBlur={(e) => (e.target.style.borderColor = '#e5e7eb')}
             />
             <button
               onClick={runSearch}
-              style={{
-                position: 'absolute',
-                right: '8px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: '999px',
-                padding: '0.6rem 1.5rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
+              className="search-submit-btn"
             >
               {t('search_button')}
             </button>
