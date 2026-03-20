@@ -652,6 +652,64 @@ h3 {
   line-height: 1.2;
 }
 
+.search-bar-container {
+  display: flex;
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+  align-items: flex-start;
+  position: relative;
+  z-index: 5;
+}
+
+.search-textarea {
+  flex: 1;
+  min-height: 56px;
+  max-height: 200px;
+  border-radius: 16px;
+  padding: 14px 20px;
+  font-size: 1.05rem;
+  border: 2px solid #e5e7eb;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  resize: none;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.search-textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.15);
+}
+
+.search-submit-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0 24px;
+  height: 56px;
+  font-weight: 600;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.search-submit-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+}
+
+.search-submit-btn:active {
+  transform: translateY(0);
+}
+
 .results-panel {
   display: flex;
   flex-direction: column;

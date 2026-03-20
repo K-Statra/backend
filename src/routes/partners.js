@@ -5,6 +5,8 @@ const { Company } = require('../models/Company');
 const { embed } = require('../providers/embeddings');
 const { chat } = require('../providers/chat/openai');
 const { searchWeb } = require('../providers/search/tavily');
+const { getGraphScores } = require('../services/graphScore');
+const { extractSearchIntent } = require('../services/llm');
 
 const INDUSTRY_MAPPING = {
     'IT / AI / SaaS': ['IT / AI / SaaS', 'Tech & Electronics', 'Software'],
@@ -80,6 +82,7 @@ router.get('/search', async (req, res, next) => {
         let extractedKeyword = q; // Default to full query
         let tavilyQuery = q; // Optimized query for Tavily web search
         let detectedIntent = 'company'; // 'buyer', 'seller', or 'company'
+        let intentData = null; // Added for scope
 
         // [QUERY TRANSFORMER] Converts Korean buyer/seller queries into targeted English B2B searches.
         function buildTavilyQuery(originalQuery, intent) {
@@ -137,10 +140,11 @@ router.get('/search', async (req, res, next) => {
 
         if (q) {
             const regionKeywords = [
-                '아프리카', '중남미', '중동', '동남아', '유럽', '미국', '일본', '중국', '인도', '브라질', '멕시코',
-                '베트남', '태국', '인도네시아',
+                '아프리카', '중남미', '중동', '동남아', '유럽', '미구', '미국', '일본', '중국', '인도', '브라질', '멕시코',
+                '베트남', '태국', '인도네시아', '남아공', '남아프리카', '호주', '캐나다', '독일', '영국', '프랑스', '러시아',
                 'africa', 'latin america', 'middle east', 'southeast asia', 'europe', 'usa', 'america',
-                'japan', 'china', 'india', 'brazil', 'mexico', 'vietnam', 'thailand', 'indonesia'
+                'japan', 'china', 'india', 'brazil', 'mexico', 'vietnam', 'thailand', 'indonesia', 'south africa',
+                'australia', 'canada', 'germany', 'uk', 'france', 'russia'
             ];
             const koreaKeywords = ['한국', '국내', '남한', '코리아', 'korea', 'south korea'];
 
@@ -163,16 +167,26 @@ router.get('/search', async (req, res, next) => {
             else if (hasSellerIntent) detectedIntent = 'seller';
 
             // ROUTER LOGIC:
-            // 1. If explicit Korea search -> ALWAYS DB
-            // 2. If Foreign Region + (Buyer or Seller Intent) -> ALWAYS Web
+            // 1. If Foreign Region + (Buyer or Seller Intent) -> Use LLM to generate precise query
+            // 2. Else If explicit Korea search -> ALWAYS DB
             // 3. Else -> DB
-            if (isKorea) {
+            if (hasRegion && (hasBuyerIntent || hasSellerIntent)) {
+                forceWebSearch = true;
+                try {
+                    intentData = await extractSearchIntent(q);
+                    if (intentData?.webQuery) {
+                        tavilyQuery = intentData.webQuery;
+                        console.log(`[Search] LLM OPTIMIZED INTENT: "${tavilyQuery}" for ${intentData.country}`);
+                    } else {
+                        tavilyQuery = buildTavilyQuery(q, detectedIntent);
+                    }
+                } catch (err) {
+                    tavilyQuery = buildTavilyQuery(q, detectedIntent);
+                }
+                console.log(`[Search] FOREIGN ${detectedIntent.toUpperCase()} INTENT to "${tavilyQuery}"`);
+            } else if (isKorea) {
                 forceWebSearch = false;
                 console.log(`[Search] KOREAN CONTEXT DETECTED — Routing to Domestic DB.`);
-            } else if (hasRegion && (hasBuyerIntent || hasSellerIntent)) {
-                forceWebSearch = true;
-                tavilyQuery = buildTavilyQuery(q, detectedIntent);
-                console.log(`[Search] FOREIGN ${detectedIntent.toUpperCase()} INTENT — Tavily query: "${tavilyQuery}"`);
             }
 
             extractedKeyword = q;
@@ -352,8 +366,9 @@ router.get('/search', async (req, res, next) => {
 
         // 1.9. Default "Show All" Mode (No Query, No Filters)
         if (!forceWebSearch && !q && dbResults.length === 0) {
-            console.log(`[Search] Default mode (Show All)`);
-            dbResults = await Company.find({}).sort({ createdAt: -1 }).limit(parseInt(limit)).lean();
+            console.log(`[Search] Default mode (Show All) - Fast fetch without sort`);
+            // Avoid heavy sort on 130k+ docs for default load if possible
+            dbResults = await Company.find({}).limit(parseInt(limit)).lean();
             dbResults = dbResults.map(r => ({ ...r, score: 1.0 }));
         }
 
@@ -410,6 +425,20 @@ router.get('/search', async (req, res, next) => {
                 };
             });
 
+            // Filter by country if available from intent
+            if (intentData?.country) {
+                const countryLower = intentData.country.toLowerCase();
+                mappedWebResults = mappedWebResults.filter(item => {
+                    const content = (item.profileText || '').toLowerCase();
+                    const name = (item.name || '').toLowerCase();
+                    const matchesCountry = content.includes(countryLower) || name.includes(countryLower);
+                    if (!matchesCountry) {
+                        console.log(`[Search] Filtering out non-matching web result: ${item.name}`);
+                    }
+                    return matchesCountry;
+                });
+            }
+
             // Sort by new score
             mappedWebResults.sort((a, b) => b.score - a.score);
 
@@ -421,48 +450,63 @@ router.get('/search', async (req, res, next) => {
             });
         }
 
-        // Generate AI Response for DB results
-        let aiResponse = "";
-        /*
-        // [OPTIMIZED] Commented out synchronous AI summary generation to prevent timeout.
-        if (q && dbResults.length > 0) {
-            const context = dbResults.slice(0, 5).map(c =>
-                `- ${c.name} (${c.industry}, ${c.location.city}): ${c.profileText}`
-            ).join('\n');
+        // --- 3. Neo4j Graph Re-ranking (Hybrid Scoring) ---
+        // If we have a buyer context and DB results, try to fetch graph scores.
+        const useGraph = process.env.NEO4J_URI && dbResults.length > 0;
+        let hybridResults = dbResults;
 
-            const prompt = \`
-            User Query: "${q}"
+        if (useGraph) {
+            // Attempt to identify buyer for personalized graph ranking
+            const buyerId = req.query.buyerId; 
             
-            Based on the following candidate companies, provide a brief, helpful recommendation to the user.
-            Explain why these specific companies might be good matches.
-            
-            Candidates:
-            \${context}
-            
-            Response (in the same language as the query, keep it professional and concise):
-            \`;
+            if (buyerId && mongoose.Types.ObjectId.isValid(buyerId)) {
+                console.log(`[Search] Calculating Graph Scores for Buyer: ${buyerId}`);
+                const companyIds = dbResults.map(r => r._id.toString());
+                const graphScores = await getGraphScores(buyerId, companyIds);
 
-            aiResponse = await chat([{ role: 'user', content: prompt }]);
+                const weight = Number(process.env.GRAPH_SCORE_WEIGHT || 0.3);
+                
+                hybridResults = dbResults.map(r => {
+                    const gScore = graphScores[r._id.toString()] || 0;
+                    const vScore = r.score || 0; // Vector score
+                    
+                    // Normalize scores for hybrid combination
+                    // Scale graph score to 0..1 range (approx) assuming max ~6 points match
+                    const normGraph = Math.min(1.0, gScore / 6.0);
+                    
+                    const compositeScore = (vScore * (1 - weight)) + (normGraph * weight);
+                    
+                    return {
+                        ...r,
+                        graphScore: gScore,
+                        vectorScore: vScore,
+                        score: compositeScore
+                    };
+                });
+
+                // Re-sort by hybrid score
+                hybridResults.sort((a, b) => b.score - a.score);
+                console.log(`[Search] Hybrid ranking applied to ${hybridResults.length} items.`);
+            }
         }
-        */
 
         // Determine if result came from Vector or Regex
-        // We know it fell back to regex if we are here and forceWebSearch is false
-        // But wait, the previous code structure is a bit linear. 
-        // Let's rely on the fact that if 'score' is 0.85 (Regex) or 1.0 (Browsable) vs others.
-        // Or simply set a header based on logic flow.
-        const searchType = dbResults.length > 0 && dbResults[0].score === 0.85 ? 'REGEX' :
-            dbResults.length > 0 && dbResults[0].score === 1.0 ? 'BROWSE' : 'VECTOR';
+        const firstResult = hybridResults[0];
+        const searchType = hybridResults.length > 0 && 
+            (firstResult.vectorScore === 0.85 || (firstResult.score === 0.85 && !firstResult.vectorScore)) ? 'REGEX' :
+            hybridResults.length > 0 && 
+            (firstResult.vectorScore === 1.0 || (firstResult.score === 1.0 && !firstResult.vectorScore)) ? 'BROWSE' : 'VECTOR';
 
         res.set('X-Search-Type', searchType);
 
         res.json({
-            data: dbResults,
+            data: hybridResults,
             aiResponse: aiResponse,
             provider: 'db',
             debug: {
                 searchType,
-                count: dbResults.length
+                count: hybridResults.length,
+                graphUsed: !!(useGraph && req.query.buyerId)
             }
         });
 
