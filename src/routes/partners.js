@@ -178,9 +178,9 @@ router.get('/search', async (req, res, next) => {
                 forceWebSearch = true;
                 try {
                     console.time('[Search] LLM Intent Extraction');
-                    // Timeout wrapper for LLM
+                    // Reduced timeout for production stability
                     const intentPromise = extractSearchIntent(q);
-                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('LLM Timeout')), 8000));
+                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('LLM Timeout')), 5000));
                     
                     intentData = await Promise.race([intentPromise, timeoutPromise]);
                     console.timeEnd('[Search] LLM Intent Extraction');
@@ -397,7 +397,7 @@ router.get('/search', async (req, res, next) => {
             try {
                 console.time('[Search] Tavily Fetch');
                 const tavilyPromise = searchWeb(tavilyQuery);
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Tavily Timeout')), 10000));
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Tavily Timeout')), 7000));
                 
                 webResults = await Promise.race([tavilyPromise, timeoutPromise]);
                 console.timeEnd('[Search] Tavily Fetch');
@@ -485,7 +485,17 @@ router.get('/search', async (req, res, next) => {
             if (buyerId && mongoose.Types.ObjectId.isValid(buyerId)) {
                 console.log(`[Search] Calculating Graph Scores for Buyer: ${buyerId}`);
                 const companyIds = dbResults.map(r => r._id.toString());
-                const graphScores = await getGraphScores(buyerId, companyIds);
+                
+                let graphScores = {};
+                try {
+                    const graphPromise = getGraphScores(buyerId, companyIds);
+                    const graphTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Graph Timeout')), 5000));
+                    graphScores = await Promise.race([graphPromise, graphTimeout]);
+                    console.log(`[Search] Graph scoring completed with ${Object.keys(graphScores).length} hits.`);
+                } catch (gErr) {
+                    console.error(`[Search] Graph scoring error/timeout: ${gErr.message}`);
+                    graphScores = {}; // Fallback to no graph scores
+                }
 
                 const weight = Number(process.env.GRAPH_SCORE_WEIGHT || 0.3);
                 
