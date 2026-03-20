@@ -83,6 +83,7 @@ router.get('/search', async (req, res, next) => {
         let tavilyQuery = q; // Optimized query for Tavily web search
         let detectedIntent = 'company'; // 'buyer', 'seller', or 'company'
         let intentData = null; // Added for scope
+        let aiResponse = ''; // Added to fix ReferenceError
 
         // [QUERY TRANSFORMER] Converts Korean buyer/seller queries into targeted English B2B searches.
         function buildTavilyQuery(originalQuery, intent) {
@@ -162,6 +163,9 @@ router.get('/search', async (req, res, next) => {
             const isKorea = koreaKeywords.some(kw => qLower.includes(kw.toLowerCase()));
             const hasBuyerIntent = buyerKeywords.some(kw => qLower.includes(kw.toLowerCase()));
             const hasSellerIntent = sellerKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+            
+            console.log(`[Search Router] Query: "${q}"`);
+            console.log(`[Search Router] hasRegion: ${hasRegion}, isKorea: ${isKorea}, hasBuyer: ${hasBuyerIntent}, hasSeller: ${hasSellerIntent}`);
 
             if (hasBuyerIntent) detectedIntent = 'buyer';
             else if (hasSellerIntent) detectedIntent = 'seller';
@@ -173,7 +177,14 @@ router.get('/search', async (req, res, next) => {
             if (hasRegion && (hasBuyerIntent || hasSellerIntent)) {
                 forceWebSearch = true;
                 try {
-                    intentData = await extractSearchIntent(q);
+                    console.time('[Search] LLM Intent Extraction');
+                    // Timeout wrapper for LLM
+                    const intentPromise = extractSearchIntent(q);
+                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('LLM Timeout')), 8000));
+                    
+                    intentData = await Promise.race([intentPromise, timeoutPromise]);
+                    console.timeEnd('[Search] LLM Intent Extraction');
+
                     if (intentData?.webQuery) {
                         tavilyQuery = intentData.webQuery;
                         console.log(`[Search] LLM OPTIMIZED INTENT: "${tavilyQuery}" for ${intentData.country}`);
@@ -181,6 +192,7 @@ router.get('/search', async (req, res, next) => {
                         tavilyQuery = buildTavilyQuery(q, detectedIntent);
                     }
                 } catch (err) {
+                    console.error(`[Search] Intent extraction error/timeout: ${err.message}`);
                     tavilyQuery = buildTavilyQuery(q, detectedIntent);
                 }
                 console.log(`[Search] FOREIGN ${detectedIntent.toUpperCase()} INTENT to "${tavilyQuery}"`);
@@ -380,12 +392,23 @@ router.get('/search', async (req, res, next) => {
         if (shouldFallbackToWeb && q) {
             console.log(`[Search] Fallback triggered (Force: ${forceWebSearch}, Count: ${dbResults.length}), searching Web...`);
             console.log(`[Search] Tavily query: "${tavilyQuery}"`);
-            const webResults = await searchWeb(tavilyQuery);
+            
+            let webResults = { results: [] };
+            try {
+                console.time('[Search] Tavily Fetch');
+                const tavilyPromise = searchWeb(tavilyQuery);
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Tavily Timeout')), 10000));
+                
+                webResults = await Promise.race([tavilyPromise, timeoutPromise]);
+                console.timeEnd('[Search] Tavily Fetch');
+            } catch (webErr) {
+                console.error(`[Search] Tavily error/timeout: ${webErr.message}`);
+            }
 
             const rawResults = webResults.results || [];
-            const aiResponse = webResults.answer || "Here are the results found on the web.";
+            aiResponse = webResults.answer || "Here are the results found on the web.";
 
-            const mappedWebResults = rawResults.map((item, index) => {
+            let mappedWebResults = rawResults.map((item, index) => {
                 let score = item.score || 0.9;
                 const title = (item.title || "").toLowerCase();
                 const content = (item.content || "").toLowerCase();

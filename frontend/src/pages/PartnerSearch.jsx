@@ -34,6 +34,7 @@ const sidebarPresets = {
     { value: 'Germany', label: 'Germany' },
     { value: 'Singapore', label: 'Singapore' },
     { value: 'Vietnam', label: 'Vietnam' },
+    { value: 'South Africa', label: 'South Africa' },
     { value: 'Other', label: 'Other' },
   ],
   size: [
@@ -59,8 +60,7 @@ const consultantOptions = [
 ]
 
 const PROD_API = 'https://web-production-9ceeb.up.railway.app';
-const API_BASE = 'http://localhost:4000'; // FORCED LOCAL FOR DEBUGGING
-// const API_BASE = import.meta?.env?.VITE_API_BASE || (import.meta.env.PROD ? PROD_API : 'http://localhost:4000');
+const API_BASE = import.meta?.env?.VITE_API_BASE || (import.meta.env.PROD ? PROD_API : 'http://localhost:4000');
 
 const SEARCH_PROVIDER = 'antigravity'
 const ANTIGRAVITY_BASE = API_BASE
