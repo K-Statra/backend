@@ -448,17 +448,19 @@ router.get('/search', async (req, res, next) => {
                 };
             });
 
-            // Filter by country if available from intent
+            // Soften country filter: Penalize instead of hard-filtering to handle short snippets
             if (intentData?.country) {
                 const countryLower = intentData.country.toLowerCase();
-                mappedWebResults = mappedWebResults.filter(item => {
+                mappedWebResults = mappedWebResults.map(item => {
                     const content = (item.profileText || '').toLowerCase();
                     const name = (item.name || '').toLowerCase();
                     const matchesCountry = content.includes(countryLower) || name.includes(countryLower);
+                    
                     if (!matchesCountry) {
-                        console.log(`[Search] Filtering out non-matching web result: ${item.name}`);
+                        console.log(`[Search] Penalizing non-explicit country match: ${item.name}`);
+                        return { ...item, score: item.score * 0.7 }; // Lower score but don't hide
                     }
-                    return matchesCountry;
+                    return item;
                 });
             }
 
