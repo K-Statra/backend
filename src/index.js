@@ -14,7 +14,8 @@ const { logger } = require('./utils/logger');
 
 console.log('[DEBUG] starting server bootstrap...');
 
-const { connectDB } = require('./config/db');
+const { connectDB, disconnectDB } = require('./config/db');
+const { verifyConnectivity } = require('./config/neo4j');
 const healthRouter = require('./routes/health');
 const readyRouter = require('./routes/ready');
 const companiesRouter = require('./routes/companies');
@@ -114,31 +115,44 @@ app.use('/analytics', insightsRouter);
 const PORT = process.env.PORT || 4000;
 
 // DB ???? ?? ???? ????(????)
+let server;
+
+// DB ???? ?? ???? ????(????)
 // DB Connection with Retry Logic
 const connectWithRetry = async (attempt = 1) => {
+  const { logger } = require('./utils/logger');
+  
+  // IMMEDIATELY start listening so Railway/Healthchecks pass
+  if (!server) {
+    server = app.listen(PORT, () => {
+      logger.info(`API Server listening at http://localhost:${PORT}`);
+      
+      // Start background services once listening
+      try {
+        const { startPaymentPoller } = require('./services/paymentPoller');
+        startPaymentPoller();
+      } catch (err) {
+        logger.warn(`[bootstrap] payment poller not started: ${err.message}`);
+      }
+    });
+  }
+
   try {
-    const { logger } = require('./utils/logger');
     logger.info(`[bootstrap] calling connectDB (attempt ${attempt})`);
     await connectDB();
-    logger.info('[bootstrap] DB connected');
+    logger.info('[bootstrap] MongoDB connected');
 
-    app.listen(PORT, () => {
-      logger.info(`API Server listening at http://localhost:${PORT}`);
+    // Verify Neo4j connectivity (Optional/Background)
+    verifyConnectivity().catch(err => {
+      logger.error(`[bootstrap] Neo4j background connectivity check failed: ${err.message}`);
     });
 
-    try {
-      const { startPaymentPoller } = require('./services/paymentPoller');
-      startPaymentPoller();
-    } catch (err) {
-      logger.warn(`[bootstrap] payment poller not started: ${err.message}`);
-    }
   } catch (err) {
-    const { logger } = require('./utils/logger');
     logger.error(`[bootstrap] DB connection failed: ${err.message}`);
 
     // Retry logic
     const retryDelay = Math.min(1000 * Math.pow(2, attempt), 30000); // Max 30s
-    logger.info(`[bootstrap] Retrying in ${retryDelay / 1000}s...`);
+    logger.info(`[bootstrap] Retrying DB in ${retryDelay / 1000}s...`);
 
     setTimeout(() => {
       connectWithRetry(attempt + 1);
@@ -159,6 +173,50 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
   const { logger } = require('./utils/logger');
   logger.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+async function gracefulShutdown(signal) {
+  const { logger } = require('./utils/logger');
+  logger.info(`[${signal}] Received kill signal, shutting down gracefully...`);
+
+  if (server) {
+    server.close(() => {
+      logger.info('HTTP server closed');
+    });
+  }
+
+  try {
+    await disconnectDB();
+    logger.info('MongoDB connection closed');
+    process.exit(0);
+  } catch (err) {
+    logger.error('Error during graceful shutdown', err);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// For nodemon restarts
+process.once('SIGUSR2', async () => {
+  const { logger } = require('./utils/logger');
+  logger.info('[SIGUSR2] nodemon restart detected, shutting down gracefully...');
+
+  if (server) {
+    server.close(() => {
+      logger.info('HTTP server closed');
+    });
+  }
+
+  try {
+    await disconnectDB();
+    logger.info('MongoDB connection closed for nodemon restart');
+    process.kill(process.pid, 'SIGUSR2');
+  } catch (err) {
+    logger.error('Error during graceful shutdown', err);
+    process.kill(process.pid, 'SIGUSR2');
+  }
 });
 
 // 404 Not Found handler (after all routes)
