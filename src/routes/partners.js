@@ -135,9 +135,9 @@ router.get('/search', async (req, res, next) => {
             const prod = productEn ? `${productEn} ` : '';
 
             if (intent === 'buyer') {
-                return `${head}${prod}importer distributor buyer B2B company -supplier -seller -manufacturer contact`;
+                return `${head}${prod}importer distributor buyer B2B company "contact details" -supplier -seller -manufacturer -factory -expo -exhibition -fair -event -conference`;
             } else if (intent === 'seller') {
-                return `${head}${prod}exporter supplier manufacturer factory B2B -importer`;
+                return `${head}${prod}exporter supplier manufacturer factory B2B -importer -buyer -expo -exhibition -fair -event -conference`;
             }
 
             return originalQuery;
@@ -450,6 +450,18 @@ router.get('/search', async (req, res, next) => {
                     if (title.includes('supplier') || title.includes('exporter') || title.includes('manufacturer')) score += 0.1;
                     // Penalty for pure importers
                     if (title.includes('importer only')) score -= 0.2;
+                }
+
+                // [RELEVANCE FIX] CROSS-SECTOR PENALTY: Ensure product intent matches result content
+                if (typeof isAutomotive !== 'undefined' && isAutomotive) {
+                    const autoTerms = ['auto', 'vehicle', 'car', 'part', 'truck', 'engine', 'motor', 'tire', 'battery', 'accessory', 'mechanical', 'spare'];
+                    const fullText = (item.title + ' ' + item.content).toLowerCase();
+                    const hasMatch = autoTerms.some(t => fullText.includes(t));
+                    
+                    if (!hasMatch) {
+                        console.log(`[Search] Penalizing cross-sector result (No Auto context): ${item.title}`);
+                        score -= 0.6; // Heavy penalty
+                    }
                 }
 
                 return {
