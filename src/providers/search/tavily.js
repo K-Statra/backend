@@ -14,11 +14,11 @@ async function searchWeb(query) {
         const response = await axios.post('https://api.tavily.com/search', {
             api_key: TAVILY_API_KEY,
             query: query,
-            search_depth: 'advanced',
+            search_depth: 'basic',
             include_answer: true,
             include_images: false,
             max_results: 15,
-        }, { timeout: 20000 })
+        }, { timeout: 15000 })
 
         const results = response.data?.results || []
         console.log(`[Tavily] Success — ${results.length} results returned.`)
