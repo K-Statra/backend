@@ -135,9 +135,9 @@ router.get('/search', async (req, res, next) => {
             const prod = productEn ? `${productEn} ` : '';
 
             if (intent === 'buyer') {
-                return `${head}${prod}importer distributor buyer B2B company "contact details" -supplier -seller -manufacturer -factory -expo -exhibition -fair -event -conference`;
+                return `${head}${prod}importer distributor buyer B2B company "contact" -software -crm -erp -platform -capterra -linkedin -yelp -facebook -twitter -instagram -pinterest -expo -exhibition -fair -event -conference`;
             } else if (intent === 'seller') {
-                return `${head}${prod}exporter supplier manufacturer factory B2B -importer -buyer -expo -exhibition -fair -event -conference`;
+                return `${head}${prod}exporter supplier manufacturer factory B2B -importer -buyer -software -crm -erp -platform -capterra -linkedin -yelp -facebook -twitter -instagram -pinterest -expo -exhibition -fair -event -conference`;
             }
 
             return originalQuery;
