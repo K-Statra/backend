@@ -66,6 +66,21 @@ function scoreCompany(buyer, company) {
     reasons.push('recently updated');
   }
 
+  // PoC Special: Automotive Sector Priority
+  const automotiveRegex = /자동차|부품|Automotive|Car parts|EV|Machinery|parts/i;
+  const isAutomotive = automotiveRegex.test(companyIndustry) || 
+                       Array.from(companyTags).some(tag => automotiveRegex.test(tag));
+  if (isAutomotive) {
+    score += 2.0;
+    reasons.push('Automotive sector priority');
+  }
+
+  // PoC Special: DART Verification Bonus
+  if (company.dart && company.dart.corpCode) {
+    score += 1.5;
+    reasons.push('DART verified');
+  }
+
   const useEmbedding = String(process.env.MATCH_USE_EMBEDDING || 'false').toLowerCase().trim() === 'true';
   if (useEmbedding) {
     const weight = Number(process.env.MATCH_EMBEDDING_WEIGHT || 0.3);

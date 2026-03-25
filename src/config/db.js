@@ -38,5 +38,15 @@ async function connectDB() {
   }
 }
 
-module.exports = { connectDB };
+
+async function disconnectDB() {
+  try {
+    await mongoose.disconnect();
+    console.log('[DB] Mongoose disconnected gracefully');
+  } catch (err) {
+    console.error('[DB] Error disconnecting:', err.message);
+  }
+}
+
+module.exports = { connectDB, disconnectDB };
 
