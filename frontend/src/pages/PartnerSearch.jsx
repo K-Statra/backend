@@ -16,6 +16,7 @@ const sidebarPresets = {
   ],
   industry: [
     { value: '', label: 'All industries' },
+    { value: 'Automotive / EV Parts', label: 'Automotive / EV Parts (PoC)' },
     { value: 'IT / AI / SaaS', label: 'IT / AI / SaaS' },
     { value: 'Healthcare / Bio / Medical', label: 'Healthcare / Bio / Medical' },
     { value: 'Green Energy / Climate Tech / Smart City', label: 'Green Energy / Climate Tech / Smart City' },

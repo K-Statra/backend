@@ -9,6 +9,7 @@ const { getGraphScores } = require('../services/graphScore');
 const { extractSearchIntent } = require('../services/llm');
 
 const INDUSTRY_MAPPING = {
+    'Automotive / EV Parts': ['Mobility / Automation / Manufacturing', 'Industrial & Manufacturing', 'Mobility', 'Automotive', 'Car parts', 'EV'],
     'IT / AI / SaaS': ['IT / AI / SaaS', 'Tech & Electronics', 'Software'],
     'Healthcare / Bio / Medical': ['Healthcare / Bio / Medical', 'Health & Bio', 'Medical'],
     'Green Energy / Climate Tech / Smart City': ['Green Energy / Climate Tech / Smart City', 'Energy & Environment'],
@@ -90,49 +91,52 @@ router.get('/search', async (req, res, next) => {
             const qL = originalQuery.toLowerCase();
 
             const regionMap = [
-                { kr: '아프리카', en: 'Africa' }, { kr: '중남미', en: 'Latin America' },
-                { kr: '중동', en: 'Middle East' }, { kr: '동남아', en: 'Southeast Asia' },
-                { kr: '유럽', en: 'Europe' }, { kr: '미국', en: 'USA' },
-                { kr: '일본', en: 'Japan' }, { kr: '중국', en: 'China' },
-                { kr: '인도', en: 'India' }, { kr: '브라질', en: 'Brazil' },
-                { kr: '멕시코', en: 'Mexico' }, { kr: '베트남', en: 'Vietnam' },
-                { kr: '태국', en: 'Thailand' }, { kr: '인도네시아', en: 'Indonesia' },
-                { en: 'africa' }, { en: 'latin america' }, { en: 'middle east' },
-                { en: 'southeast asia' }, { en: 'europe' }, { en: 'brazil' }, { en: 'mexico' },
-                { en: 'vietnam' }, { en: 'thailand' }, { en: 'indonesia' },
+                // Americas
+                { kr: '미국', en: 'USA' }, { kr: '캐나다', en: 'Canada' }, { kr: '멕시코', en: 'Mexico' },
+                { kr: '브라질', en: 'Brazil' }, { kr: '칠레', en: 'Chile' }, { kr: '아르헨티나', en: 'Argentina' },
+                { kr: '콜롬비아', en: 'Colombia' }, { kr: '페루', en: 'Peru' },
+                // Europe
+                { kr: '영국', en: 'UK' }, { kr: '독일', en: 'Germany' }, { kr: '프랑스', en: 'France' },
+                { kr: '이탈리아', en: 'Italy' }, { kr: '스페인', en: 'Spain' }, { kr: '러시아', en: 'Russia' },
+                { kr: '네덜란드', en: 'Netherlands' }, { kr: '벨기에', en: 'Belgium' },
+                // Asia & Oceania
+                { kr: '일본', en: 'Japan' }, { kr: '중국', en: 'China' }, { kr: '베트남', en: 'Vietnam' },
+                { kr: '태국', en: 'Thailand' }, { kr: '인도네시아', en: 'Indonesia' }, { kr: '인니', en: 'Indonesia' },
+                { kr: '필리핀', en: 'Philippines' }, { kr: '말레이시아', en: 'Malaysia' }, { kr: '싱가포르', en: 'Singapore' },
+                { kr: '호주', en: 'Australia' }, { kr: '인도', en: 'India' },
+                // Middle East & Africa
+                { kr: '사우디', en: 'Saudi Arabia' }, { kr: 'uae', en: 'UAE' }, { kr: '이집트', en: 'Egypt' },
+                { kr: '남아공', en: 'South Africa' }, { kr: '나이지리아', en: 'Nigeria' },
+                // Groups
+                { kr: '아프리카', en: 'Africa' }, { kr: '중남미', en: 'Latin America' }, { kr: '남미', en: 'South America' },
+                { kr: '중동', en: 'Middle East' }, { kr: '동남아', en: 'Southeast Asia' }, { kr: '유럽', en: 'Europe' }
             ];
 
             const productMap = [
                 { kr: '자동차부품', en: 'automotive parts' }, { kr: '자동차 부품', en: 'automotive parts' },
-                { kr: '화장품', en: 'cosmetics beauty' }, { kr: '뷰티', en: 'beauty cosmetics' },
-                { kr: '식품', en: 'food products' }, { kr: '의류', en: 'clothing apparel' },
-                { kr: '전자', en: 'electronics' }, { kr: '기계', en: 'machinery equipment' },
-                { kr: '철강', en: 'steel metal' }, { kr: '섬유', en: 'textile fabric' },
-                { kr: '화학', en: 'chemical' }, { kr: '의료기기', en: 'medical devices' },
-                { kr: '건설', en: 'construction materials' }, { kr: '반도체', en: 'semiconductor' },
-                { en: 'auto part' }, { en: 'cosmetic' }, { en: 'electronic' },
+                { kr: '타이어', en: 'tires' }, { kr: '엔진', en: 'engine parts' },
+                { kr: '배터리', en: 'EV battery' }, { kr: '이차전지', en: 'lithium battery' },
+                { kr: '반도체', en: 'semiconductor' }, { kr: '기계', en: 'industrial machinery' },
+                { kr: '화장품', en: 'cosmetics beauty products' }, { kr: '식품', en: 'food and beverage' },
+                { kr: '섬유', en: 'textile' }, { kr: '철강', en: 'steel' }, { kr: '화학', en: 'chemical products' }
             ];
 
             let regionEn = '';
             for (const r of regionMap) {
-                const key = r.kr || r.en;
-                if (qL.includes(key.toLowerCase())) { regionEn = r.en || key; break; }
+                if (qL.includes(r.kr.toLowerCase())) { regionEn = r.en; break; }
             }
 
             let productEn = '';
             for (const p of productMap) {
-                const key = p.kr || p.en;
-                if (qL.includes(key.toLowerCase())) { productEn = p.en || key; break; }
+                if (qL.includes(p.kr.toLowerCase())) { productEn = p.en; break; }
             }
 
+            const head = regionEn ? `${regionEn} ` : '';
+            const prod = productEn ? `${productEn} ` : '';
+
             if (intent === 'buyer') {
-                const head = regionEn ? `${regionEn} ` : '';
-                const prod = productEn ? `${productEn} ` : '';
-                // Stronger negative keywords to filter manufacturers
-                return `${head}${prod}importer distributor buyer B2B company -supplier -seller -manufacturer -factory -exporter -producer contact`;
+                return `${head}${prod}importer distributor buyer B2B company -supplier -seller -manufacturer contact`;
             } else if (intent === 'seller') {
-                const head = regionEn ? `${regionEn} ` : '';
-                const prod = productEn ? `${productEn} ` : '';
                 return `${head}${prod}exporter supplier manufacturer factory B2B -importer`;
             }
 
@@ -140,12 +144,24 @@ router.get('/search', async (req, res, next) => {
         }
 
         if (q) {
+            const automotiveKeywords = ['자동차', '부품', 'automotive', 'car parts', 'ev', 'machinery', 'parts', '배터리', 'battery'];
             const regionKeywords = [
-                '아프리카', '중남미', '중동', '동남아', '유럽', '미구', '미국', '일본', '중국', '인도', '브라질', '멕시코',
-                '베트남', '태국', '인도네시아', '남아공', '남아프리카', '호주', '캐나다', '독일', '영국', '프랑스', '러시아',
-                'africa', 'latin america', 'middle east', 'southeast asia', 'europe', 'usa', 'america',
-                'japan', 'china', 'india', 'brazil', 'mexico', 'vietnam', 'thailand', 'indonesia', 'south africa',
-                'australia', 'canada', 'germany', 'uk', 'france', 'russia'
+                // Americas
+                '미국', '미구', '캐나다', '멕시코', '브라질', '칠레', '아르헨티나', '콜롬비아', '페루', '에콰도르', '우루과이', '파라과이', '베네수엘라', '파나마', '코스타리카',
+                'usa', 'america', 'canada', 'mexico', 'brazil', 'chile', 'argentina', 'colombia', 'peru', 'ecuador', 'uruguay', 'paraguay',
+                // Europe
+                '영국', '독일', '프랑스', '이탈리아', '스페인', '네덜란드', '벨기에', '스위스', '오스트리아', '스웨덴', '노르웨이', '덴마크', '핀란드',
+                '러시아', '우크라이나', '폴란드', '체코', '헝가리', '루마니아', '그리스', '터키', '포르투갈', '아일랜드',
+                'uk', 'germany', 'france', 'italy', 'spain', 'netherlands', 'belgium', 'switzerland', 'austria', 'poland', 'russia', 'turkey', 'europe',
+                // SE Asia & Oceania
+                '일본', '중국', '인도', '베트남', '태국', '인도네시아', '인니', '필리핀', '말레이시아', '싱가포르', '호주', '뉴질랜드', '대만', '홍콩', '캄보디아', '라오스', '미얀마',
+                'japan', 'china', 'india', 'vietnam', 'thailand', 'indonesia', 'philippines', 'malaysia', 'singapore', 'australia', 'nz', 'taiwan', 'cambodia',
+                // Middle East & Africa
+                '사우디', '아랍에미리트', 'uae', '이스라엘', '이란', '이집트', '남아공', '나이지리아', '케냐', '에티오피아', '모로코', '알제리', '가나', '카메룬',
+                'saudi', 'israel', 'egypt', 'south africa', 'nigeria', 'kenya', 'morocco', 'middle east',
+                // Region Groups
+                '아프리카', '중남미', '중동', '동남아', '유럽', '북미', '중미', '남미', '라틴',
+                'africa', 'latin america', 'middle east', 'southeast asia', 'europe', 'north america', 'central america', 'south america'
             ];
             const koreaKeywords = ['한국', '국내', '남한', '코리아', 'korea', 'south korea'];
 
@@ -163,31 +179,34 @@ router.get('/search', async (req, res, next) => {
             const isKorea = koreaKeywords.some(kw => qLower.includes(kw.toLowerCase()));
             const hasBuyerIntent = buyerKeywords.some(kw => qLower.includes(kw.toLowerCase()));
             const hasSellerIntent = sellerKeywords.some(kw => qLower.includes(kw.toLowerCase()));
-            
-            console.log(`[Search Router] Query: "${q}"`);
-            console.log(`[Search Router] hasRegion: ${hasRegion}, isKorea: ${isKorea}, hasBuyer: ${hasBuyerIntent}, hasSeller: ${hasSellerIntent}`);
+            const isAutomotive = automotiveKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+
+            console.log(`[Search Router] Query: "${q}" (Automotive: ${isAutomotive}, Region: ${hasRegion}, Korea: ${isKorea})`);
 
             if (hasBuyerIntent) detectedIntent = 'buyer';
             else if (hasSellerIntent) detectedIntent = 'seller';
 
-            // ROUTER LOGIC:
-            // 1. If Foreign Region + (Buyer or Seller Intent) -> Use LLM to generate precise query
-            // 2. Else If explicit Korea search -> ALWAYS DB
-            // 3. Else -> DB
-            if (hasRegion && (hasBuyerIntent || hasSellerIntent)) {
+            // HEURISTIC INTENT DETECTOR (Skip LLM if clear)
+            let skipLLM = false;
+            // If it has a foreign region, ignore isKorea for routing (since it might be "looking for buyers for Korean products")
+            if (hasRegion && isAutomotive && (hasBuyerIntent || hasSellerIntent)) {
+                tavilyQuery = buildTavilyQuery(q, detectedIntent);
+                skipLLM = true;
+                console.log(`[Search] Heuristic Match: "${tavilyQuery}"`);
+            }
+
+            if (!skipLLM && hasRegion && (hasBuyerIntent || hasSellerIntent)) {
                 forceWebSearch = true;
                 try {
                     console.time('[Search] LLM Intent Extraction');
-                    // Reduced timeout for production stability
                     const intentPromise = extractSearchIntent(q);
-                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('LLM Timeout')), 5000));
+                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('LLM Timeout')), 4000));
                     
                     intentData = await Promise.race([intentPromise, timeoutPromise]);
                     console.timeEnd('[Search] LLM Intent Extraction');
 
                     if (intentData?.webQuery) {
                         tavilyQuery = intentData.webQuery;
-                        console.log(`[Search] LLM OPTIMIZED INTENT: "${tavilyQuery}" for ${intentData.country}`);
                     } else {
                         tavilyQuery = buildTavilyQuery(q, detectedIntent);
                     }
@@ -195,10 +214,14 @@ router.get('/search', async (req, res, next) => {
                     console.error(`[Search] Intent extraction error/timeout: ${err.message}`);
                     tavilyQuery = buildTavilyQuery(q, detectedIntent);
                 }
-                console.log(`[Search] FOREIGN ${detectedIntent.toUpperCase()} INTENT to "${tavilyQuery}"`);
-            } else if (isKorea) {
+            } else if (isKorea && !hasRegion) {
                 forceWebSearch = false;
-                console.log(`[Search] KOREAN CONTEXT DETECTED — Routing to Domestic DB.`);
+                console.log(`[Search] Explicit Korean search — Domestic DB.`);
+            } else if (!hasRegion && !hasBuyerIntent && !hasSellerIntent) {
+                forceWebSearch = false;
+                console.log(`[Search] Ambiguous query — Defaulting to DB.`);
+            } else if (skipLLM || hasRegion) {
+                forceWebSearch = true;
             }
 
             extractedKeyword = q;
@@ -316,44 +339,39 @@ router.get('/search', async (req, res, next) => {
             }
         }
 
-        // 1.5. Fallback to Regex if Vector Search returned nothing or failed
+        // 1.5. Fallback to Text Search ($text) instead of Regex
         // This ensures we find data even if embeddings are missing (e.g., Mock Data or newly ingested DART data)
         if (!forceWebSearch && dbResults.length === 0 && extractedKeyword) {
-            console.log(`[Search] Vector search yielded 0 results. Triggering Regex Fallback using keyword: "${extractedKeyword}"`);
-            const filter = {};
-
-            // Create a smart regex that looks for the extracted keyword instead of the full conversational sentence
-            const regexQuery = { $regex: extractedKeyword, $options: 'i' };
-
-            filter.$or = [
-                { name: regexQuery },
-                { nameEn: regexQuery },
-                { profileText: regexQuery },
-                { tags: regexQuery },
-                { industry: regexQuery }
-            ];
+            console.log(`[Search] Vector search yielded 0 results. Triggering Text Search Fallback for: "${extractedKeyword}"`);
+            const filter = { $text: { $search: extractedKeyword } };
 
             if (industry) {
-                if (INDUSTRY_MAPPING[industry]) {
-                    filter.industry = { $in: INDUSTRY_MAPPING[industry] };
-                } else {
-                    filter.industry = industry;
-                }
+                if (INDUSTRY_MAPPING[industry]) filter.industry = { $in: INDUSTRY_MAPPING[industry] };
+                else filter.industry = industry;
             }
             if (country) filter['location.country'] = country;
             if (partnership) filter.tags = partnership;
             if (size) filter.sizeBucket = size;
 
-            console.log(`[Search] Regex Filter:`, JSON.stringify(filter));
+            console.log(`[Search] Text Search Filter:`, JSON.stringify(filter));
 
-            // We no longer exclude investment/funds aggressively here because DART contains valid companies across all sectors.
-            // We rely on the search term or user filters to narrow it down.
+            try {
+                dbResults = await Company.find(filter)
+                    .select({ score: { $meta: 'textScore' }, name: 1, industry: 1, location: 1, profileText: 1, website: 1, tags: 1, sizeBucket: 1, dart: 1, matchRecommendation: 1, matchAnalysis: 1 })
+                    .sort({ score: { $meta: 'textScore' } })
+                    .limit(parseInt(limit))
+                    .lean();
 
-            dbResults = await Company.find(filter).limit(parseInt(limit)).lean();
-            console.log(`[Search] Regex search returned ${dbResults.length} results.`);
-
-            // Assign a "fake" high score so it doesn't trigger web fallback immediately
-            dbResults = dbResults.map(r => ({ ...r, score: 0.85 }));
+                // Normalize scores to be in a similar range to vector search (0.5 - 1.0)
+                dbResults = dbResults.map(r => ({
+                    ...r,
+                    score: Math.min(1.0, 0.5 + (r.score / 10)) // Heuristic normalization
+                }));
+                console.log(`[Search] Text search returned ${dbResults.length} results.`);
+            } catch (textErr) {
+                console.error(`[Search] Text search error:`, textErr.message);
+                dbResults = [];
+            }
         }
 
         // 1.8. Browsing Mode (No Query, Only Filters)
@@ -471,7 +489,14 @@ router.get('/search', async (req, res, next) => {
             return res.json({
                 data: mappedWebResults,
                 aiResponse: aiResponse,
-                provider: 'tavily (fallback)'
+                provider: 'tavily',
+                debug: {
+                    searchType: 'WEB',
+                    count: mappedWebResults.length,
+                    intent: detectedIntent,
+                    forceWebSearch: true,
+                    tavilyQuery
+                }
             });
         }
 
@@ -537,11 +562,15 @@ router.get('/search', async (req, res, next) => {
         res.json({
             data: hybridResults,
             aiResponse: aiResponse,
-            provider: 'db',
+            provider: forceWebSearch ? 'tavily' : 'db',
             debug: {
                 searchType,
                 count: hybridResults.length,
-                graphUsed: !!(useGraph && req.query.buyerId)
+                graphUsed: !!(useGraph && req.query.buyerId),
+                intent: detectedIntent,
+                forceWebSearch,
+                tavilyQuery: tavilyQuery || null,
+                isAutomotive: typeof isAutomotive !== 'undefined' ? isAutomotive : false
             }
         });
 
