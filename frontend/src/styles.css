@@ -694,7 +694,7 @@ h3 {
 }
 
 .search-submit-btn {
-  background: #FF7A00;
+  background: #0066CC;
   color: white;
   border: none;
   padding: 0 40px;
@@ -706,15 +706,15 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(255, 122, 0, 0.25);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.25);
   border-radius: 30px;
 }
 
 .search-submit-btn:hover {
-  background: #E66A00;
+  background: #0052A3;
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(255, 122, 0, 0.35);
+  box-shadow: 0 6px 16px rgba(0, 102, 204, 0.35);
 }
 
 .search-submit-btn:active {
