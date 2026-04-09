@@ -696,12 +696,12 @@ h3 {
 }
 
 .search-submit-btn {
-  background: #222222;
-  color: white;
+  background: white;
+  color: var(--accent);
   border: none;
   padding: 0 32px;
   height: 60px;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -713,7 +713,8 @@ h3 {
 }
 
 .search-submit-btn:hover {
-  background: #000000;
+  background: #F0F4F8;
+  color: var(--accent-dark);
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
