@@ -522,129 +522,37 @@ export default function PartnerSearch() {
             </div>
           )}
 
-          <div className="results-table-wrapper" style={{ overflowX: 'auto' }}>
-            <table className="results-table" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                  <th style={{ padding: '1rem', width: '25%', color: '#374151' }}>{t('table_header_company') || '업체명 (Company)'}</th>
-                  <th style={{ padding: '1rem', width: '45%', color: '#374151' }}>{t('table_header_overview') || '업체 개요 (Overview)'}</th>
-                  <th style={{ padding: '1rem', width: '30%', color: '#374151' }}>{t('table_header_reason') || '추천 사유 (Why Recommended)'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayCompanies.map((company) => (
-                  <tr
-                    key={company._id}
-                    onClick={() => setSelectedCompany(company)}
-                    style={{
-                      borderBottom: '1px solid #f3f4f6',
-                      cursor: 'pointer',
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <td style={{ padding: '1.5rem 1rem', verticalAlign: 'top' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.25rem', color: '#111827', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <span>{company.name}</span>
-                        {/* DART Badge in List View */}
-                        {company.dart && company.dart.corpCode && (
-                          <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '0.1rem 0.4rem',
-                            backgroundColor: '#f0fdf4', // green-50
-                            color: '#15803d', // green-700
-                            border: '1px solid #bbf7d0', // green-200
-                            borderRadius: '4px',
-                            fontSize: '0.7rem',
-                            fontWeight: '600',
-                            gap: '0.2rem',
-                            whiteSpace: 'nowrap'
-                          }} title={t('dart_verified_desc') || 'Listed in Korean DART System'}>
-                            <span>✓</span> {t('dart_listed') || 'DART 공시기업'}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.5rem' }}>
-                        {formatCompanyLocation(company)}
-                      </div>
-                      {extractWebsite(company) && (
-                        <a
-                          href={extractWebsite(company)}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          style={{ fontSize: '0.85rem', color: '#2563eb', display: 'block', marginBottom: '0.75rem', textDecoration: 'none' }}
-                        >
-                          {extractWebsite(company).replace(/^https?:\/\//, '').replace(/\/$/, '')}
-                        </a>
-                      )}
-
-                      <div style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleCompanyDetails(company)
-                          }}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '0.4rem 0.8rem',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            color: '#2563eb',
-                            backgroundColor: '#eff6ff',
-                            border: '1px solid #bfdbfe',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#dbeafe'
-                            e.currentTarget.style.borderColor = '#93c5fd'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#eff6ff'
-                            e.currentTarget.style.borderColor = '#bfdbfe'
-                          }}
-                        >
-                          {t('view_details') || '상세 보기'}
-                        </button>
-                      </div>
-                      <div style={{ marginTop: 'auto' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.25rem', color: '#059669', fontWeight: 600 }}>
-                          <span>Match Score</span>
-                          <span>{getAccuracyScore(company)}%</span>
-                        </div>
-                        <div style={{ background: '#e5e7eb', borderRadius: '4px', height: '6px', width: '100%', overflow: 'hidden' }}>
-                          <div style={{
-                            width: `${getAccuracyScore(company)}%`,
-                            background: '#10b981',
-                            height: '100%',
-                            borderRadius: '4px'
-                          }}></div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '1.5rem 1rem', verticalAlign: 'top', color: '#4b5563', lineHeight: '1.6' }}>
-                      {company.profileText || company.description || (
-                        <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>{t('no_info') || '정보 없음'}</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '1.5rem 1rem', verticalAlign: 'top', color: '#4b5563', lineHeight: '1.6' }}>
-                      <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', border: '1px solid #dcfce7' }}>
-                        {getMatchRecommendation(company) || (
-                          <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>{t('no_recommendation') || 'AI 추천 사유가 없습니다.'}</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="results-grid">
+            {displayCompanies.map((company) => (
+              <div 
+                key={company._id} 
+                className="result-card"
+                onClick={() => setSelectedCompany(company)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="result-hero" style={{ background: 'var(--accent)', color: 'white', flexDirection: 'column', backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.1) 75%, transparent 75%, transparent)', backgroundSize: '40px 40px' }}>
+                  <div style={{ fontSize: '28px', fontWeight: '800', opacity: 0.9 }}>{company.name.substring(0, 2).toUpperCase()}</div>
+                  <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '8px', letterSpacing: '1px' }}>{company.industry?.substring(0, 20) || 'PARTNER'}</div>
+                </div>
+                <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', flex: 1, gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--fg)', lineHeight: 1.3, fontWeight: 700 }}>{company.name}</h3>
+                    {company.dart && company.dart.corpCode && (
+                      <span className="badge" style={{ background: '#e8f5e9', color: '#2e7d32', borderColor: '#c8e6c9', fontWeight: 600 }}>DART</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '14px', color: 'var(--fg-secondary)', lineHeight: 1.5, minHeight: '42px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {company.profileText || company.description || formatCompanyLocation(company) || t('no_info')}
+                  </div>
+                  <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '14px', color: 'var(--accent)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '10px', color: 'var(--muted)', fontWeight: 600 }}>MATCH</span> {getAccuracyScore(company)}%
+                    </div>
+                    <span style={{ fontSize: '13px', color: 'var(--fg-secondary)', fontWeight: 600 }}>{t('view_details') || 'VIEW'} &rarr;</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           {preview.length > ITEMS_PER_PAGE && (
