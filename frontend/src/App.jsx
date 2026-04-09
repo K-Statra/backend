@@ -261,6 +261,10 @@ export default function App() {
                 minWidth: lang === 'ko' ? 96 : 105,
                 textTransform: 'none',
                 fontWeight: 600,
+                background: '#0066CC',
+                color: '#fff',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0, 102, 204, 0.2)'
               }}
             >
               <span style={{ display: 'inline-block', minWidth: lang === 'ko' ? '3.5em' : '4em', textAlign: 'center' }}>{loginLabel}</span>
