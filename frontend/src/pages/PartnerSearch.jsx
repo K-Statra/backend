@@ -161,7 +161,6 @@ function normalizeAntigravityCompany(item = {}) {
     website: item.website || item.url || item.site || '',
     sizeBucket: item.size || item.employeeCountRange || item.companySize,
     images: item.images || [],
-    images: item.images || [],
     ai_reasoning: item.ai_reasoning || '',
     dart: item.dart, // Pass DART data through
   }
