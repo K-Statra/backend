@@ -470,7 +470,7 @@ export default function PartnerSearch() {
               }}
               placeholder={
                 t('search_placeholder') ||
-                'K-뷰티 상품을 베트남으로 수출하고 싶어. 베트남의 뷰티상품 수입업체 또는 디스트리뷰터를 추천해 줘'
+                '예시 : K-뷰티 상품을 베트남으로 수출하고 싶어. 베트남의 뷰티상품 수입업체 또는 디스트리뷰터를 추천해 줘'
               }
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
