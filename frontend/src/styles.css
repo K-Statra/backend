@@ -649,8 +649,6 @@ h3 {
 
 .hero {
   background-color: var(--accent);
-  background-image: linear-gradient(135deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.05) 75%, transparent 75%, transparent);
-  background-size: 80px 80px;
   border: none;
   padding: 60px 20px;
   color: white;
@@ -696,27 +694,27 @@ h3 {
 }
 
 .search-submit-btn {
-  background: white;
-  color: var(--accent);
+  background: #FF7A00;
+  color: white;
   border: none;
-  padding: 0 32px;
+  padding: 0 40px;
   height: 60px;
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(255, 122, 0, 0.25);
+  border-radius: 30px;
 }
 
 .search-submit-btn:hover {
-  background: #F0F4F8;
-  color: var(--accent-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  background: #E66A00;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 122, 0, 0.35);
 }
 
 .search-submit-btn:active {
