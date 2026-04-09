@@ -296,7 +296,6 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
-      <FeedbackButton />
 
       <Modal
         open={loginOpen}
