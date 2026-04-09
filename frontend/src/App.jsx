@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import Overview from './pages/Overview.jsx'
@@ -20,6 +20,7 @@ import LanguageSwitcher from './ui/LanguageSwitcher.jsx'
 import FeedbackButton from './ui/FeedbackButton.jsx'
 import Button from './ui/Button.jsx'
 import Modal from './ui/Modal.jsx'
+import Footer from './ui/Footer.jsx'
 import { useI18n } from './i18n/I18nProvider.jsx'
 import { track } from './utils/analytics.js'
 
@@ -290,6 +291,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
+      <Footer />
       <FeedbackButton />
 
       <Modal
