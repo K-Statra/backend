@@ -120,6 +120,58 @@ export default function CompanyResultCard({ company, onDetails }) {
         </div>
       )}
 
+      {/* Cultural Fit Visualization */}
+      {c.culturalTraits && (c.culturalTraits.innovationScore || c.culturalTraits.speedScore) && (
+        <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#fff7ed', borderRadius: '6px', border: '1px solid #ffedd5' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#9a3412', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              🧬 Cultural Fit <span style={{ fontSize: '0.7rem', fontWeight: 'normal', color: '#c2410c', border: '1px solid #fdba74', borderRadius: '4px', padding: '0 4px', background: '#fff' }}>Beta</span>
+            </span>
+            <span style={{ fontSize: '0.75rem', color: '#ea580c', cursor: 'help' }} title="AI-generated analysis based on public data.">
+              ?
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#7c2d12' }}>
+                <span>Innovation</span>
+                <strong>{c.culturalTraits.innovationScore}/10</strong>
+              </div>
+              <div style={{ height: '4px', background: '#fed7aa', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: `${c.culturalTraits.innovationScore * 10}%`, height: '100%', background: '#f97316' }}></div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#7c2d12' }}>
+                <span>Agility</span>
+                <strong>{c.culturalTraits.speedScore}/10</strong>
+              </div>
+              <div style={{ height: '4px', background: '#fed7aa', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ width: `${c.culturalTraits.speedScore * 10}%`, height: '100%', background: '#f97316' }}></div>
+              </div>
+            </div>
+          </div>
+
+          {c.culturalTraits.keywords && c.culturalTraits.keywords.length > 0 && (
+            <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+              {c.culturalTraits.keywords.slice(0, 3).map(k => (
+                <span key={k} style={{
+                  fontSize: '0.7rem',
+                  color: '#c2410c',
+                  background: '#ffedd5',
+                  padding: '1px 5px',
+                  borderRadius: '3px',
+                  border: '1px solid #fed7aa'
+                }}>
+                  #{k}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {c.dart && c.dart.revenueConsolidated && (
         <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>

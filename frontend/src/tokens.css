@@ -1,12 +1,16 @@
 :root {
-  --bg: #ffffff;
-  --card: #ffffff;
-  --fg: #252525;
-  --accent: #030213;
-  --muted: #6b7280;
-  --danger: #e11d48;
-  --radius: 10px;
-  --radius-sm: 6px;
-  --radius-lg: 14px;
+  --bg: #F5F6F8;
+  --card: #FFFFFF;
+  --fg: #222222;
+  --fg-secondary: #666666;
+  --accent: #03C75A;
+  --accent-dark: #00A64A;
+  --muted: #888888;
+  --danger: #FF4B4B;
+  --border: #E8EBEF;
+  --radius: 0px; 
+  --radius-sm: 0px;
+  --radius-lg: 0px;
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.04);
 }
 
