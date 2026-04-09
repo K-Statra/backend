@@ -417,10 +417,13 @@ h3 {
 }
 
 .brand-link {
-  color: var(--fg);
+  color: var(--accent);
   text-decoration: none;
-  font-weight: 700;
-  font-size: 54px;
+  font-family: 'Arial Black', 'Segoe UI Black', 'NanumSquare', sans-serif;
+  font-weight: 900;
+  font-size: 50px;
+  letter-spacing: -1.5px;
+  text-transform: lowercase;
 }
 
 .brand-link:hover {
