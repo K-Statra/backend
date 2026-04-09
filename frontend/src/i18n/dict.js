@@ -632,7 +632,7 @@ const ko = {
   assistant_service_title: '전문가의 도움이 필요하신가요?',
   assistant_service_desc: '원하시는 서비스를 선택하여 전문가에게 도움을 요청하세요.',
   assistant_request_button: '상담 신청',
-  search_placeholder: '예: K-뷰티 상품을 미국에 수출하고 싶은데, LA 지역의 수입상을 추천해줘.',
+  search_placeholder: 'K-뷰티 상품을 베트남으로 수출하고 싶어. 베트남의 뷰티상품 수입업체 또는 디스트리뷰터를 추천해 줘',
   table_header_company: '업체명',
   table_header_overview: '업체 개요 설명',
   table_header_reason: '추천 사유',
