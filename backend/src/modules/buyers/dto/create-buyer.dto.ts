@@ -1,10 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 function trimDedupe(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return [...new Set((value as string[]).map((s) => String(s).trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      (value as string[]).map((s) => String(s).trim()).filter(Boolean),
+    ),
+  ];
 }
 
 export class CreateBuyerDto {
@@ -20,14 +30,20 @@ export class CreateBuyerDto {
   @MaxLength(80)
   country?: string;
 
-  @ApiPropertyOptional({ type: [String], example: ['Automotive', 'Electronics'] })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Automotive', 'Electronics'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   @Transform(({ value }) => trimDedupe(value))
   industries?: string[];
 
-  @ApiPropertyOptional({ type: [String], example: ['OEM parts', 'EV components'] })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['OEM parts', 'EV components'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

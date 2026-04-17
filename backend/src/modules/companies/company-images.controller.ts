@@ -11,7 +11,14 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { CompanyImagesService } from './company-images.service';
@@ -21,13 +28,19 @@ import { ParseMongoIdPipe } from '../../common/pipes/parse-mongo-id.pipe';
 const multerOptions = {
   storage: diskStorage({
     destination: './uploads',
-    filename: (req: any, file: Express.Multer.File, cb: (err: Error | null, filename: string) => void) => {
+    filename: (
+      req: any,
+      file: Express.Multer.File,
+      cb: (err: Error | null, filename: string) => void,
+    ) => {
       const ext = extname(file.originalname || '').toLowerCase() || '.jpg';
       const companyId = (req.params.companyId || 'company').slice(0, 18);
       cb(null, `${companyId}-${Date.now()}${ext}`);
     },
   }),
-  limits: { fileSize: Number(process.env.COMPANY_IMAGE_MAX_BYTES || 5 * 1024 * 1024) },
+  limits: {
+    fileSize: Number(process.env.COMPANY_IMAGE_MAX_BYTES || 5 * 1024 * 1024),
+  },
 };
 
 @ApiTags('Company Images')
@@ -52,7 +65,11 @@ export class CompanyImagesController {
     schema: {
       type: 'object',
       properties: {
-        image: { type: 'string', format: 'binary', description: '이미지 파일 (선택)' },
+        image: {
+          type: 'string',
+          format: 'binary',
+          description: '이미지 파일 (선택)',
+        },
         url: { type: 'string', description: '이미지 URL (파일 없을 때 사용)' },
         caption: { type: 'string' },
         alt: { type: 'string' },
@@ -70,7 +87,8 @@ export class CompanyImagesController {
     @Body() body: UploadImageDto,
   ) {
     const url = file ? `/uploads/${file.filename}` : body.url;
-    if (!url) throw new BadRequestException('이미지 파일 또는 url이 필요합니다');
+    if (!url)
+      throw new BadRequestException('이미지 파일 또는 url이 필요합니다');
     return this.companyImagesService.addImage(companyId, {
       url,
       caption: body.caption,

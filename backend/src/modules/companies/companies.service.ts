@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Company, CompanyDocument } from './schemas/company.schema';
@@ -6,12 +10,15 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { QueryCompanyDto } from './dto/query-company.dto';
 
-const DEFAULT_IMAGE_URL = process.env.DEFAULT_COMPANY_IMAGE_URL || 'https://placehold.co/320x160?text=K-Statra';
+const DEFAULT_IMAGE_URL =
+  process.env.DEFAULT_COMPANY_IMAGE_URL ||
+  'https://placehold.co/320x160?text=K-Statra';
 
 @Injectable()
 export class CompaniesService {
   constructor(
-    @InjectModel(Company.name) private readonly companyModel: Model<CompanyDocument>,
+    @InjectModel(Company.name)
+    private readonly companyModel: Model<CompanyDocument>,
   ) {}
 
   private static readonly LIST_PROJECTION = {
@@ -33,7 +40,18 @@ export class CompaniesService {
   };
 
   async findAll(query: QueryCompanyDto) {
-    const { q, industry, tag, country, size, partnership, page = 1, limit = 10, sortBy = 'updatedAt', order = 'desc' } = query;
+    const {
+      q,
+      industry,
+      tag,
+      country,
+      size,
+      partnership,
+      page = 1,
+      limit = 10,
+      sortBy = 'updatedAt',
+      order = 'desc',
+    } = query;
 
     const filter: Record<string, any> = {};
     if (q) filter.$text = { $search: q };
@@ -45,7 +63,10 @@ export class CompaniesService {
 
     const hasFilter = Object.keys(filter).length > 0;
     const sortField = sortBy === 'nameNumeric' ? 'name' : sortBy;
-    const sort = { [sortField]: order === 'asc' ? 1 : -1 } as Record<string, 1 | -1>;
+    const sort = { [sortField]: order === 'asc' ? 1 : -1 } as Record<
+      string,
+      1 | -1
+    >;
     const skip = (page - 1) * limit;
 
     let findQuery = this.companyModel
@@ -70,7 +91,13 @@ export class CompaniesService {
       dartVerified: !!(dart as any)?.corpCode,
     }));
 
-    return { page, limit, total, totalPages: Math.ceil(total / limit), data: items };
+    return {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data: items,
+    };
   }
 
   async findById(id: string): Promise<CompanyDocument> {
@@ -82,19 +109,33 @@ export class CompaniesService {
   async create(dto: CreateCompanyDto): Promise<CompanyDocument> {
     const doc = await this.companyModel.create(dto);
     if (!doc.images || doc.images.length === 0) {
-      doc.images = [{ url: DEFAULT_IMAGE_URL, caption: 'Default image', alt: doc.name, tags: [], clipEmbedding: [] }];
+      doc.images = [
+        {
+          url: DEFAULT_IMAGE_URL,
+          caption: 'Default image',
+          alt: doc.name,
+          tags: [],
+          clipEmbedding: [],
+        },
+      ];
       await doc.save();
     }
     return doc;
   }
 
   async update(id: string, dto: UpdateCompanyDto): Promise<CompanyDocument> {
-    const fields = Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined));
+    const fields = Object.fromEntries(
+      Object.entries(dto).filter(([, v]) => v !== undefined),
+    );
     if (Object.keys(fields).length === 0) {
       throw new BadRequestException('수정할 필드를 하나 이상 제공해야 합니다');
     }
     const doc = await this.companyModel
-      .findByIdAndUpdate(id, { ...fields, updatedAt: new Date() }, { new: true, runValidators: true })
+      .findByIdAndUpdate(
+        id,
+        { ...fields, updatedAt: new Date() },
+        { new: true, runValidators: true },
+      )
       .exec();
     if (!doc) throw new NotFoundException('Company not found');
     return doc;

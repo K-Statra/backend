@@ -39,4 +39,5 @@ export class ConsultantRequest {
   filters: Record<string, any>;
 }
 
-export const ConsultantRequestSchema = SchemaFactory.createForClass(ConsultantRequest);
+export const ConsultantRequestSchema =
+  SchemaFactory.createForClass(ConsultantRequest);

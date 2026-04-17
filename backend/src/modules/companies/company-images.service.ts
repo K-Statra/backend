@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Company, CompanyDocument } from './schemas/company.schema';
@@ -6,11 +6,15 @@ import { Company, CompanyDocument } from './schemas/company.schema';
 @Injectable()
 export class CompanyImagesService {
   constructor(
-    @InjectModel(Company.name) private readonly companyModel: Model<CompanyDocument>,
+    @InjectModel(Company.name)
+    private readonly companyModel: Model<CompanyDocument>,
   ) {}
 
   async getImages(companyId: string) {
-    const company = await this.companyModel.findById(companyId).select('images').exec();
+    const company = await this.companyModel
+      .findById(companyId)
+      .select('images')
+      .exec();
     if (!company) throw new NotFoundException('Company not found');
     return company.images;
   }
@@ -42,7 +46,8 @@ export class CompanyImagesService {
       (img) => (img as any)._id?.toString() !== imageId,
     ) as typeof company.images;
 
-    if (company.images.length === initialLen) throw new NotFoundException('Image not found');
+    if (company.images.length === initialLen)
+      throw new NotFoundException('Image not found');
     await company.save();
   }
 }

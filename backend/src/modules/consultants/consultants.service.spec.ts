@@ -36,15 +36,26 @@ describe('ConsultantsService', () => {
       const created = { _id: VALID_ID, status: 'NEW' };
       model.create.mockResolvedValue(created);
 
-      const result = await service.createRequest({ name: '홍길동', email: 'hong@example.com' } as any);
+      const result = await service.createRequest({
+        name: '홍길동',
+        email: 'hong@example.com',
+      } as any);
 
-      expect(result).toEqual({ id: VALID_ID, status: 'NEW', message: 'Request received' });
+      expect(result).toEqual({
+        id: VALID_ID,
+        status: 'NEW',
+        message: 'Request received',
+      });
     });
 
     it('buyerId 있으면 ObjectId로 변환', async () => {
       model.create.mockResolvedValue({ _id: VALID_ID, status: 'NEW' });
 
-      await service.createRequest({ name: '홍길동', email: 'hong@example.com', buyerId: VALID_ID } as any);
+      await service.createRequest({
+        name: '홍길동',
+        email: 'hong@example.com',
+        buyerId: VALID_ID,
+      } as any);
 
       expect(model.create).toHaveBeenCalledWith(
         expect.objectContaining({ buyerId: expect.any(Types.ObjectId) }),
@@ -53,7 +64,11 @@ describe('ConsultantsService', () => {
 
     it('유효하지 않은 buyerId → BadRequestException', async () => {
       await expect(
-        service.createRequest({ name: '홍길동', email: 'hong@example.com', buyerId: 'invalid-id' } as any),
+        service.createRequest({
+          name: '홍길동',
+          email: 'hong@example.com',
+          buyerId: 'invalid-id',
+        } as any),
       ).rejects.toThrow(BadRequestException);
 
       expect(model.create).not.toHaveBeenCalled();
@@ -62,7 +77,10 @@ describe('ConsultantsService', () => {
     it('buyerId 없으면 ObjectId 변환 없이 생성', async () => {
       model.create.mockResolvedValue({ _id: VALID_ID, status: 'NEW' });
 
-      await service.createRequest({ name: '홍길동', email: 'hong@example.com' } as any);
+      await service.createRequest({
+        name: '홍길동',
+        email: 'hong@example.com',
+      } as any);
 
       const callArg = model.create.mock.calls[0][0];
       expect(callArg.buyerId).toBeUndefined();
@@ -71,7 +89,10 @@ describe('ConsultantsService', () => {
     it('serviceType 기본값 matching-assistant', async () => {
       model.create.mockResolvedValue({ _id: VALID_ID, status: 'NEW' });
 
-      await service.createRequest({ name: '홍길동', email: 'hong@example.com' } as any);
+      await service.createRequest({
+        name: '홍길동',
+        email: 'hong@example.com',
+      } as any);
 
       expect(model.create).toHaveBeenCalledWith(
         expect.objectContaining({ serviceType: 'matching-assistant' }),
@@ -81,7 +102,10 @@ describe('ConsultantsService', () => {
     it('source 기본값 partner-search', async () => {
       model.create.mockResolvedValue({ _id: VALID_ID, status: 'NEW' });
 
-      await service.createRequest({ name: '홍길동', email: 'hong@example.com' } as any);
+      await service.createRequest({
+        name: '홍길동',
+        email: 'hong@example.com',
+      } as any);
 
       expect(model.create).toHaveBeenCalledWith(
         expect.objectContaining({ source: 'partner-search' }),
@@ -91,7 +115,10 @@ describe('ConsultantsService', () => {
     it('filters 기본값 빈 객체', async () => {
       model.create.mockResolvedValue({ _id: VALID_ID, status: 'NEW' });
 
-      await service.createRequest({ name: '홍길동', email: 'hong@example.com' } as any);
+      await service.createRequest({
+        name: '홍길동',
+        email: 'hong@example.com',
+      } as any);
 
       expect(model.create).toHaveBeenCalledWith(
         expect.objectContaining({ filters: {} }),

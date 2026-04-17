@@ -70,7 +70,12 @@ describe('AdminService', () => {
 
       const result = await service.getStats();
 
-      expect(result).toEqual({ companies: 10, buyers: 5, payments: 3, matches: 2 });
+      expect(result).toEqual({
+        companies: 10,
+        buyers: 5,
+        payments: 3,
+        matches: 2,
+      });
     });
   });
 
@@ -96,18 +101,26 @@ describe('AdminService', () => {
 
       await service.getPayments({ status: 'PAID' } as any);
 
-      expect(paymentModel.find).toHaveBeenCalledWith(expect.objectContaining({ status: 'PAID' }));
+      expect(paymentModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'PAID' }),
+      );
     });
 
     it('날짜 범위 필터 적용', async () => {
       paymentModel.find.mockReturnValue(buildQueryMock([]));
       paymentModel.countDocuments.mockResolvedValue(0);
 
-      await service.getPayments({ from: '2024-01-01', to: '2024-01-31' } as any);
+      await service.getPayments({
+        from: '2024-01-01',
+        to: '2024-01-31',
+      } as any);
 
       expect(paymentModel.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          createdAt: { $gte: new Date('2024-01-01'), $lte: new Date('2024-01-31') },
+          createdAt: {
+            $gte: new Date('2024-01-01'),
+            $lte: new Date('2024-01-31'),
+          },
         }),
       );
     });
@@ -138,7 +151,10 @@ describe('AdminService', () => {
   describe('getPaymentStats', () => {
     it('byStatus, byCurrency 집계 반환', async () => {
       paymentModel.aggregate
-        .mockResolvedValueOnce([{ _id: 'PAID', count: 4 }, { _id: 'PENDING', count: 1 }])
+        .mockResolvedValueOnce([
+          { _id: 'PAID', count: 4 },
+          { _id: 'PENDING', count: 1 },
+        ])
         .mockResolvedValueOnce([{ _id: 'XRP', count: 5 }])
         .mockResolvedValueOnce([]);
 
@@ -160,7 +176,10 @@ describe('AdminService', () => {
 
       const result = await service.getPaymentStats({} as any);
 
-      expect(result.byCurrencyStatus).toEqual({ XRP: { PAID: 3, PENDING: 1 }, USD: { PAID: 2 } });
+      expect(result.byCurrencyStatus).toEqual({
+        XRP: { PAID: 3, PENDING: 1 },
+        USD: { PAID: 2 },
+      });
     });
 
     it('날짜 미전달 시 since/until이 ISO string으로 존재', async () => {
@@ -175,7 +194,10 @@ describe('AdminService', () => {
     it('명시적 날짜 범위 전달', async () => {
       paymentModel.aggregate.mockResolvedValue([]);
 
-      const result = await service.getPaymentStats({ from: '2024-01-01', to: '2024-01-31' } as any);
+      const result = await service.getPaymentStats({
+        from: '2024-01-01',
+        to: '2024-01-31',
+      } as any);
 
       expect(result.since).toBe(new Date('2024-01-01').toISOString());
       expect(result.until).toBe(new Date('2024-01-31').toISOString());
@@ -190,14 +212,22 @@ describe('AdminService', () => {
 
       const csv = await service.exportPaymentsCsv({});
 
-      expect(csv.split('\n')[0]).toBe('_id,buyerId,companyId,amount,currency,status,provider,providerRef,createdAt');
+      expect(csv.split('\n')[0]).toBe(
+        '_id,buyerId,companyId,amount,currency,status,provider,providerRef,createdAt',
+      );
     });
 
     it('데이터 행이 큰따옴표로 감싸짐', async () => {
       const fakePayment = {
-        _id: 'p1', buyerId: 'b1', companyId: 'c1',
-        amount: 10, currency: 'XRP', status: 'PAID',
-        provider: 'xrpl', providerRef: 'ref-1', createdAt: new Date('2024-01-01'),
+        _id: 'p1',
+        buyerId: 'b1',
+        companyId: 'c1',
+        amount: 10,
+        currency: 'XRP',
+        status: 'PAID',
+        provider: 'xrpl',
+        providerRef: 'ref-1',
+        createdAt: new Date('2024-01-01'),
       };
       paymentModel.find.mockReturnValue(buildQueryMock([fakePayment]));
 
@@ -210,9 +240,15 @@ describe('AdminService', () => {
 
     it('큰따옴표 포함 값 이스케이프 처리', async () => {
       const fakePayment = {
-        _id: 'p1', buyerId: 'b1', companyId: 'c1',
-        amount: 10, currency: 'XRP', status: 'NOTE: "special"',
-        provider: 'xrpl', providerRef: 'ref', createdAt: new Date(),
+        _id: 'p1',
+        buyerId: 'b1',
+        companyId: 'c1',
+        amount: 10,
+        currency: 'XRP',
+        status: 'NOTE: "special"',
+        provider: 'xrpl',
+        providerRef: 'ref',
+        createdAt: new Date(),
       };
       paymentModel.find.mockReturnValue(buildQueryMock([fakePayment]));
 
@@ -240,9 +276,13 @@ describe('AdminService', () => {
       matchLogModel.find.mockReturnValue(buildQueryMock([]));
       matchLogModel.countDocuments.mockResolvedValue(0);
 
-      await service.getMatchLogs({ buyerId: '507f1f77bcf86cd799439011' } as any);
+      await service.getMatchLogs({
+        buyerId: '507f1f77bcf86cd799439011',
+      } as any);
 
-      expect(matchLogModel.find).toHaveBeenCalledWith({ buyerId: '507f1f77bcf86cd799439011' });
+      expect(matchLogModel.find).toHaveBeenCalledWith({
+        buyerId: '507f1f77bcf86cd799439011',
+      });
     });
   });
 
@@ -255,20 +295,31 @@ describe('AdminService', () => {
 
       await service.getAuditLogs({ entityId: 'p1' } as any);
 
-      expect(auditLogModel.find).toHaveBeenCalledWith({ entityType: 'Payment', entityId: 'p1' });
+      expect(auditLogModel.find).toHaveBeenCalledWith({
+        entityType: 'Payment',
+        entityId: 'p1',
+      });
     });
 
     it('커스텀 entityType 전달', async () => {
       auditLogModel.find = jest.fn().mockReturnValue(buildQueryMock([]));
       auditLogModel.countDocuments = jest.fn().mockResolvedValue(0);
 
-      await service.getAuditLogs({ entityType: 'Company', entityId: 'c1' } as any);
+      await service.getAuditLogs({
+        entityType: 'Company',
+        entityId: 'c1',
+      } as any);
 
-      expect(auditLogModel.find).toHaveBeenCalledWith({ entityType: 'Company', entityId: 'c1' });
+      expect(auditLogModel.find).toHaveBeenCalledWith({
+        entityType: 'Company',
+        entityId: 'c1',
+      });
     });
 
     it('감사 로그 데이터 반환', async () => {
-      const fakeLogs = [{ type: 'CREATE', entityType: 'Payment', entityId: 'p1' }];
+      const fakeLogs = [
+        { type: 'CREATE', entityType: 'Payment', entityId: 'p1' },
+      ];
       auditLogModel.find = jest.fn().mockReturnValue(buildQueryMock(fakeLogs));
       auditLogModel.countDocuments = jest.fn().mockResolvedValue(1);
 

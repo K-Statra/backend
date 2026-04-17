@@ -35,7 +35,13 @@ describe('BuyersController', () => {
 
   describe('GET /buyers', () => {
     it('기본 목록 반환', async () => {
-      const result = { page: 1, limit: 10, total: 2, totalPages: 1, data: [{ name: 'Acme' }] };
+      const result = {
+        page: 1,
+        limit: 10,
+        total: 2,
+        totalPages: 1,
+        data: [{ name: 'Acme' }],
+      };
       mockBuyersService.findAll.mockResolvedValue(result);
 
       expect(await controller.findAll({} as any)).toEqual(result);
@@ -65,7 +71,9 @@ describe('BuyersController', () => {
     it('없는 ID → NotFoundException', async () => {
       mockBuyersService.findById.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findOne(VALID_ID)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(VALID_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -97,13 +105,17 @@ describe('BuyersController', () => {
     it('없는 ID → NotFoundException', async () => {
       mockBuyersService.update.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.update(VALID_ID, { name: 'x' } as any)).rejects.toThrow(NotFoundException);
+      await expect(
+        controller.update(VALID_ID, { name: 'x' } as any),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('빈 본문 → BadRequestException', async () => {
       mockBuyersService.update.mockRejectedValue(new BadRequestException());
 
-      await expect(controller.update(VALID_ID, {} as any)).rejects.toThrow(BadRequestException);
+      await expect(controller.update(VALID_ID, {} as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -120,7 +132,9 @@ describe('BuyersController', () => {
     it('없는 ID → NotFoundException', async () => {
       mockBuyersService.remove.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.remove(VALID_ID)).rejects.toThrow(NotFoundException);
+      await expect(controller.remove(VALID_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

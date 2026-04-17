@@ -5,7 +5,8 @@ export type MatchLogDocument = MatchLog & Document;
 
 @Schema({ _id: false })
 class MatchResult {
-  @Prop({ type: Types.ObjectId, ref: 'Company', index: true }) companyId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Company', index: true })
+  companyId: Types.ObjectId;
   @Prop({ default: 0 }) score: number;
   @Prop({ type: [String], default: [] }) reasons: string[];
 }

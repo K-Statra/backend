@@ -65,7 +65,9 @@ describe('CompaniesController', () => {
     it('없는 ID → NotFoundException', async () => {
       mockCompaniesService.findById.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findOne(VALID_ID)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne(VALID_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -97,13 +99,17 @@ describe('CompaniesController', () => {
     it('없는 기업 → NotFoundException', async () => {
       mockCompaniesService.update.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.update(VALID_ID, { name: 'x' } as any)).rejects.toThrow(NotFoundException);
+      await expect(
+        controller.update(VALID_ID, { name: 'x' } as any),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('빈 본문 → BadRequestException', async () => {
       mockCompaniesService.update.mockRejectedValue(new BadRequestException());
 
-      await expect(controller.update(VALID_ID, {} as any)).rejects.toThrow(BadRequestException);
+      await expect(controller.update(VALID_ID, {} as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -120,7 +126,9 @@ describe('CompaniesController', () => {
     it('없는 기업 → NotFoundException', async () => {
       mockCompaniesService.remove.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.remove(VALID_ID)).rejects.toThrow(NotFoundException);
+      await expect(controller.remove(VALID_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

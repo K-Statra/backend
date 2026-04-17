@@ -26,15 +26,21 @@ describe('AdminTokenGuard', () => {
   });
 
   it('잘못된 토큰 → UnauthorizedException', () => {
-    expect(() => guard.canActivate(makeContext('wrong'))).toThrow(UnauthorizedException);
+    expect(() => guard.canActivate(makeContext('wrong'))).toThrow(
+      UnauthorizedException,
+    );
   });
 
   it('토큰 미전송 → UnauthorizedException', () => {
-    expect(() => guard.canActivate(makeContext(undefined))).toThrow(UnauthorizedException);
+    expect(() => guard.canActivate(makeContext(undefined))).toThrow(
+      UnauthorizedException,
+    );
   });
 
   it('ADMIN_TOKEN 환경변수 미설정 → UnauthorizedException', () => {
     delete process.env.ADMIN_TOKEN;
-    expect(() => guard.canActivate(makeContext('secret'))).toThrow(UnauthorizedException);
+    expect(() => guard.canActivate(makeContext('secret'))).toThrow(
+      UnauthorizedException,
+    );
   });
 });

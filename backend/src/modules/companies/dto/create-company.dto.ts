@@ -1,10 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsArray, IsOptional, IsString, IsUrl, MaxLength, MinLength, ValidateIf } from 'class-validator';
+import {
+  IsArray,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 
 function trimDedupe(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return [...new Set((value as string[]).map((s) => String(s).trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      (value as string[]).map((s) => String(s).trim()).filter(Boolean),
+    ),
+  ];
 }
 
 export class CreateCompanyDto {

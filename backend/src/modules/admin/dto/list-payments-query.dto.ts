@@ -1,9 +1,19 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsIn, IsMongoId, IsDateString, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsIn,
+  IsMongoId,
+  IsDateString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ListPaymentsQueryDto {
-  @ApiPropertyOptional({ enum: ['CREATED', 'PENDING', 'PAID', 'FAILED', 'CANCELLED'] })
+  @ApiPropertyOptional({
+    enum: ['CREATED', 'PENDING', 'PAID', 'FAILED', 'CANCELLED'],
+  })
   @IsOptional()
   @IsIn(['CREATED', 'PENDING', 'PAID', 'FAILED', 'CANCELLED'])
   status?: string;

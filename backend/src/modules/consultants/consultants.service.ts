@@ -1,7 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { ConsultantRequest, ConsultantRequestDocument } from './schemas/consultant-request.schema';
+import {
+  ConsultantRequest,
+  ConsultantRequestDocument,
+} from './schemas/consultant-request.schema';
 import { CreateConsultantRequestDto } from './dto/create-consultant-request.dto';
 
 @Injectable()
@@ -32,6 +35,10 @@ export class ConsultantsService {
     }
 
     const created = await this.consultantRequestModel.create(doc);
-    return { id: created._id, status: created.status, message: 'Request received' };
+    return {
+      id: created._id,
+      status: created.status,
+      message: 'Request received',
+    };
   }
 }

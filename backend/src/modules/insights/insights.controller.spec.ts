@@ -26,7 +26,12 @@ describe('InsightsController', () => {
 
   describe('GET /analytics/dashboard', () => {
     it('서비스 결과 그대로 반환', async () => {
-      const data = { totalPartners: 120, activeDeals: 8, pendingPayments: 3, completedDeals: 45 };
+      const data = {
+        totalPartners: 120,
+        activeDeals: 8,
+        pendingPayments: 3,
+        completedDeals: 45,
+      };
       mockInsightsService.getDashboard.mockResolvedValue(data);
 
       const result = await controller.getDashboard();
@@ -62,13 +67,25 @@ describe('InsightsController', () => {
 
   describe('GET /analytics/transactions/recent', () => {
     it('서비스 결과 그대로 반환', async () => {
-      const data = [{ id: 'p1', company: 'ABC Corp', amount: 1000, currency: 'XRP', status: 'PAID', memo: '', createdAt: new Date() }];
+      const data = [
+        {
+          id: 'p1',
+          company: 'ABC Corp',
+          amount: 1000,
+          currency: 'XRP',
+          status: 'PAID',
+          memo: '',
+          createdAt: new Date(),
+        },
+      ];
       mockInsightsService.getRecentTransactions.mockResolvedValue(data);
 
       const result = await controller.getRecentTransactions();
 
       expect(result).toEqual(data);
-      expect(mockInsightsService.getRecentTransactions).toHaveBeenCalledTimes(1);
+      expect(mockInsightsService.getRecentTransactions).toHaveBeenCalledTimes(
+        1,
+      );
     });
 
     it('결과 없으면 빈 배열 반환', async () => {

@@ -29,7 +29,11 @@ class Product {
 
 @Schema({ _id: true, id: false })
 class Activity {
-  @Prop({ enum: ['export', 'award', 'exhibition', 'article', 'other'], required: true }) type: string;
+  @Prop({
+    enum: ['export', 'award', 'exhibition', 'article', 'other'],
+    required: true,
+  })
+  type: string;
   @Prop() description: string;
   @Prop() date: Date;
   @Prop() url: string;
@@ -49,7 +53,8 @@ class DartInfo {
   @Prop() revenueSeparate: number;
   @Prop() operatingProfitSeparate: number;
   @Prop() netIncomeSeparate: number;
-  @Prop({ default: 'Financial Supervisory Service Open DART System' }) source: string;
+  @Prop({ default: 'Financial Supervisory Service Open DART System' })
+  source: string;
   @Prop() lastUpdated: Date;
 }
 
@@ -81,7 +86,8 @@ export class Company {
   primaryContact: { name: string; email: string };
 
   @Prop({ default: null }) accuracyScore: number;
-  @Prop({ type: [MatchAnalysisItem], default: [] }) matchAnalysis: MatchAnalysisItem[];
+  @Prop({ type: [MatchAnalysisItem], default: [] })
+  matchAnalysis: MatchAnalysisItem[];
   @Prop({ default: '' }) matchRecommendation: string;
   @Prop({ default: '' }) dataSource: string;
   @Prop() extractedAt: Date;
@@ -101,4 +107,7 @@ CompanySchema.index({ name: 1 });
 CompanySchema.index({ tags: 1 });
 CompanySchema.index({ industry: 1 });
 CompanySchema.index({ 'location.country': 1 });
-CompanySchema.index({ name: 'text', profileText: 'text' }, { weights: { name: 10, profileText: 1 } });
+CompanySchema.index(
+  { name: 'text', profileText: 'text' },
+  { weights: { name: 10, profileText: 1 } },
+);

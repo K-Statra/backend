@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsPositive, IsString, IsMongoId, IsOptional, IsIn, MaxLength } from 'class-validator';
+import {
+  IsNumber,
+  IsPositive,
+  IsString,
+  IsMongoId,
+  IsOptional,
+  IsIn,
+  MaxLength,
+} from 'class-validator';
 
 export class CreatePaymentDto {
   @ApiProperty({ example: 10 })

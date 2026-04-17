@@ -13,10 +13,17 @@ export class InsightsController {
     status: 200,
     description: '파트너 수, 진행 중 딜, 대기 결제, 완료 딜 카운트',
     schema: {
-      example: { totalPartners: 120, activeDeals: 8, pendingPayments: 3, completedDeals: 45 },
+      example: {
+        totalPartners: 120,
+        activeDeals: 8,
+        pendingPayments: 3,
+        completedDeals: 45,
+      },
     },
   })
-  getDashboard() { return this.insightsService.getDashboard(); }
+  getDashboard() {
+    return this.insightsService.getDashboard();
+  }
 
   @Get('industries/top')
   @ApiOperation({ summary: '상위 5개 산업 통계' })
@@ -27,7 +34,9 @@ export class InsightsController {
       example: [{ name: '자동차', partners: 30, revenue: 5000000 }],
     },
   })
-  getTopIndustries() { return this.insightsService.getTopIndustries(); }
+  getTopIndustries() {
+    return this.insightsService.getTopIndustries();
+  }
 
   @Get('transactions/recent')
   @ApiOperation({ summary: '최근 10건 거래 내역' })
@@ -48,5 +57,7 @@ export class InsightsController {
       ],
     },
   })
-  getRecentTransactions() { return this.insightsService.getRecentTransactions(); }
+  getRecentTransactions() {
+    return this.insightsService.getRecentTransactions();
+  }
 }

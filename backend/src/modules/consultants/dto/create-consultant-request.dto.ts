@@ -1,4 +1,11 @@
-import { IsString, IsEmail, IsOptional, MaxLength, MinLength, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  MaxLength,
+  MinLength,
+  IsObject,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -22,7 +29,10 @@ export class CreateConsultantRequestDto {
   @MaxLength(4000)
   details?: string;
 
-  @ApiPropertyOptional({ example: 'matching-assistant', default: 'matching-assistant' })
+  @ApiPropertyOptional({
+    example: 'matching-assistant',
+    default: 'matching-assistant',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)
