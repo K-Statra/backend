@@ -3,3 +3,10 @@ language: "ko-KR"
 reviews:
   auto_review:
     enabled: true
+
+chat:
+  auto_reply: true
+
+code_generation:
+  unit_tests:
+    enabled: false
