@@ -7,6 +7,51 @@ on:
     branches: [main]
 
 jobs:
+  # ── PR 전용: 인라인 리뷰 코멘트 (ReviewDog) ─────────────────────
+  reviewdog:
+    name: ReviewDog (ESLint suggestions)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: true          # 어노테이션 표시만 하고 CI를 막지 않음
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install backend deps
+        run: npm ci
+        working-directory: ./backend
+
+      - name: ReviewDog – Backend (ESLint)
+        uses: reviewdog/action-eslint@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-check
+          eslint_flags: '--ext .ts src/ test/'
+          workdir: backend
+          fail_level: none
+
+      - name: Install frontend deps
+        run: npm ci
+        working-directory: ./frontend
+
+      - name: ReviewDog – Frontend (ESLint)
+        uses: reviewdog/action-eslint@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-pr-check
+          eslint_flags: 'src/'
+          workdir: frontend
+          fail_level: none
+
+  # ── 백엔드: Lint → 테스트 → 빌드 ────────────────────────────────
   test-backend:
     name: Backend Tests & Build (NestJS)
     runs-on: ubuntu-latest
@@ -27,6 +72,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint:check
+
       - name: Run tests
         run: npm test -- --no-coverage --forceExit
         env:
@@ -36,8 +84,9 @@ jobs:
       - name: Build
         run: npm run build
 
+  # ── 프론트엔드: Lint → 빌드 ──────────────────────────────────────
   build-frontend:
-    name: Frontend Build
+    name: Frontend Build & Lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -56,9 +105,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Build
         run: npm run build
 
+  # ── 배포 (main push only) ────────────────────────────────────────
   deploy:
     name: Deploy to Railway
     needs: [test-backend, build-frontend]
