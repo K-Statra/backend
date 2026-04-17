@@ -23,7 +23,7 @@ function parseArgs(argv) {
 }
 
 async function processCompanies(limit = 0) {
-  const cursor = Company.find({}).cursor();
+  const cursor = Company.find({ $or: [{ embedding: { $exists: false } }, { embedding: { $size: 0 } }] }).cursor();
   let processed = 0;
   let skipped = 0;
   for await (const doc of cursor) {

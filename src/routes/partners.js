@@ -20,6 +20,44 @@ const INDUSTRY_MAPPING = {
     'Other': ['Other', '(Unspecified)']
 };
 
+// --- PERFORMANCE CACHE ---
+const EMBEDDING_CACHE = new Map();
+const INTENT_CACHE = new Map();
+const MAX_CACHE_SIZE = 500;
+
+function getCachedEmbedding(text) {
+    if (EMBEDDING_CACHE.has(text)) {
+        console.log(`[Cache] Embedding Hit for: "${text.substring(0, 20)}..."`);
+        return EMBEDDING_CACHE.get(text);
+    }
+    return null;
+}
+
+function setCachedEmbedding(text, vector) {
+    if (EMBEDDING_CACHE.size >= MAX_CACHE_SIZE) {
+        const firstKey = EMBEDDING_CACHE.keys().next().value;
+        EMBEDDING_CACHE.delete(firstKey);
+    }
+    EMBEDDING_CACHE.set(text, vector);
+}
+
+function getCachedIntent(text) {
+    if (INTENT_CACHE.has(text)) {
+        console.log(`[Cache] Intent Hit for: "${text.substring(0, 20)}..."`);
+        return INTENT_CACHE.get(text);
+    }
+    return null;
+}
+
+function setCachedIntent(text, intentData) {
+    if (INTENT_CACHE.size >= MAX_CACHE_SIZE) {
+        const firstKey = INTENT_CACHE.keys().next().value;
+        INTENT_CACHE.delete(firstKey);
+    }
+    INTENT_CACHE.set(text, intentData);
+}
+// -------------------------
+
 
 // DEBUG ENDPOINT
 router.get('/debug', async (req, res) => {
@@ -73,184 +111,130 @@ router.get('/search', async (req, res, next) => {
 
         console.log(`[Search] Query: "${q}"`);
 
-        // 0. Intent Router (Agentic Decision)
-        // Decide whether to use DB or Web based on the query domain.
-        // Our DB is specialized in: Beauty, Consumer Goods, Food, Cosmetics.
-        // If the query is clearly about something else (e.g., Automotive, Construction), skip DB.
-
+        // --- OPTIMIZED PARALLEL PIPELINE ---
         let forceWebSearch = false;
         let predictedIndustry = null;
-        let extractedKeyword = q; // Default to full query
-        let tavilyQuery = q; // Optimized query for Tavily web search
-        let detectedIntent = 'company'; // 'buyer', 'seller', or 'company'
-        let intentData = null; // Added for scope
-        let aiResponse = ''; // Added to fix ReferenceError
+        let extractedKeyword = q;
+        let tavilyQuery = q;
+        let detectedIntent = 'company';
+        let intentData = null;
+        let aiResponse = '';
+        let vector = [];
+        let dbResults = [];
 
         // [QUERY TRANSFORMER] Converts Korean buyer/seller queries into targeted English B2B searches.
         function buildTavilyQuery(originalQuery, intent) {
             const qL = originalQuery.toLowerCase();
-
             const regionMap = [
-                // Americas
                 { kr: '미국', en: 'USA' }, { kr: '캐나다', en: 'Canada' }, { kr: '멕시코', en: 'Mexico' },
                 { kr: '브라질', en: 'Brazil' }, { kr: '칠레', en: 'Chile' }, { kr: '아르헨티나', en: 'Argentina' },
-                { kr: '콜롬비아', en: 'Colombia' }, { kr: '페루', en: 'Peru' },
-                // Europe
                 { kr: '영국', en: 'UK' }, { kr: '독일', en: 'Germany' }, { kr: '프랑스', en: 'France' },
-                { kr: '이탈리아', en: 'Italy' }, { kr: '스페인', en: 'Spain' }, { kr: '러시아', en: 'Russia' },
-                { kr: '네덜란드', en: 'Netherlands' }, { kr: '벨기에', en: 'Belgium' },
-                // Asia & Oceania
-                { kr: '일본', en: 'Japan' }, { kr: '중국', en: 'China' }, { kr: '베트남', en: 'Vietnam' },
-                { kr: '태국', en: 'Thailand' }, { kr: '인도네시아', en: 'Indonesia' }, { kr: '인니', en: 'Indonesia' },
-                { kr: '필리핀', en: 'Philippines' }, { kr: '말레이시아', en: 'Malaysia' }, { kr: '싱가포르', en: 'Singapore' },
-                { kr: '호주', en: 'Australia' }, { kr: '인도', en: 'India' },
-                // Middle East & Africa
-                { kr: '사우디', en: 'Saudi Arabia' }, { kr: 'uae', en: 'UAE' }, { kr: '이집트', en: 'Egypt' },
-                { kr: '남아공', en: 'South Africa' }, { kr: '나이지리아', en: 'Nigeria' },
-                // Groups
-                { kr: '아프리카', en: 'Africa' }, { kr: '중남미', en: 'Latin America' }, { kr: '남미', en: 'South America' },
-                { kr: '중동', en: 'Middle East' }, { kr: '동남아', en: 'Southeast Asia' }, { kr: '유럽', en: 'Europe' }
+                { kr: '이탈리아', en: 'Italy' }, { kr: '스페인', en: 'Spain' }, { kr: '일본', en: 'Japan' },
+                { kr: '중국', en: 'China' }, { kr: '베트남', en: 'Vietnam' }, { kr: '태국', en: 'Thailand' },
+                { kr: '인도네시아', en: 'Indonesia' }, { kr: '인니', en: 'Indonesia' }, { kr: '사우디', en: 'Saudi Arabia' },
+                { kr: 'uae', en: 'UAE' }, { kr: '콜롬비아', en: 'Colombia' }, { kr: '남아공', en: 'South Africa' }, { kr: '남아프리카', en: 'South Africa' },
+                { kr: '페루', en: 'Peru' }, { kr: '케냐', en: 'Kenya' }
             ];
-
             const productMap = [
                 { kr: '자동차부품', en: 'automotive parts' }, { kr: '자동차 부품', en: 'automotive parts' },
-                { kr: '타이어', en: 'tires' }, { kr: '엔진', en: 'engine parts' },
-                { kr: '배터리', en: 'EV battery' }, { kr: '이차전지', en: 'lithium battery' },
-                { kr: '반도체', en: 'semiconductor' }, { kr: '기계', en: 'industrial machinery' },
-                { kr: '화장품', en: 'cosmetics beauty products' }, { kr: '식품', en: 'food and beverage' },
-                { kr: '섬유', en: 'textile' }, { kr: '철강', en: 'steel' }, { kr: '화학', en: 'chemical products' }
+                { kr: '타이어', en: 'tires' }, { kr: '엔진', en: 'engine parts' }, { kr: '배터리', en: 'EV battery' }
             ];
 
             let regionEn = '';
-            for (const r of regionMap) {
-                if (qL.includes(r.kr.toLowerCase())) { regionEn = r.en; break; }
-            }
-
+            for (const r of regionMap) { if (qL.includes(r.kr.toLowerCase())) { regionEn = r.en; break; } }
             let productEn = '';
-            for (const p of productMap) {
-                if (qL.includes(p.kr.toLowerCase())) { productEn = p.en; break; }
-            }
+            for (const p of productMap) { if (qL.includes(p.kr.toLowerCase())) { productEn = p.en; break; } }
 
             const head = regionEn ? `${regionEn} ` : '';
             const prod = productEn ? `${productEn} ` : '';
 
             if (intent === 'buyer') {
-                return `${head}${prod}importer distributor buyer B2B company "contact" -software -crm -erp -platform -capterra -linkedin -yelp -facebook -twitter -instagram -pinterest -expo -exhibition -fair -event -conference`;
+                return `${head}${prod}importer distributor buyer B2B company "contact" -software -crm -erp -platform -capterra -linkedin -yelp -facebook -twitter -instagram -pinterest -expo -exhibition -fair -event -conference -tradekey -volza -zoominfo -alibaba -kompass -thomasnet -globalsources -dnb -indiamart`;
             } else if (intent === 'seller') {
-                return `${head}${prod}exporter supplier manufacturer factory B2B -importer -buyer -software -crm -erp -platform -capterra -linkedin -yelp -facebook -twitter -instagram -pinterest -expo -exhibition -fair -event -conference`;
+                return `${head}${prod}exporter supplier manufacturer factory B2B -importer -buyer -software -crm -erp -platform -capterra -linkedin -yelp -facebook -twitter -instagram -pinterest -expo -exhibition -fair -event -conference -tradekey -volza -zoominfo -alibaba -kompass -thomasnet -globalsources -dnb -indiamart`;
             }
-
+            // General Company Intent Fallback (Prevent news articles by enforcing B2B and excluding news terms)
+            if (head || prod) {
+                return `${head}${prod}B2B company "contact" -news -article -journal -software -crm -erp -platform -capterra -linkedin -yelp -facebook -twitter -instagram -pinterest -expo -exhibition -fair -event -conference -tradekey -volza -zoominfo -alibaba -kompass -thomasnet -globalsources -dnb -indiamart`;
+            }
             return originalQuery;
         }
 
-        if (q) {
-            const automotiveKeywords = ['자동차', '부품', 'automotive', 'car parts', 'ev', 'machinery', 'parts', '배터리', 'battery'];
-            const regionKeywords = [
-                // Americas
-                '미국', '미구', '캐나다', '멕시코', '브라질', '칠레', '아르헨티나', '콜롬비아', '페루', '에콰도르', '우루과이', '파라과이', '베네수엘라', '파나마', '코스타리카',
-                'usa', 'america', 'canada', 'mexico', 'brazil', 'chile', 'argentina', 'colombia', 'peru', 'ecuador', 'uruguay', 'paraguay',
-                // Europe
-                '영국', '독일', '프랑스', '이탈리아', '스페인', '네덜란드', '벨기에', '스위스', '오스트리아', '스웨덴', '노르웨이', '덴마크', '핀란드',
-                '러시아', '우크라이나', '폴란드', '체코', '헝가리', '루마니아', '그리스', '터키', '포르투갈', '아일랜드',
-                'uk', 'germany', 'france', 'italy', 'spain', 'netherlands', 'belgium', 'switzerland', 'austria', 'poland', 'russia', 'turkey', 'europe',
-                // SE Asia & Oceania
-                '일본', '중국', '인도', '베트남', '태국', '인도네시아', '인니', '필리핀', '말레이시아', '싱가포르', '호주', '뉴질랜드', '대만', '홍콩', '캄보디아', '라오스', '미얀마',
-                'japan', 'china', 'india', 'vietnam', 'thailand', 'indonesia', 'philippines', 'malaysia', 'singapore', 'australia', 'nz', 'taiwan', 'cambodia',
-                // Middle East & Africa
-                '사우디', '아랍에미리트', 'uae', '이스라엘', '이란', '이집트', '남아공', '나이지리아', '케냐', '에티오피아', '모로코', '알제리', '가나', '카메룬',
-                'saudi', 'israel', 'egypt', 'south africa', 'nigeria', 'kenya', 'morocco', 'middle east',
-                // Region Groups
-                '아프리카', '중남미', '중동', '동남아', '유럽', '북미', '중미', '남미', '라틴',
-                'africa', 'latin america', 'middle east', 'southeast asia', 'europe', 'north america', 'central america', 'south america'
-            ];
-            const koreaKeywords = ['한국', '국내', '남한', '코리아', 'korea', 'south korea'];
+        const cleanQuery = (text) => {
+            if (!text) return '';
+            return text.replace(/(recommend me|please find|show me|find me|how about|search for|찾아줘|추천해줘|알려줘|보여줘)/gi, '').trim();
+        };
 
-            const buyerKeywords = [
-                '수입업체', '수입사', '수입상', '바이어', '구매자', '해외바이어', '해외구매자',
-                'importer', 'importers', 'buyer', 'buyers', 'purchaser', 'distributor'
-            ];
-            const sellerKeywords = [
-                '수출업체', '수출사', '수출상', '공급업체', '공급사', '제조업체', '제조사',
-                'exporter', 'exporters', 'supplier', 'suppliers', 'manufacturer', 'seller'
-            ];
+        const strippedQ = q ? cleanQuery(q) : null;
+        const automotiveKeywords = ['자동차', '부품', 'automotive', 'car parts', 'ev', 'machinery', 'parts', '배터리', 'battery'];
+        const regionKeywords = [
+            '미국', '미구', '캐나다', '멕시코', '브라질', '칠레', '아르헨티나', '콜롬비아', '페루', '영국', '독일', '프랑스', '이탈리아', '스페인', '일본', '중국', '인도', '베트남', '태국', '인도네시아', '인니', '사우디', 'uae', '남아공', '남아프리카', '케냐', 'usa', 'uk', 'germany', 'france', 'italy', 'spain', 'japan', 'china', 'india', 'vietnam', 'thailand', 'indonesia', 'colombia', 'peru', 'chile', 'mexico', 'south africa', 'kenya'
+        ];
+        const buyerKeywords = ['수입업체', '수입사', '수입상', '바이어', '구매자', '해외바이어', 'importer', 'buyer', 'distributor'];
+        const sellerKeywords = ['수출업체', '수출사', '수출상', '공급업체', '공급사', '제조업체', 'exporter', 'supplier', 'manufacturer'];
 
-            const qLower = q.toLowerCase();
-            const hasRegion = regionKeywords.some(kw => qLower.includes(kw.toLowerCase()));
-            const isKorea = koreaKeywords.some(kw => qLower.includes(kw.toLowerCase()));
-            const hasBuyerIntent = buyerKeywords.some(kw => qLower.includes(kw.toLowerCase()));
-            const hasSellerIntent = sellerKeywords.some(kw => qLower.includes(kw.toLowerCase()));
-            const isAutomotive = automotiveKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+        const qLower = q ? q.toLowerCase() : '';
+        const hasRegion = regionKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+        const isAutomotive = automotiveKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+        const hasBuyerIntent = buyerKeywords.some(kw => qLower.includes(kw.toLowerCase()));
+        const hasSellerIntent = sellerKeywords.some(kw => qLower.includes(kw.toLowerCase()));
 
-            console.log(`[Search Router] Query: "${q}" (Automotive: ${isAutomotive}, Region: ${hasRegion}, Korea: ${isKorea})`);
+        if (hasBuyerIntent) detectedIntent = 'buyer';
+        else if (hasSellerIntent) detectedIntent = 'seller';
 
-            if (hasBuyerIntent) detectedIntent = 'buyer';
-            else if (hasSellerIntent) detectedIntent = 'seller';
+        // 0.1 Parallel Kick-off: Intent Extraction + Embedding
+        const cachedIntentData = (q && hasRegion && (hasBuyerIntent || hasSellerIntent)) ? getCachedIntent(q) : null;
+        const intentPromise = (q && hasRegion && (hasBuyerIntent || hasSellerIntent) && !cachedIntentData) ? 
+            Promise.race([extractSearchIntent(q), new Promise((_, reject) => setTimeout(() => reject(new Error('LLM Timeout')), 4000))]) : 
+            Promise.resolve(cachedIntentData);
 
-            // HEURISTIC INTENT DETECTOR (Skip LLM if clear)
-            let skipLLM = false;
-            // If it has a foreign region, ignore isKorea for routing (since it might be "looking for buyers for Korean products")
-            if (hasRegion && isAutomotive && (hasBuyerIntent || hasSellerIntent)) {
-                tavilyQuery = buildTavilyQuery(q, detectedIntent);
-                skipLLM = true;
-                console.log(`[Search] Heuristic Match: "${tavilyQuery}"`);
-            }
+        const cachedVector = strippedQ ? getCachedEmbedding(strippedQ) : null;
+        const embeddingPromise = (strippedQ && !cachedVector) ? embed(strippedQ) : Promise.resolve(cachedVector);
 
-            if (!skipLLM && hasRegion && (hasBuyerIntent || hasSellerIntent)) {
-                forceWebSearch = true;
-                try {
-                    console.time('[Search] LLM Intent Extraction');
-                    const intentPromise = extractSearchIntent(q);
-                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('LLM Timeout')), 4000));
-                    
-                    intentData = await Promise.race([intentPromise, timeoutPromise]);
-                    console.timeEnd('[Search] LLM Intent Extraction');
+        console.time('[Search] Parallel Tasks');
+        const [resolvedIntentData, resolvedVector] = await Promise.all([intentPromise, embeddingPromise]);
+        console.timeEnd('[Search] Parallel Tasks');
 
-                    if (intentData?.webQuery) {
-                        tavilyQuery = intentData.webQuery;
-                    } else {
-                        tavilyQuery = buildTavilyQuery(q, detectedIntent);
-                    }
-                } catch (err) {
-                    console.error(`[Search] Intent extraction error/timeout: ${err.message}`);
-                    tavilyQuery = buildTavilyQuery(q, detectedIntent);
-                }
-            } else if (isKorea && !hasRegion) {
-                forceWebSearch = false;
-                console.log(`[Search] Explicit Korean search — Domestic DB.`);
-            } else if (!hasRegion && !hasBuyerIntent && !hasSellerIntent) {
-                forceWebSearch = false;
-                console.log(`[Search] Ambiguous query — Defaulting to DB.`);
-            } else if (skipLLM || hasRegion) {
-                forceWebSearch = true;
-            }
+        intentData = resolvedIntentData;
+        vector = resolvedVector;
 
-            extractedKeyword = q;
+        if (q && resolvedIntentData && !cachedIntentData) {
+            setCachedIntent(q, resolvedIntentData);
         }
 
-        // 1. Try DB Search (Vector + Filter) - ONLY if Router says DB
-        let dbResults = [];
-        let vector = [];
+        if (strippedQ && resolvedVector && !cachedVector) {
+            setCachedEmbedding(strippedQ, resolvedVector);
+        }
 
-        if (!forceWebSearch && q) {
-            // Simple cleaner to strip filler words for better embedding focus
-            const cleanQuery = (text) => {
-                return text.replace(/(recommend me|please find|show me|find me|how about|search for|찾아줘|추천해줘|알려줘|보여줘)/gi, '').trim();
-            };
-            const strippedQ = cleanQuery(q) || q;
-
-            try {
-                console.time(`[Search] Embedding: ${strippedQ.substring(0, 20)}`);
-                vector = await embed(strippedQ);
-                console.timeEnd(`[Search] Embedding: ${strippedQ.substring(0, 20)}`);
-                console.log(`[Search] Generated embedding for stripped query, length: ${vector.length}`);
-            } catch (embedError) {
-                console.error("[Search] Embedding generation failed:", embedError);
-            }
+        // 0.2 Routing Logic based on resolved intent
+        if (intentData) {
+            forceWebSearch = true;
+            tavilyQuery = intentData.webQuery || buildTavilyQuery(q, detectedIntent);
+            extractedKeyword = intentData.subject || q;
+            predictedIndustry = intentData.subject || null;
+        } else if (q && hasRegion && isAutomotive) {
+            forceWebSearch = true;
+            tavilyQuery = buildTavilyQuery(q, detectedIntent);
+        } else if (q && hasRegion) {
+            forceWebSearch = true;
+            tavilyQuery = buildTavilyQuery(q, detectedIntent);
         }
 
         if (!forceWebSearch && vector && vector.length > 0) {
             console.time('[Search] DB Vector Query');
             console.log(`[Search] Running Vector Search... Index: ${process.env.ATLAS_VECTOR_INDEX || 'vector_index'}`);
+
+            const vectorFilter = {};
+            if (industry) {
+                if (INDUSTRY_MAPPING[industry]) {
+                    vectorFilter.industry = { $in: INDUSTRY_MAPPING[industry] };
+                } else {
+                    vectorFilter.industry = industry;
+                }
+            }
+            if (country) vectorFilter['location.country'] = country;
+            if (partnership) vectorFilter.tags = partnership;
+            // Note: sizeBucket might not be in the vector filter index according to atlas_vector_index.json
 
             const pipeline = [
                 {
@@ -259,23 +243,14 @@ router.get('/search', async (req, res, next) => {
                         path: 'embedding',
                         queryVector: vector,
                         numCandidates: 100,
-                        limit: parseInt(limit) * 2 // Fetch more candidates to allow for post-filtering
+                        limit: parseInt(limit) * 2,
+                        ...(Object.keys(vectorFilter).length > 0 ? { filter: vectorFilter } : {})
                     }
                 }
             ];
 
             const matchStage = {};
-            if (industry) {
-                if (INDUSTRY_MAPPING[industry]) {
-                    // Use $in for mapped industries
-                    matchStage.industry = { $in: INDUSTRY_MAPPING[industry] };
-                } else {
-                    // Direct match
-                    matchStage.industry = industry;
-                }
-            }
-            if (country) matchStage['location.country'] = country;
-            if (partnership) matchStage.tags = partnership;
+            // Post-filtering for non-vector-index fields
             if (size) matchStage.sizeBucket = size;
 
             // [SMART ROUTING] If AI predicted a specific industry (e.g. "Beauty & Cosmetics" for "Amorepacific"),
@@ -497,6 +472,29 @@ router.get('/search', async (req, res, next) => {
             // Sort by new score
             mappedWebResults.sort((a, b) => b.score - a.score);
 
+            // [DATA ACCUMULATION] Save discoveries to DB in background (non-blocking)
+            if (mappedWebResults.length > 0) {
+                console.log(`[Search] Accumulating ${mappedWebResults.length} web results to DB...`);
+                mappedWebResults.forEach(item => {
+                    // Normalize name slightly to avoid obvious duplicates
+                    Company.findOneAndUpdate(
+                        { name: item.name },
+                        { 
+                            $set: {
+                                name: item.name,
+                                industry: (predictedIndustry && item.industry === 'Web Result') ? predictedIndustry : item.industry,
+                                location: item.location,
+                                profileText: item.profileText,
+                                website: item.website,
+                                dataSource: 'Tavily Web Search',
+                                tags: item.tags,
+                                updatedAt: new Date()
+                            }
+                        },
+                        { upsert: true, setDefaultsOnInsert: true }
+                    ).catch(err => console.error(`[Search] DB Accumulation Error for ${item.name}: ${err.message}`));
+                });
+            }
 
             return res.json({
                 data: mappedWebResults,
