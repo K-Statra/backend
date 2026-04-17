@@ -1,0 +1,23 @@
+{
+  "name": "k-statra",
+  "version": "1.0.0",
+  "description": "B2B 파트너 매칭 플랫폼. NestJS + MongoDB Atlas + Neo4j + XRPL.",
+  "private": true,
+  "scripts": {
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "backend/**/*.ts": [
+      "bash -c 'cd backend && npx eslint --fix'",
+      "bash -c 'cd backend && npx prettier --write'"
+    ],
+    "frontend/src/**/*.{js,jsx}": [
+      "bash -c 'cd frontend && npx eslint --fix'",
+      "bash -c 'cd frontend && npx prettier --write'"
+    ]
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  }
+}
