@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client, xrpToDrops } from 'xrpl';
 import * as crypto from 'crypto';
@@ -97,8 +102,8 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
       throw new Error('XRPL_DEST_ADDRESS is not configured');
     }
 
-    const destTag = this.deriveDestinationTag(paymentId);  // 결제 식별값
-    const deeplink = `ripple:${this.destAddress}?amount=${amount}&dt=${destTag}`;  // 프론트에서 QR 이미지로 변환해야함
+    const destTag = this.deriveDestinationTag(paymentId); // 결제 식별값
+    const deeplink = `ripple:${this.destAddress}?amount=${amount}&dt=${destTag}`; // 프론트에서 QR 이미지로 변환해야함
 
     return {
       providerRef: `xrpl_${paymentId}`,
@@ -111,7 +116,10 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
   }
 
   // XRPL 레저에서 결제 확인
-  async checkPayment(destTag: number, expectedAmountXrp: number): Promise<PaymentCheckResult> {
+  async checkPayment(
+    destTag: number,
+    expectedAmountXrp: number,
+  ): Promise<PaymentCheckResult> {
     if (!this.client?.isConnected()) {
       throw new Error('XRPL client is not connected');
     }

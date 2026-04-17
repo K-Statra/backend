@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BuyersService } from './buyers.service';
 import { CreateBuyerDto } from './dto/create-buyer.dto';
@@ -13,7 +23,13 @@ export class BuyersController {
 
   @Get()
   @ApiOperation({ summary: '바이어 목록 (페이징 + 필터)' })
-  @ApiResponse({ status: 200, description: '바이어 목록', schema: { example: { page: 1, limit: 10, total: 50, totalPages: 5, data: [] } } })
+  @ApiResponse({
+    status: 200,
+    description: '바이어 목록',
+    schema: {
+      example: { page: 1, limit: 10, total: 50, totalPages: 5, data: [] },
+    },
+  })
   findAll(@Query() query: QueryBuyerDto) {
     return this.buyersService.findAll(query);
   }
@@ -42,7 +58,10 @@ export class BuyersController {
   @ApiResponse({ status: 200, description: '수정된 바이어' })
   @ApiResponse({ status: 400, description: '유효하지 않은 ID 또는 빈 본문' })
   @ApiResponse({ status: 404, description: '바이어 없음' })
-  update(@Param('id', ParseMongoIdPipe) id: string, @Body() dto: UpdateBuyerDto) {
+  update(
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Body() dto: UpdateBuyerDto,
+  ) {
     return this.buyersService.update(id, dto);
   }
 

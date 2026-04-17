@@ -44,7 +44,9 @@ export class EmbeddingsService {
       );
       const vec = res.data?.data?.[0]?.embedding;
       if (!Array.isArray(vec)) return [];
-      return vec.map((v: number) => (Number.isFinite(Number(v)) ? Number(v) : 0));
+      return vec.map((v: number) =>
+        Number.isFinite(Number(v)) ? Number(v) : 0,
+      );
     } catch (err: any) {
       if (process.env.OPENAI_DEBUG === '1') {
         this.logger.warn(`[OpenAI] embed error: ${err.message}`);
@@ -55,7 +57,8 @@ export class EmbeddingsService {
 
   private async embedHuggingFace(text: string): Promise<number[]> {
     const apiToken = process.env.HF_API_TOKEN;
-    const model = process.env.HF_EMBEDDING_MODEL || 'intfloat/multilingual-e5-small';
+    const model =
+      process.env.HF_EMBEDDING_MODEL || 'intfloat/multilingual-e5-small';
     if (!apiToken) return [];
 
     const url = `https://api-inference.huggingface.co/pipeline/feature-extraction/${encodeURIComponent(model)}?wait_for_model=true`;
@@ -69,7 +72,9 @@ export class EmbeddingsService {
       });
       let vec = Array.isArray(res.data) ? res.data : [];
       if (Array.isArray(vec[0])) vec = vec[0];
-      return vec.map((v: number) => (Number.isFinite(Number(v)) ? Number(v) : 0));
+      return vec.map((v: number) =>
+        Number.isFinite(Number(v)) ? Number(v) : 0,
+      );
     } catch (err: any) {
       if (process.env.HF_DEBUG === '1') {
         this.logger.warn(`[HuggingFace] embed error: ${err.message}`);

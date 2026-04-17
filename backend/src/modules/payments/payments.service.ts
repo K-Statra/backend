@@ -14,10 +14,10 @@ import { XrplService } from './xrpl.service';
 
 // 허용된 결제 상태 전이
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-  CREATED:   ['PENDING', 'CANCELLED'],
-  PENDING:   ['PAID', 'FAILED', 'CANCELLED'],
-  PAID:      [],
-  FAILED:    [],
+  CREATED: ['PENDING', 'CANCELLED'],
+  PENDING: ['PAID', 'FAILED', 'CANCELLED'],
+  PAID: [],
+  FAILED: [],
   CANCELLED: [],
 };
 
@@ -26,7 +26,8 @@ export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
 
   constructor(
-    @InjectModel(Payment.name) private readonly paymentModel: Model<PaymentDocument>,
+    @InjectModel(Payment.name)
+    private readonly paymentModel: Model<PaymentDocument>,
     private readonly xrplService: XrplService,
   ) {}
 
@@ -41,14 +42,19 @@ export class PaymentsService {
     return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false;
   }
 
-  async create(dto: CreatePaymentDto, idempotencyKey: string): Promise<PaymentDocument> {
+  async create(
+    dto: CreatePaymentDto,
+    idempotencyKey: string,
+  ): Promise<PaymentDocument> {
     const requestHash = this.computeRequestHash(dto);
 
     // 중복 요청 처리 (idempotency)
     const existing = await this.paymentModel.findOne({ idempotencyKey }).exec();
     if (existing) {
       if (existing.requestHash !== requestHash) {
-        throw new ConflictException('Idempotency key conflict: different payload');
+        throw new ConflictException(
+          'Idempotency key conflict: different payload',
+        );
       }
       return existing;
     }
@@ -87,7 +93,11 @@ export class PaymentsService {
       destTag: invoice.destTag,
     };
     payment.status = 'PENDING';
-    payment.events.push({ type: 'PENDING', at: new Date(), meta: { providerRef: invoice.providerRef } });
+    payment.events.push({
+      type: 'PENDING',
+      at: new Date(),
+      meta: { providerRef: invoice.providerRef },
+    });
 
     await payment.save();
     return payment;
@@ -115,11 +125,17 @@ export class PaymentsService {
 
     if (result.paid) {
       if (!this.canTransition(payment.status, 'PAID')) {
-        throw new ConflictException(`Cannot transition from ${payment.status} to PAID`);
+        throw new ConflictException(
+          `Cannot transition from ${payment.status} to PAID`,
+        );
       }
       payment.status = 'PAID';
       payment.providerRef = result.txHash ?? payment.providerRef;
-      payment.events.push({ type: 'PAID', at: new Date(), meta: { txHash: result.txHash, manual: true } });
+      payment.events.push({
+        type: 'PAID',
+        at: new Date(),
+        meta: { txHash: result.txHash, manual: true },
+      });
       await payment.save();
     }
 

@@ -28,10 +28,12 @@ export default () => ({
   payments: {
     provider: process.env.PAYMENTS_PROVIDER || 'xrpl-testnet',
     webhookSecret: process.env.PAYMENTS_WEBHOOK_SECRET || '',
-    allowedCurrencies: (process.env.PAYMENTS_ALLOWED_CURRENCIES || 'XRP').split(',').map(s => s.trim().toUpperCase()),
+    allowedCurrencies: (process.env.PAYMENTS_ALLOWED_CURRENCIES || 'XRP')
+      .split(',')
+      .map((s) => s.trim().toUpperCase()),
   },
 
   cors: {
-    origins: (process.env.CORS_ORIGINS || '*').split(',').map(s => s.trim()),
+    origins: (process.env.CORS_ORIGINS || '*').split(',').map((s) => s.trim()),
   },
 });

@@ -3,7 +3,12 @@ import { Document, Types } from 'mongoose';
 
 export type PaymentDocument = Payment & Document;
 
-export type PaymentStatus = 'CREATED' | 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED';
+export type PaymentStatus =
+  | 'CREATED'
+  | 'PENDING'
+  | 'PAID'
+  | 'FAILED'
+  | 'CANCELLED';
 export type PaymentCurrency = 'XRP' | 'USD' | 'KRW';
 
 @Schema({ _id: false })

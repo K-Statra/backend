@@ -18,6 +18,8 @@ describe('ParseMongoIdPipe', () => {
   });
 
   it('특수문자 포함 → BadRequestException', () => {
-    expect(() => pipe.transform('507f1f77bcf86cd79943901!')).toThrow(BadRequestException);
+    expect(() => pipe.transform('507f1f77bcf86cd79943901!')).toThrow(
+      BadRequestException,
+    );
   });
 });

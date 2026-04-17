@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
@@ -13,7 +23,13 @@ export class CompaniesController {
 
   @Get()
   @ApiOperation({ summary: '기업 목록 (검색/페이지네이션/정렬)' })
-  @ApiResponse({ status: 200, description: '기업 목록', schema: { example: { page: 1, limit: 10, total: 100, totalPages: 10, data: [] } } })
+  @ApiResponse({
+    status: 200,
+    description: '기업 목록',
+    schema: {
+      example: { page: 1, limit: 10, total: 100, totalPages: 10, data: [] },
+    },
+  })
   findAll(@Query() query: QueryCompanyDto) {
     return this.companiesService.findAll(query);
   }
@@ -42,7 +58,10 @@ export class CompaniesController {
   @ApiResponse({ status: 200, description: '수정된 기업' })
   @ApiResponse({ status: 400, description: '유효하지 않은 ID 또는 빈 본문' })
   @ApiResponse({ status: 404, description: '기업 없음' })
-  update(@Param('id', ParseMongoIdPipe) id: string, @Body() dto: UpdateCompanyDto) {
+  update(
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Body() dto: UpdateCompanyDto,
+  ) {
     return this.companiesService.update(id, dto);
   }
 

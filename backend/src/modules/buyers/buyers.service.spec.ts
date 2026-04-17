@@ -16,9 +16,15 @@ function buildQueryMock(resolvedValue: any) {
 
 const makeBuyerModel = (overrides = {}) => ({
   find: jest.fn().mockReturnValue(buildQueryMock([])),
-  findById: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
-  findByIdAndUpdate: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
-  findByIdAndDelete: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+  findById: jest
+    .fn()
+    .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+  findByIdAndUpdate: jest
+    .fn()
+    .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+  findByIdAndDelete: jest
+    .fn()
+    .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
   countDocuments: jest.fn().mockResolvedValue(0),
   create: jest.fn(),
   ...overrides,
@@ -79,10 +85,18 @@ describe('BuyersService', () => {
       buyerModel.find.mockReturnValue(buildQueryMock([]));
       buyerModel.countDocuments.mockResolvedValue(0);
 
-      await service.findAll({ country: 'US', industry: 'Auto', tag: 'B2B' } as any);
+      await service.findAll({
+        country: 'US',
+        industry: 'Auto',
+        tag: 'B2B',
+      } as any);
 
       expect(buyerModel.find).toHaveBeenCalledWith(
-        expect.objectContaining({ country: 'US', industries: 'Auto', tags: 'B2B' }),
+        expect.objectContaining({
+          country: 'US',
+          industries: 'Auto',
+          tags: 'B2B',
+        }),
       );
     });
 
@@ -111,15 +125,21 @@ describe('BuyersService', () => {
   describe('findById', () => {
     it('존재하는 ID → 문서 반환', async () => {
       const buyer = { _id: VALID_ID, name: 'Acme' };
-      buyerModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(buyer) });
+      buyerModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(buyer),
+      });
 
       expect(await service.findById(VALID_ID)).toEqual(buyer);
     });
 
     it('없는 ID → NotFoundException', async () => {
-      buyerModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      buyerModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
-      await expect(service.findById(VALID_ID)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(VALID_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -141,24 +161,36 @@ describe('BuyersService', () => {
   describe('update', () => {
     it('존재하는 ID → 수정된 문서 반환', async () => {
       const updated = { _id: VALID_ID, name: 'New Name' };
-      buyerModel.findByIdAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(updated) });
+      buyerModel.findByIdAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(updated),
+      });
 
-      expect(await service.update(VALID_ID, { name: 'New Name' } as any)).toEqual(updated);
+      expect(
+        await service.update(VALID_ID, { name: 'New Name' } as any),
+      ).toEqual(updated);
     });
 
     it('없는 ID → NotFoundException', async () => {
-      buyerModel.findByIdAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      buyerModel.findByIdAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
-      await expect(service.update(VALID_ID, { name: 'x' } as any)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(VALID_ID, { name: 'x' } as any),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('빈 dto → BadRequestException', async () => {
-      await expect(service.update(VALID_ID, {} as any)).rejects.toThrow(BadRequestException);
+      await expect(service.update(VALID_ID, {} as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('updatedAt이 자동 설정됨', async () => {
       const updated = { _id: VALID_ID, name: 'x' };
-      buyerModel.findByIdAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(updated) });
+      buyerModel.findByIdAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(updated),
+      });
 
       await service.update(VALID_ID, { name: 'x' } as any);
 
@@ -174,13 +206,17 @@ describe('BuyersService', () => {
 
   describe('remove', () => {
     it('존재하는 ID → 삭제 성공 (void)', async () => {
-      buyerModel.findByIdAndDelete.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: VALID_ID }) });
+      buyerModel.findByIdAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: VALID_ID }),
+      });
 
       await expect(service.remove(VALID_ID)).resolves.toBeUndefined();
     });
 
     it('없는 ID → NotFoundException', async () => {
-      buyerModel.findByIdAndDelete.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      buyerModel.findByIdAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
       await expect(service.remove(VALID_ID)).rejects.toThrow(NotFoundException);
     });

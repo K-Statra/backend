@@ -47,13 +47,18 @@ describe('InsightsService', () => {
     it('4개 카운트를 병렬 조회하여 반환', async () => {
       companyModel.countDocuments.mockResolvedValue(120);
       paymentModel.countDocuments
-        .mockResolvedValueOnce(8)   // activeDeals (CREATED | PENDING)
-        .mockResolvedValueOnce(3)   // pendingPayments (PENDING)
+        .mockResolvedValueOnce(8) // activeDeals (CREATED | PENDING)
+        .mockResolvedValueOnce(3) // pendingPayments (PENDING)
         .mockResolvedValueOnce(45); // completedDeals (PAID)
 
       const result = await service.getDashboard();
 
-      expect(result).toEqual({ totalPartners: 120, activeDeals: 8, pendingPayments: 3, completedDeals: 45 });
+      expect(result).toEqual({
+        totalPartners: 120,
+        activeDeals: 8,
+        pendingPayments: 3,
+        completedDeals: 45,
+      });
     });
 
     it('activeDeals은 CREATED + PENDING 상태 필터', async () => {
@@ -73,13 +78,20 @@ describe('InsightsService', () => {
 
       await service.getDashboard();
 
-      expect(paymentModel.countDocuments).toHaveBeenCalledWith({ status: 'PAID' });
+      expect(paymentModel.countDocuments).toHaveBeenCalledWith({
+        status: 'PAID',
+      });
     });
 
     it('데이터 없으면 모두 0 반환', async () => {
       const result = await service.getDashboard();
 
-      expect(result).toEqual({ totalPartners: 0, activeDeals: 0, pendingPayments: 0, completedDeals: 0 });
+      expect(result).toEqual({
+        totalPartners: 0,
+        activeDeals: 0,
+        pendingPayments: 0,
+        completedDeals: 0,
+      });
     });
   });
 
@@ -123,7 +135,9 @@ describe('InsightsService', () => {
       await service.getTopIndustries();
 
       const pipeline = companyModel.aggregate.mock.calls[0][0];
-      expect(pipeline).toContainEqual({ $match: { industry: { $exists: true, $ne: '' } } });
+      expect(pipeline).toContainEqual({
+        $match: { industry: { $exists: true, $ne: '' } },
+      });
     });
   });
 
@@ -161,7 +175,15 @@ describe('InsightsService', () => {
 
     it('companyId가 null이면 company를 "Unknown"으로 표시', async () => {
       const fakeDocs = [
-        { _id: 'p2', companyId: null, amount: 500, currency: 'XRP', status: 'PENDING', memo: '', createdAt: new Date() },
+        {
+          _id: 'p2',
+          companyId: null,
+          amount: 500,
+          currency: 'XRP',
+          status: 'PENDING',
+          memo: '',
+          createdAt: new Date(),
+        },
       ];
       paymentModel.find.mockReturnValue(buildQueryMock(fakeDocs));
 

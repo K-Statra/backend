@@ -12,8 +12,10 @@ function buildQueryMock(resolvedValue: any) {
     limit: jest.fn().mockReturnThis(),
     lean: jest.fn().mockReturnThis(),
     exec: jest.fn().mockResolvedValue(resolvedValue),
-    then: (resolve: any, reject: any) => Promise.resolve(resolvedValue).then(resolve, reject),
-    catch: (onRejected: any) => Promise.resolve(resolvedValue).catch(onRejected),
+    then: (resolve: any, reject: any) =>
+      Promise.resolve(resolvedValue).then(resolve, reject),
+    catch: (onRejected: any) =>
+      Promise.resolve(resolvedValue).catch(onRejected),
   };
   return mock;
 }
@@ -52,7 +54,9 @@ describe('PartnersService', () => {
 
   describe('show-all 모드 (쿼리/필터 없음)', () => {
     it('find({}) 호출 후 score=1.0 부여', async () => {
-      companyModel.find.mockReturnValue(buildQueryMock([{ _id: 'c1', name: 'Acme' }]));
+      companyModel.find.mockReturnValue(
+        buildQueryMock([{ _id: 'c1', name: 'Acme' }]),
+      );
 
       const result = await service.search({});
 
@@ -66,12 +70,16 @@ describe('PartnersService', () => {
 
   describe('browse 모드 (필터만, 쿼리 없음)', () => {
     it('industry 매핑 필터 적용 후 score=1.0', async () => {
-      companyModel.find.mockReturnValue(buildQueryMock([{ _id: 'c1', name: 'Acme' }]));
+      companyModel.find.mockReturnValue(
+        buildQueryMock([{ _id: 'c1', name: 'Acme' }]),
+      );
 
       const result = await service.search({ industry: 'IT / AI / SaaS' });
 
       expect(companyModel.find).toHaveBeenCalledWith(
-        expect.objectContaining({ industry: expect.objectContaining({ $in: expect.any(Array) }) }),
+        expect.objectContaining({
+          industry: expect.objectContaining({ $in: expect.any(Array) }),
+        }),
         expect.any(Object),
       );
       expect(result.data[0].score).toBe(1.0);
@@ -94,7 +102,9 @@ describe('PartnersService', () => {
   describe('벡터 검색 (쿼리 있음, 국내/비해외 인텐트)', () => {
     it('embed 호출 후 aggregate 실행', async () => {
       embeddingsService.embed.mockResolvedValue(new Array(64).fill(0.1));
-      companyModel.aggregate.mockResolvedValue([{ _id: 'c1', name: 'Acme', score: 0.9 }]);
+      companyModel.aggregate.mockResolvedValue([
+        { _id: 'c1', name: 'Acme', score: 0.9 },
+      ]);
 
       const result = await service.search({ q: '화장품 제조사' });
 
@@ -105,7 +115,9 @@ describe('PartnersService', () => {
 
     it('embed 빈 벡터 → 텍스트 검색 폴백, 스코어 정규화', async () => {
       embeddingsService.embed.mockResolvedValue([]);
-      companyModel.find.mockReturnValue(buildQueryMock([{ _id: 'c1', name: 'Acme', score: 5 }]));
+      companyModel.find.mockReturnValue(
+        buildQueryMock([{ _id: 'c1', name: 'Acme', score: 5 }]),
+      );
 
       const result = await service.search({ q: '화장품' });
 
@@ -117,7 +129,9 @@ describe('PartnersService', () => {
     it('벡터 검색 결과 0건 → 텍스트 검색 폴백', async () => {
       embeddingsService.embed.mockResolvedValue(new Array(64).fill(0.1));
       companyModel.aggregate.mockResolvedValue([]); // 벡터 결과 없음
-      companyModel.find.mockReturnValue(buildQueryMock([{ _id: 'c2', name: 'Beta', score: 3 }]));
+      companyModel.find.mockReturnValue(
+        buildQueryMock([{ _id: 'c2', name: 'Beta', score: 3 }]),
+      );
 
       const result = await service.search({ q: '식품' });
 
@@ -131,7 +145,14 @@ describe('PartnersService', () => {
   describe('웹 검색 폴백 (해외 지역 + 바이어/셀러 인텐트)', () => {
     it('미국 + 수입업체 → forceWebSearch=true → searchWeb 호출', async () => {
       const webSpy = jest.spyOn(service as any, 'searchWeb').mockResolvedValue({
-        results: [{ title: 'US Importer', content: 'imports parts', url: 'http://example.com', score: 0.9 }],
+        results: [
+          {
+            title: 'US Importer',
+            content: 'imports parts',
+            url: 'http://example.com',
+            score: 0.9,
+          },
+        ],
         answer: 'Found importers',
       });
 
@@ -143,14 +164,25 @@ describe('PartnersService', () => {
     });
 
     it('웹 검색 타임아웃 시 크래시 없이 결과 반환', async () => {
-      jest.spyOn(service as any, 'searchWeb').mockRejectedValue(new Error('Tavily Timeout'));
+      jest
+        .spyOn(service as any, 'searchWeb')
+        .mockRejectedValue(new Error('Tavily Timeout'));
 
-      await expect(service.search({ q: '미국 수입업체' })).resolves.toBeDefined();
+      await expect(
+        service.search({ q: '미국 수입업체' }),
+      ).resolves.toBeDefined();
     });
 
     it('자동차 관련 없는 웹 결과 → score 감점', async () => {
       jest.spyOn(service as any, 'searchWeb').mockResolvedValue({
-        results: [{ title: 'Fashion Blog', content: 'fashion tips', url: 'http://fashion.com', score: 0.9 }],
+        results: [
+          {
+            title: 'Fashion Blog',
+            content: 'fashion tips',
+            url: 'http://fashion.com',
+            score: 0.9,
+          },
+        ],
         answer: '',
       });
 
@@ -165,7 +197,9 @@ describe('PartnersService', () => {
 
   describe('인텐트 감지', () => {
     it('바이어 키워드 → debug.intent=buyer', async () => {
-      jest.spyOn(service as any, 'searchWeb').mockResolvedValue({ results: [], answer: '' });
+      jest
+        .spyOn(service as any, 'searchWeb')
+        .mockResolvedValue({ results: [], answer: '' });
 
       const result = await service.search({ q: '베트남 바이어 찾기' });
 
@@ -173,7 +207,9 @@ describe('PartnersService', () => {
     });
 
     it('셀러 키워드 → debug.intent=seller', async () => {
-      jest.spyOn(service as any, 'searchWeb').mockResolvedValue({ results: [], answer: '' });
+      jest
+        .spyOn(service as any, 'searchWeb')
+        .mockResolvedValue({ results: [], answer: '' });
 
       const result = await service.search({ q: '독일 수출업체 파트너' });
 
@@ -200,7 +236,9 @@ describe('PartnersService', () => {
 
       expect(companyModel.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          industry: expect.objectContaining({ $in: expect.arrayContaining(['Automotive']) }),
+          industry: expect.objectContaining({
+            $in: expect.arrayContaining(['Automotive']),
+          }),
         }),
       );
     });
@@ -224,7 +262,9 @@ describe('PartnersService', () => {
       companyModel.countDocuments
         .mockResolvedValueOnce(100)
         .mockResolvedValueOnce(80);
-      companyModel.aggregate.mockResolvedValue([{ _id: 'Automotive', count: 50 }]);
+      companyModel.aggregate.mockResolvedValue([
+        { _id: 'Automotive', count: 50 },
+      ]);
       companyModel.find.mockReturnValue(buildQueryMock([{ name: 'Sample' }]));
       embeddingsService.embed.mockResolvedValue(new Array(64).fill(0));
 

@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AuditLogsQueryDto {
@@ -8,7 +15,10 @@ export class AuditLogsQueryDto {
   @IsString()
   entityType?: string = 'Payment';
 
-  @ApiProperty({ description: '대상 엔티티 ID', example: '507f1f77bcf86cd799439011' })
+  @ApiProperty({
+    description: '대상 엔티티 ID',
+    example: '507f1f77bcf86cd799439011',
+  })
   @IsNotEmpty()
   @IsString()
   entityId: string;

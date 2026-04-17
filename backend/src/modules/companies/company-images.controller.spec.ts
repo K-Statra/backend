@@ -44,7 +44,9 @@ describe('CompanyImagesController', () => {
     it('없는 기업 → NotFoundException', async () => {
       mockService.getImages.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.getImages(COMPANY_ID)).rejects.toThrow(NotFoundException);
+      await expect(controller.getImages(COMPANY_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -59,11 +61,17 @@ describe('CompanyImagesController', () => {
       const result = await controller.addImage(COMPANY_ID, file, {} as any);
 
       expect(result).toEqual(saved);
-      expect(mockService.addImage).toHaveBeenCalledWith(COMPANY_ID, expect.objectContaining({ url: '/uploads/abc.jpg' }));
+      expect(mockService.addImage).toHaveBeenCalledWith(
+        COMPANY_ID,
+        expect.objectContaining({ url: '/uploads/abc.jpg' }),
+      );
     });
 
     it('URL 전달 시 해당 URL 사용', async () => {
-      const body = { url: 'https://cdn.example.com/img.jpg', caption: '제품 사진' } as any;
+      const body = {
+        url: 'https://cdn.example.com/img.jpg',
+        caption: '제품 사진',
+      } as any;
       const saved = { url: body.url };
       mockService.addImage.mockResolvedValue(saved);
 
@@ -71,13 +79,18 @@ describe('CompanyImagesController', () => {
 
       expect(mockService.addImage).toHaveBeenCalledWith(
         COMPANY_ID,
-        expect.objectContaining({ url: 'https://cdn.example.com/img.jpg', caption: '제품 사진' }),
+        expect.objectContaining({
+          url: 'https://cdn.example.com/img.jpg',
+          caption: '제품 사진',
+        }),
       );
       expect(result).toEqual(saved);
     });
 
     it('파일도 URL도 없으면 BadRequestException', async () => {
-      await expect(controller.addImage(COMPANY_ID, undefined, {} as any)).rejects.toThrow(BadRequestException);
+      await expect(
+        controller.addImage(COMPANY_ID, undefined, {} as any),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -87,14 +100,21 @@ describe('CompanyImagesController', () => {
     it('이미지 삭제 성공', async () => {
       mockService.removeImage.mockResolvedValue(undefined);
 
-      await expect(controller.removeImage(COMPANY_ID, IMAGE_ID)).resolves.toBeUndefined();
-      expect(mockService.removeImage).toHaveBeenCalledWith(COMPANY_ID, IMAGE_ID);
+      await expect(
+        controller.removeImage(COMPANY_ID, IMAGE_ID),
+      ).resolves.toBeUndefined();
+      expect(mockService.removeImage).toHaveBeenCalledWith(
+        COMPANY_ID,
+        IMAGE_ID,
+      );
     });
 
     it('없는 이미지 → NotFoundException', async () => {
       mockService.removeImage.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.removeImage(COMPANY_ID, IMAGE_ID)).rejects.toThrow(NotFoundException);
+      await expect(
+        controller.removeImage(COMPANY_ID, IMAGE_ID),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

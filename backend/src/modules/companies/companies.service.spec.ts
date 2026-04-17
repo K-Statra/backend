@@ -18,9 +18,15 @@ function buildQueryMock(resolvedValue: any) {
 
 const makeCompanyModel = (overrides = {}) => ({
   find: jest.fn().mockReturnValue(buildQueryMock([])),
-  findById: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
-  findByIdAndUpdate: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
-  findByIdAndDelete: jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+  findById: jest
+    .fn()
+    .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+  findByIdAndUpdate: jest
+    .fn()
+    .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
+  findByIdAndDelete: jest
+    .fn()
+    .mockReturnValue({ exec: jest.fn().mockResolvedValue(null) }),
   countDocuments: jest.fn().mockResolvedValue(0),
   estimatedDocumentCount: jest.fn().mockResolvedValue(0),
   create: jest.fn(),
@@ -86,11 +92,16 @@ describe('CompaniesService', () => {
 
       await service.findAll({ sortBy: 'nameNumeric' } as any);
 
-      expect(qm.collation).toHaveBeenCalledWith({ locale: 'en', numericOrdering: true });
+      expect(qm.collation).toHaveBeenCalledWith({
+        locale: 'en',
+        numericOrdering: true,
+      });
     });
 
     it('dart.corpCode 있으면 dartVerified=true로 변환', async () => {
-      const raw = [{ _id: VALID_ID, name: 'Acme', dart: { corpCode: 'ABC123' } }];
+      const raw = [
+        { _id: VALID_ID, name: 'Acme', dart: { corpCode: 'ABC123' } },
+      ];
       companyModel.find.mockReturnValue(buildQueryMock(raw));
 
       const result = await service.findAll({} as any);
@@ -123,15 +134,21 @@ describe('CompaniesService', () => {
   describe('findById', () => {
     it('존재하는 기업 반환', async () => {
       const company = { _id: VALID_ID, name: 'Acme' };
-      companyModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(company) });
+      companyModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(company),
+      });
 
       expect(await service.findById(VALID_ID)).toEqual(company);
     });
 
     it('없으면 NotFoundException', async () => {
-      companyModel.findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      companyModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
-      await expect(service.findById(VALID_ID)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(VALID_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -139,7 +156,12 @@ describe('CompaniesService', () => {
 
   describe('create', () => {
     it('이미지 있으면 플레이스홀더 미삽입', async () => {
-      const doc = { _id: VALID_ID, name: 'Acme', images: [{ url: 'http://img.com/a.jpg' }], save: jest.fn() };
+      const doc = {
+        _id: VALID_ID,
+        name: 'Acme',
+        images: [{ url: 'http://img.com/a.jpg' }],
+        save: jest.fn(),
+      };
       companyModel.create.mockResolvedValue(doc);
 
       await service.create({ name: 'Acme' } as any);
@@ -163,19 +185,29 @@ describe('CompaniesService', () => {
   describe('update', () => {
     it('존재하는 기업 수정', async () => {
       const updated = { _id: VALID_ID, name: 'New Name' };
-      companyModel.findByIdAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(updated) });
+      companyModel.findByIdAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(updated),
+      });
 
-      expect(await service.update(VALID_ID, { name: 'New Name' } as any)).toEqual(updated);
+      expect(
+        await service.update(VALID_ID, { name: 'New Name' } as any),
+      ).toEqual(updated);
     });
 
     it('없는 기업 → NotFoundException', async () => {
-      companyModel.findByIdAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      companyModel.findByIdAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
-      await expect(service.update(VALID_ID, { name: 'x' } as any)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(VALID_ID, { name: 'x' } as any),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('빈 dto → BadRequestException', async () => {
-      await expect(service.update(VALID_ID, {} as any)).rejects.toThrow(BadRequestException);
+      await expect(service.update(VALID_ID, {} as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -183,13 +215,17 @@ describe('CompaniesService', () => {
 
   describe('remove', () => {
     it('존재하는 기업 삭제', async () => {
-      companyModel.findByIdAndDelete.mockReturnValue({ exec: jest.fn().mockResolvedValue({ _id: VALID_ID }) });
+      companyModel.findByIdAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: VALID_ID }),
+      });
 
       await expect(service.remove(VALID_ID)).resolves.toBeUndefined();
     });
 
     it('없는 기업 → NotFoundException', async () => {
-      companyModel.findByIdAndDelete.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      companyModel.findByIdAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
       await expect(service.remove(VALID_ID)).rejects.toThrow(NotFoundException);
     });

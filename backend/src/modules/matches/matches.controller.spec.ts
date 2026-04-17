@@ -28,10 +28,17 @@ describe('MatchesController', () => {
 
   describe('GET /matches', () => {
     it('서비스 결과 그대로 반환', async () => {
-      const response = { query: { buyerId: BUYER_ID, limit: 10 }, count: 1, data: [{}] };
+      const response = {
+        query: { buyerId: BUYER_ID, limit: 10 },
+        count: 1,
+        data: [{}],
+      };
       mockMatchesService.findMatches.mockResolvedValue(response);
 
-      const result = await controller.findMatches({ buyerId: BUYER_ID, limit: 10 });
+      const result = await controller.findMatches({
+        buyerId: BUYER_ID,
+        limit: 10,
+      });
 
       expect(result).toEqual(response);
       expect(mockMatchesService.findMatches).toHaveBeenCalledWith(BUYER_ID, 10);
@@ -74,7 +81,10 @@ describe('MatchesController', () => {
     });
 
     it('rating만 전달해도 호출됨', async () => {
-      mockMatchesService.submitFeedback.mockResolvedValue({ message: 'Feedback saved', id: 'fb-2' });
+      mockMatchesService.submitFeedback.mockResolvedValue({
+        message: 'Feedback saved',
+        id: 'fb-2',
+      });
 
       await controller.submitFeedback({ companyId: COMPANY_ID }, { rating: 5 });
 
@@ -85,12 +95,16 @@ describe('MatchesController', () => {
     });
 
     it('옵션 필드(locale, source) 포함 전달', async () => {
-      mockMatchesService.submitFeedback.mockResolvedValue({ message: 'Feedback saved', id: 'fb-3' });
+      mockMatchesService.submitFeedback.mockResolvedValue({
+        message: 'Feedback saved',
+        id: 'fb-3',
+      });
 
-      await controller.submitFeedback(
-        { companyId: COMPANY_ID },
-        { rating: 3, locale: 'ko', source: 'admin-panel' } as any,
-      );
+      await controller.submitFeedback({ companyId: COMPANY_ID }, {
+        rating: 3,
+        locale: 'ko',
+        source: 'admin-panel',
+      } as any);
 
       expect(mockMatchesService.submitFeedback).toHaveBeenCalledWith(
         COMPANY_ID,

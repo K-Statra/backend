@@ -51,7 +51,13 @@ describe('AdminController', () => {
 
   describe('GET /admin/payments', () => {
     it('필터 없이 결제 목록 반환', async () => {
-      const payments = { page: 1, limit: 20, total: 0, totalPages: 0, data: [] };
+      const payments = {
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+        data: [],
+      };
       mockAdminService.getPayments.mockResolvedValue(payments);
 
       const result = await controller.getPayments({} as any);
@@ -62,7 +68,12 @@ describe('AdminController', () => {
 
     it('필터와 함께 서비스 호출', async () => {
       mockAdminService.getPayments.mockResolvedValue({ data: [], total: 0 });
-      const query = { status: 'PAID', buyerId: '507f1f77bcf86cd799439011', page: 2, limit: 10 } as any;
+      const query = {
+        status: 'PAID',
+        buyerId: '507f1f77bcf86cd799439011',
+        page: 2,
+        limit: 10,
+      } as any;
 
       await controller.getPayments(query);
 
@@ -98,8 +109,14 @@ describe('AdminController', () => {
 
       await controller.exportPayments({} as any, res);
 
-      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/csv; charset=utf-8');
-      expect(res.setHeader).toHaveBeenCalledWith('Content-Disposition', 'attachment; filename="payments.csv"');
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'text/csv; charset=utf-8',
+      );
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="payments.csv"',
+      );
       expect(res.send).toHaveBeenCalledWith('_id,buyerId\n');
     });
   });
@@ -108,7 +125,13 @@ describe('AdminController', () => {
 
   describe('GET /admin/matches', () => {
     it('매칭 로그 반환', async () => {
-      const logs = { page: 1, limit: 20, total: 2, totalPages: 1, data: [{ _id: 'log-1' }] };
+      const logs = {
+        page: 1,
+        limit: 20,
+        total: 2,
+        totalPages: 1,
+        data: [{ _id: 'log-1' }],
+      };
       mockAdminService.getMatchLogs.mockResolvedValue(logs);
 
       const result = await controller.getMatchLogs({} as any);
@@ -130,13 +153,23 @@ describe('AdminController', () => {
 
   describe('GET /admin/audit', () => {
     it('감사 로그 반환', async () => {
-      const logs = { page: 1, limit: 50, total: 1, totalPages: 1, data: [{ type: 'CREATE' }] };
+      const logs = {
+        page: 1,
+        limit: 50,
+        total: 1,
+        totalPages: 1,
+        data: [{ type: 'CREATE' }],
+      };
       mockAdminService.getAuditLogs.mockResolvedValue(logs);
 
-      const result = await controller.getAuditLogs({ entityId: 'payment-1' } as any);
+      const result = await controller.getAuditLogs({
+        entityId: 'payment-1',
+      } as any);
 
       expect(result).toEqual(logs);
-      expect(mockAdminService.getAuditLogs).toHaveBeenCalledWith({ entityId: 'payment-1' });
+      expect(mockAdminService.getAuditLogs).toHaveBeenCalledWith({
+        entityId: 'payment-1',
+      });
     });
   });
 
@@ -144,7 +177,11 @@ describe('AdminController', () => {
 
   describe('GET /admin/embedding', () => {
     it('임베딩 상태 반환', () => {
-      const status = { provider: 'openai', matchUseEmbedding: false, configured: true };
+      const status = {
+        provider: 'openai',
+        matchUseEmbedding: false,
+        configured: true,
+      };
       mockAdminService.getEmbeddingStatus.mockReturnValue(status);
 
       const result = controller.getEmbeddingStatus();
