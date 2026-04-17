@@ -34,18 +34,6 @@ export default function PaymentCheckout2() {
   const currencyOptions = useMemo(() => currencies.map((c) => ({ code: c, label: (t && t(`currency_name_${c}`)) || c, desc: (t && t(`currency_desc_${c}`)) || '' })), [currencies, t])
 
   useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        const res = await api.getPaymentCurrencies()
-        const list = Array.isArray(res?.currencies) ? res.currencies : []
-        if (mounted && list.length > 0) setCurrencies(list.map((s) => String(s).toUpperCase()))
-      } catch (_) {}
-    })()
-    return () => { mounted = false }
-  }, [])
-
-  useEffect(() => {
     async function load() {
       setLoading(true)
       try {
@@ -85,7 +73,7 @@ export default function PaymentCheckout2() {
       const payload = { amount: amt, currency: curr, buyerId: data.buyerId, companyId: data.companyId, memo: data.memo }
       const idem = newIdemKey()
       const res = await api.createPayment(payload, idem)
-      const newId = res?.payment?._id || res?._id
+      const newId = res?._id
       if (newId) navigate(`/payments/checkout/${newId}`, { state: { prevId: id } })
     } catch (e) {
       setMsg(`${t('refresh_failed')}: ${e?.message || ''}`.trim())
