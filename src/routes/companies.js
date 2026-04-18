@@ -1,7 +1,8 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 const express = require('express');
 const Joi = require('joi');
 const { Company } = require('../models/Company');
+const { syncCompanyToGraph, removeFromGraph } = require('../services/graphSync');
 
 const router = express.Router();
 const DEFAULT_COMPANY_IMAGE_URL = process.env.DEFAULT_COMPANY_IMAGE_URL || 'https://placehold.co/320x160?text=K-Statra';
@@ -213,6 +214,8 @@ router.post('/', validateBody(createCompanySchema), async (req, res, next) => {
     if (!hadImages) {
       await doc.save();
     }
+    // Sync to Graph
+    await syncCompanyToGraph(doc);
     res.status(201).json(doc);
   } catch (err) {
     next(err);
@@ -233,6 +236,8 @@ router.patch('/:id',
       if (!doc) {
         return res.status(404).json({ message: 'Company not found' });
       }
+      // Sync to Graph
+      await syncCompanyToGraph(doc);
       res.json(doc);
     } catch (err) {
       next(err);
@@ -249,6 +254,8 @@ router.delete('/:id',
       if (!doc) {
         return res.status(404).json({ message: 'Company not found' });
       }
+      // Sync to Graph
+      await removeFromGraph(req.params.id);
       // 본문 없는 성공
       res.status(204).send();
     } catch (err) {

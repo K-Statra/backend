@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const Joi = require('joi');
 const { Buyer } = require('../models/Buyer');
+const { syncBuyerToGraph, removeFromGraph } = require('../services/graphSync');
 
 const router = express.Router();
 
@@ -114,6 +115,8 @@ router.get('/', validateQuery(listQuerySchema), async (req, res, next) => {
 router.post('/', validateBody(createBuyerSchema), async (req, res, next) => {
   try {
     const doc = await Buyer.create(req.body);
+    // Sync to Graph
+    await syncBuyerToGraph(doc);
     return res.status(201).json(doc);
   } catch (err) { next(err); }
 });
@@ -136,6 +139,8 @@ router.patch('/:id',
       const update = { ...req.body, updatedAt: new Date() };
       const doc = await Buyer.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
       if (!doc) return res.status(404).json({ message: 'Not found' });
+      // Sync to Graph
+      await syncBuyerToGraph(doc);
       return res.json(doc);
     } catch (err) { next(err); }
   }

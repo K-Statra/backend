@@ -2,7 +2,11 @@ const mongoose = require('mongoose')
 
 const companySchema = new mongoose.Schema({
   name: { type: String, required: true },
+  nameEn: { type: String, default: '' },
   industry: String,
+  stockCode: { type: String, default: '' },
+  ksicCode: { type: String, default: '' },
+  ksicName: { type: String, default: '' },
   offerings: { type: [String], default: [] },
   needs: { type: [String], default: [] },
   tags: { type: [String], default: [] },
@@ -115,14 +119,27 @@ const companySchema = new mongoose.Schema({
   },
 
   embedding: { type: [Number], default: [] },
+
+  // --- Layer 5: Cultural Fit Layer ---
+  culturalTraits: {
+    innovationScore: { type: Number }, // 1-10
+    hierarchyScore: { type: Number },  // 1-10 (High=Hierarchical)
+    speedScore: { type: Number },      // 1-10 (High=Fast/Agile)
+    keywords: { type: [String], default: [] },
+    summary: { type: String, default: '' }
+  },
+  culturalEmbedding: { type: [Number], default: [] },
+
   updatedAt: { type: Date, default: Date.now },
 })
 
 companySchema.index({ updatedAt: -1 })
-companySchema.index({ name: 1 })
+companySchema.index({ name: 'text', nameEn: 'text' })
 companySchema.index({ tags: 1 })
 companySchema.index({ industry: 1 })
 companySchema.index({ 'location.country': 1 })
+companySchema.index({ stockCode: 1 })
+companySchema.index({ 'dart.corpCode': 1 })
 
 const Company = mongoose.model('Company', companySchema)
 module.exports = { Company }
