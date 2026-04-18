@@ -54,13 +54,6 @@ export const api = {
     }),
   getPayment: (id) => http(`/payments/${id}`),
   refreshPayment: (id) => http(`/payments/${id}/refresh`, { method: 'POST' }),
-  getPaymentCurrencies: async () => {
-    try {
-      return await http('/payments/currencies')
-    } catch {
-      return { currencies: [] }
-    }
-  },
   listPayments: (params = {}) => {
     const q = new URLSearchParams(params)
     return http(`/payments?${q.toString()}`)
