@@ -70,6 +70,8 @@ function cosineSimilarity(a = [], b = []) {
 
 // Imported from services
 const { scoreCompany } = require('../services/matchScore');
+const { generateMatchReasoning } = require('../services/llm');
+const { getGraphScores } = require('../services/graphScore');
 
 // GET /matches
 router.get(
@@ -115,13 +117,46 @@ router.get(
         candidates = await Company.find({}).sort({ updatedAt: -1 }).limit(200).lean();
       }
 
+      // 3. Batch Graph Scoring
+      const candidateIds = candidates.map(c => c._id.toString());
+      let graphScores = {};
+      try {
+        graphScores = await getGraphScores(buyerId, candidateIds);
+      } catch (gErr) {
+        logger.warn('[matches] graph scoring failed', { error: gErr.message });
+      }
+
+      const graphWeight = Number(process.env.GRAPH_SCORE_WEIGHT || 0.3);
+
       const scored = candidates
         .map((c) => {
-          const { score, reasons } = scoreCompany(buyer, c);
-          return { company: c, score, reasons };
+          const { score: baseScore, reasons } = scoreCompany(buyer, c);
+          const gScore = graphScores[c._id.toString()] || 0;
+          
+          let finalScore = baseScore;
+          if (gScore > 0) {
+            const graphContribution = gScore * graphWeight;
+            finalScore += graphContribution;
+            reasons.push(`graph relationship score +${graphContribution.toFixed(1)}`);
+          }
+
+          return { company: c, score: finalScore, reasons };
         })
         .sort((a, b) => b.score - a.score)
         .slice(0, Number(limit));
+
+      // AI Enhancement for top match
+      if (process.env.LLM_PROVIDER && scored.length > 0) {
+        const topMatch = scored[0];
+        try {
+          // Async but await here to ensure it's in response. 
+          // For production, might want parallel or background, but for now linear is fine.
+          const reasoning = await generateMatchReasoning(buyer, topMatch.company);
+          topMatch.ai_reasoning = reasoning;
+        } catch (err) {
+          logger.warn('[matches] AI reasoning failed', { error: err.message });
+        }
+      }
 
       // Persist a lightweight log of the query
       try {
