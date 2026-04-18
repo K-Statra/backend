@@ -402,7 +402,6 @@ Object.assign(en, {
   tz_label_local: 'Browser local time',
   tz_label_server: 'Server UTC',
   tz_use_utc: 'Use UTC time',
-  nav_overview: 'Overview',
   overview_title_heading: 'Overview',
   overview_subheading: 'Your business snapshot and market insights in one place.',
   issued_title: 'Issued currency payment',
