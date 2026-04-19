@@ -241,9 +241,9 @@ export default function App() {
               onClick={openSignupModal}
               style={{
                 borderRadius: '999px',
-                padding: '0.25rem 0.75rem',
-                minWidth: lang === 'ko' ? 70 : 80,
-                fontSize: '0.85rem',
+                padding: '0.2rem 0.6rem',
+                minWidth: lang === 'ko' ? 64 : 76,
+                fontSize: '0.8rem',
                 textTransform: 'none',
                 fontWeight: 600,
                 background: '#fff',
@@ -262,8 +262,9 @@ export default function App() {
               onClick={openLoginModal}
               style={{
                 borderRadius: '999px',
-                padding: '0.35rem 1.2rem',
-                minWidth: lang === 'ko' ? 96 : 105,
+                padding: '0.2rem 0.8rem',
+                minWidth: lang === 'ko' ? 64 : 76,
+                fontSize: '0.8rem',
                 textTransform: 'none',
                 fontWeight: 600,
                 background: '#0066CC',
