@@ -161,28 +161,30 @@ export default function App() {
         {t('skip_to_content')}
       </a>
       <header className="header">
-        <div className="inner header-bar">
-          <div className="brand">
-            <span className="logo-box" aria-hidden="true">
-              K
-            </span>
-            <Link to="/" className="brand-link">
-              K-Statra
-            </Link>
+        <div className="inner">
+          <div className="header-top">
+            <div className="brand">
+              <span className="logo-box" aria-hidden="true">
+                K
+              </span>
+              <Link to="/" className="brand-link">
+                K-Statra
+              </Link>
+            </div>
+            <nav className="nav" aria-label="Primary">
+              {navItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === '/'}
+                  className={({ isActive }) => (isActive ? 'active' : undefined)}
+                  onClick={() => track('nav_click', { target: item.to })}
+                >
+                  {t(item.key)}
+                </NavLink>
+              ))}
+            </nav>
           </div>
-          <nav className="nav" aria-label="Primary">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                className={({ isActive }) => (isActive ? 'active' : undefined)}
-                onClick={() => track('nav_click', { target: item.to })}
-              >
-                {t(item.key)}
-              </NavLink>
-            ))}
-          </nav>
           <div className="controls-row">
             <div className="control-group" aria-label="Language selector">
               <span className="control-icon" aria-hidden="true">
@@ -239,8 +241,9 @@ export default function App() {
               onClick={openSignupModal}
               style={{
                 borderRadius: '999px',
-                padding: '0.35rem 1rem',
-                minWidth: lang === 'ko' ? 96 : 110,
+                padding: '0.25rem 0.75rem',
+                minWidth: lang === 'ko' ? 70 : 80,
+                fontSize: '0.85rem',
                 textTransform: 'none',
                 fontWeight: 600,
                 background: '#fff',
