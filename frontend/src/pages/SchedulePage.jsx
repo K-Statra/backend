@@ -23,18 +23,18 @@ export default function SchedulePage() {
 
   return (
     <div className="inner" style={{ padding: '2rem 1rem' }}>
-      <h2 style={{ marginBottom: '1rem' }}>{lang === 'ko' ? '상담 스케줄러' : 'Consultation Schedule'}</h2>
+      <h2 style={{ marginBottom: '1rem' }}>{lang === 'ko' ? '1:1 비즈니스 밋업' : '1:1 Business Meetups'}</h2>
       <p style={{ marginBottom: '2rem', color: '#6b7280' }}>
         {lang === 'ko' 
-          ? '선호하는 수출/수입 파트너와의 비대면/대면 상담 일정을 조율하고 관리합니다.' 
-          : 'Schedule and manage your online/offline meetings with potential partners.'}
+          ? '온라인 영상 미팅으로 1차 탐색 후, 글로벌 전시회(CES, MWC 등) 오프라인 부스에서 만나 최종 파트너십을 컨펌해 보세요.' 
+          : 'Start with online video meetings, then meet at global exhibitions (CES, MWC, etc.) to confirm your partnerships.'}
       </p>
 
       {loading ? (
         <p>{lang === 'ko' ? '불러오는 중...' : 'Loading...'}</p>
       ) : consultations.length === 0 ? (
         <div style={{ padding: '2rem', textAlign: 'center', background: '#f9fafb', borderRadius: '8px' }}>
-          <p>{lang === 'ko' ? '예정된 상담 일정이 없습니다.' : 'No scheduled consultations.'}</p>
+          <p>{lang === 'ko' ? '예정된 밋업 스케줄이 없습니다.' : 'No scheduled meetups.'}</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '1rem' }}>
