@@ -456,7 +456,7 @@ export default function PartnerSearch() {
           <h1 style={lang === 'ko' ? { fontSize: '1.6rem', lineHeight: 1.3, marginBottom: '1rem', wordBreak: 'keep-all' } : { fontSize: '2rem', marginBottom: '1rem' }}>
             {t('dashboard_title')}
           </h1>
-          <p style={lang === 'ko' ? { fontSize: '1.1rem', lineHeight: 1.5, marginBottom: '2rem', color: '#FFFFFF', wordBreak: 'keep-all' } : { fontSize: '1.1rem', marginBottom: '2rem', color: '#FFFFFF' }}>
+          <p style={lang === 'ko' ? { fontSize: '0.9rem', lineHeight: 1.4, marginBottom: '2rem', color: '#FFFFFF', wordBreak: 'keep-all', whiteSpace: 'nowrap' } : { fontSize: '0.9rem', marginBottom: '2rem', color: '#FFFFFF', whiteSpace: 'nowrap' }}>
             {t('dashboard_subtitle')}
           </p>
           <div className="search-bar-container">
