@@ -463,7 +463,7 @@ const ko = {
   nav_dashboard: '대시보드',
   nav_analytics: '분석',
   nav_my_partners: '내 파트너',
-  nav_payments: '무역대금 결제',
+  nav_payments: 'XRP 무역대금 결제',
   nav_schedule: '1:1 비즈니스 밋업',
   nav_about: '회사 소개',
   nav_partners: '파트너',
