@@ -46,13 +46,13 @@ export default function PaymentsPage() {
       if (!mounted || !data) return
       setTransactionStats((prev) =>
         prev.map((card) => {
-          const value = data[card.id]
-          if (value === undefined) return card
-          const formatted =
-            card.id === 'totalSent' || card.id === 'totalReceived'
-              ? `$${Number(value).toLocaleString()}`
-              : String(value)
-          return { ...card, value: formatted }
+          if (card.id === 'totalSent' && data.totalAmount !== undefined)
+            return { ...card, value: `$${Number(data.totalAmount).toLocaleString()}` }
+          if (card.id === 'pendingTransactions' && data.pending !== undefined)
+            return { ...card, value: String(data.pending) }
+          if (card.id === 'completedTransactions' && data.paid !== undefined)
+            return { ...card, value: String(data.paid) }
+          return card
         })
       )
     })
@@ -60,8 +60,8 @@ export default function PaymentsPage() {
       if (!mounted || !Array.isArray(data)) return
       setTransactions(
         data.map((item) => ({
-          id: item.id,
-          company: item.company,
+          id: item._id,
+          company: item.companyId?.name || 'Unknown',
           description: item.memo || '',
           date: item.createdAt ? new Date(item.createdAt).toLocaleString() : '',
           amount: `${item.amount >= 0 ? '+' : '-'}$${Math.abs(item.amount || 0).toLocaleString()}`,

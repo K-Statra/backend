@@ -94,7 +94,7 @@ export default function Matches() {
         companyId,
       }
       const res = await api.createPayment(payload, newIdemKey())
-      const pid = res?.payment?._id || res?._id
+      const pid = res?._id
       if (pid) navigate(`/payments/checkout/${pid}`)
     } catch (err) {
       setMessage(err.message || 'Failed to create payment')
@@ -144,10 +144,6 @@ export default function Matches() {
           </Button>
         </div>
       </form>
-      <div className="mt-3">
-        Need sample data? Run <code>npm run seed:buyers</code> / <code>npm run seed:companies</code> in the backend.
-      </div>
-
       <div className="mt-4">
         <CurrencySelect value={currency} onChange={setCurrency} />
       </div>
