@@ -37,7 +37,7 @@ body {
   opacity: 0.7;
   font-weight: 600;
   padding: 6px 0;
-  font-size: 18px;
+  font-size: 16px;
   white-space: nowrap;
   transition: all 0.2s;
 }
@@ -389,10 +389,10 @@ h3 {
 .header .inner {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 12px 16px;
+  padding: 16px 24px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .header-top {
@@ -416,9 +416,7 @@ h3 {
   letter-spacing: .2px;
   display: flex;
   align-items: center;
-  gap: 18px;
-  font-size: 54px;
-  min-width: 280px;
+  gap: 12px;
 }
 
 .brand-link {
@@ -426,7 +424,7 @@ h3 {
   text-decoration: none;
   font-family: 'Arial Black', 'Segoe UI Black', 'NanumSquare', sans-serif;
   font-weight: 900;
-  font-size: 50px;
+  font-size: 32px;
   letter-spacing: -1.5px;
   text-transform: lowercase;
 }
@@ -436,16 +434,17 @@ h3 {
 }
 
 .logo-box {
-  width: 108px;
-  height: 108px;
+  width: 48px;
+  height: 48px;
   background: var(--accent);
   color: #fff;
-  border-radius: 36px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  box-shadow: 0 4px 16px rgba(0, 76, 153, 0.2);
+  font-size: 26px;
+  box-shadow: 0 4px 12px rgba(0, 76, 153, 0.15);
 }
 
 .controls-row {
