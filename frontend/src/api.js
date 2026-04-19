@@ -93,6 +93,12 @@ export const api = {
   submitMatchFeedback: (companyId, payload) =>
     http(`/matches/${companyId}/feedback`, { method: 'POST', body: payload }),
   createConsultantRequest: (payload) => http('/consultants/requests', { method: 'POST', body: payload }),
+  listConsultations: (params = {}) => {
+    const q = new URLSearchParams(params)
+    return http(`/consultations?${q.toString()}`)
+  },
+  createConsultation: (data) => http('/consultations', { method: 'POST', body: data }),
+  updateConsultationStatus: (id, status) => http(`/consultations/${id}/status`, { method: 'PATCH', body: { status } }),
 }
 
 export function newIdemKey() {

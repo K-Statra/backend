@@ -9,6 +9,7 @@ import BuyerForm from './pages/BuyerForm.jsx'
 import CompanyInputForm from './pages/CompanyInputForm.jsx'
 import Matches from './pages/Matches.jsx'
 import PaymentsPage from './pages/PaymentsPage.jsx'
+import SchedulePage from './pages/SchedulePage.jsx'
 import PaymentCheckout from './pages/PaymentCheckout2.jsx'
 import PaymentStatus from './pages/PaymentStatus.jsx'
 import AdminPayments from './pages/AdminPayments.jsx'
@@ -27,6 +28,7 @@ import { track } from './utils/analytics.js'
 const navItems = [
   { to: '/overview', key: 'nav_overview' },
   { to: '/partners', key: 'nav_my_partners' },
+  { to: '/schedule', key: 'nav_schedule' },
   { to: '/payments', key: 'nav_payments' },
   { to: '/about', key: 'nav_about' },
 ]
@@ -280,6 +282,7 @@ export default function App() {
           <Route path="/dashboard" element={<Overview />} /> {/* Redirect or alias */}
           <Route path="/analytics" element={<Overview />} /> {/* Redirect or alias */}
           <Route path="/partners" element={<Partners />} />
+          <Route path="/schedule" element={<SchedulePage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/about" element={<About />} />
           <Route path="/companies" element={<CompanyList />} />
