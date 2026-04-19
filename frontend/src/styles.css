@@ -27,7 +27,7 @@ body {
   margin-bottom: 0;
   align-items: center;
   flex-wrap: nowrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex: 1;
 }
 
@@ -398,8 +398,8 @@ h3 {
 .header-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
+  justify-content: flex-start;
+  gap: 48px;
   width: 100%;
 }
 
