@@ -1,50 +1,86 @@
-name: CI
+name: CI / Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  backend:
+  # ── 백엔드: Lint → 테스트 → 빌드 ────────────────────────────────
+  test-backend:
+    name: Backend Tests & Build (NestJS)
     runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18.x'
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Run tests
-      run: npm test
-      env:
-        CI: true
+    defaults:
+      run:
+        working-directory: ./backend
 
-  frontend:
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Run tests
+        run: npm test -- --no-coverage --forceExit
+        env:
+          CI: true
+          NODE_ENV: test
+
+      - name: Build
+        run: npm run build
+
+  # ── 프론트엔드: Lint → 빌드 ──────────────────────────────────────
+  build-frontend:
+    name: Frontend Build & Lint
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./frontend
 
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18.x'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Build
-      run: npm run build
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  # ── 배포 (main push only) ────────────────────────────────────────
+  deploy:
+    name: Deploy to Railway
+    needs: [test-backend, build-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy
+        run: railway up --service web --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

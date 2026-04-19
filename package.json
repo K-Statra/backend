@@ -1,49 +1,23 @@
 {
-  "name": "k-statra-project",
+  "name": "k-statra",
   "version": "1.0.0",
-  "description": "K-Statra 기본 Node.js 프로젝트",
-  "main": "src/index.js",
+  "description": "B2B 파트너 매칭 플랫폼. NestJS + MongoDB Atlas + Neo4j + XRPL.",
+  "private": true,
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "test": "node test/run.js",
-    "seed:companies": "node scripts/seed.js",
-    "seed:buyers": "node scripts/seed_buyers.js",
-    "seed:payments": "node scripts/seed_payments.js"
+    "prepare": "husky"
   },
-  "keywords": [
-    "k-statra",
-    "node",
-    "express"
-  ],
-  "author": "Choi JungSuk",
-  "license": "ISC",
-  "dependencies": {
-    "axios": "^1.7.9",
-    "cheerio": "^1.1.2",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.2",
-    "express": "^5.1.0",
-    "express-rate-limit": "^8.2.1",
-    "helmet": "^8.1.0",
-    "joi": "^18.0.1",
-    "mongoose": "^8.19.3",
-    "morgan": "^1.10.1",
-    "multer": "^2.0.2",
-    "neo4j-driver": "^6.0.1",
-    "openai": "^6.15.0",
-    "opendart": "^1.0.2",
-    "swagger-ui-express": "^5.0.1",
-    "winston": "^3.18.3",
-    "xml2js": "^0.6.2",
-    "xrpl": "^4.4.3",
-    "yamljs": "^0.3.0"
+  "lint-staged": {
+    "backend/**/*.ts": [
+      "bash -c 'cd backend && npx eslint --fix'",
+      "bash -c 'cd backend && npx prettier --write'"
+    ],
+    "frontend/src/**/*.{js,jsx}": [
+      "bash -c 'cd frontend && npx eslint --fix'",
+      "bash -c 'cd frontend && npx prettier --write'"
+    ]
   },
   "devDependencies": {
-    "adm-zip": "^0.5.16",
-    "nodemon": "^3.1.10"
-  },
-  "overrides": {
-    "axios": "^1.7.9"
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
   }
 }

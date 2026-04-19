@@ -144,7 +144,7 @@ export default function PaymentCheckout() {
         )}
       >
         <div>
-          <p>{t('confirm_create_text')}<</p>
+          <p>{t('confirm_create_text')}</p>
           {data && (
             <ul>
               <li>{t('state')}: {data.status}</li>
@@ -156,7 +156,7 @@ export default function PaymentCheckout() {
       {data && (!data?.invoice?.deeplink && !data?.invoice?.qr) && data?.currency && data.currency !== 'XRP' && (
         <IssuedCurrencyGuide currency={data.currency} />
       )}
-      <p>결제 ??<a href={`/payments/${id}`}>?�태 ?�인</a> ?�이지?�서 결과�??�인?�세??</p>
+      <p>결제 ??<a href={`/payments/${id}`}>?�태 ?�인</a> ?�이지?�서 결과�??�인?�세??</p>
     </div>
   )
 }
