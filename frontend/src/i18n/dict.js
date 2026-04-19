@@ -481,7 +481,7 @@ const ko = {
   search_results_label: '개 기업',
   quick_lookup_empty: '결과가 없습니다. 필터를 조정하거나 데이터를 추가하세요.',
   cta_view_details: '자세히 보기',
-  dashboard_title: 'AI 에이전트로 비즈니스 파트너를 찾고, 만나고, XRP로 결제하는 단 하나의 B2B 플랫폼',
+  dashboard_title: 'AI Agent로 내 파트너를 찾고, 만나고, XRP로 결제하는 원스톱 B2B 플랫폼',
   dashboard_subtitle: '정교한 AI 파트너 추천 ➔ 글로벌 밋업 일정 조율 ➔ 국경 없는 스마트결제(XRP)로 이어지는 글로벌 여정을 원스톱으로 지원합니다.',
   dashboard_subheading: '환영합니다! 현재 비즈니스 현황입니다.',
   dashboard_generate_report: '리포트 생성',

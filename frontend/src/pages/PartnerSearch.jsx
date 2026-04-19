@@ -453,10 +453,10 @@ export default function PartnerSearch() {
 
       <section className="search-content">
         <section className="card hero" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
-          <h1 style={lang === 'ko' ? { fontSize: '2rem', lineHeight: 1.3, marginBottom: '1rem' } : { fontSize: '2rem', marginBottom: '1rem' }}>
+          <h1 style={lang === 'ko' ? { fontSize: '1.6rem', lineHeight: 1.3, marginBottom: '1rem', wordBreak: 'keep-all' } : { fontSize: '2rem', marginBottom: '1rem' }}>
             {t('dashboard_title')}
           </h1>
-          <p style={lang === 'ko' ? { fontSize: '1.1rem', lineHeight: 1.5, marginBottom: '2rem', color: '#FFFFFF' } : { fontSize: '1.1rem', marginBottom: '2rem', color: '#FFFFFF' }}>
+          <p style={lang === 'ko' ? { fontSize: '1.1rem', lineHeight: 1.5, marginBottom: '2rem', color: '#FFFFFF', wordBreak: 'keep-all' } : { fontSize: '1.1rem', marginBottom: '2rem', color: '#FFFFFF' }}>
             {t('dashboard_subtitle')}
           </p>
           <div className="search-bar-container">
