@@ -10,10 +10,6 @@
     "backend/**/*.ts": [
       "bash -c 'cd backend && npx eslint --fix'",
       "bash -c 'cd backend && npx prettier --write'"
-    ],
-    "frontend/src/**/*.{js,jsx}": [
-      "bash -c 'cd frontend && npx eslint --fix'",
-      "bash -c 'cd frontend && npx prettier --write'"
     ]
   },
   "devDependencies": {
