@@ -63,7 +63,9 @@ export class CompaniesService {
 
     const hasFilter = Object.keys(filter).length > 0;
     const sortField = sortBy === "nameNumeric" ? "name" : sortBy;
-    const sort = { [sortField]: order === "asc" ? 1 : -1 };
+    const sort: Record<string, 1 | -1> = {
+      [sortField]: order === "asc" ? 1 : -1,
+    };
     const skip = (page - 1) * limit;
 
     let findQuery = this.companyModel
