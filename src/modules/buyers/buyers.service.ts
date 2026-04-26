@@ -38,7 +38,7 @@ export class BuyersService {
     if (industry) filter.industries = industry;
     if (tag) filter.tags = tag;
 
-    const sort = { [sortBy]: order === "asc" ? 1 : -1 };
+    const sort: Record<string, 1 | -1> = { [sortBy]: order === "asc" ? 1 : -1 };
     const [items, total] = await Promise.all([
       this.buyerModel
         .find(filter)
