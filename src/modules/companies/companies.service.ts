@@ -5,14 +5,10 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Company, CompanyDocument } from "./schemas/company.schema";
+import { Company, CompanyDocument } from "../users/schemas/company.schema";
 import { CreateCompanyDto } from "./dto/create-company.dto";
 import { UpdateCompanyDto } from "./dto/update-company.dto";
 import { QueryCompanyDto } from "./dto/query-company.dto";
-
-const DEFAULT_IMAGE_URL =
-  process.env.DEFAULT_COMPANY_IMAGE_URL ||
-  "https://placehold.co/320x160?text=K-Statra";
 
 @Injectable()
 export class CompaniesService {
@@ -27,16 +23,12 @@ export class CompaniesService {
     tags: 1,
     location: 1,
     sizeBucket: 1,
-    profileText: 1,
-    dataSource: 1,
-    matchRecommendation: 1,
+    companyIntroduction: 1,
+    productIntroduction: 1,
+    websiteUrl: 1,
     updatedAt: 1,
-    "dart.corpCode": 1,
-    "primaryContact.name": 1,
-    "primaryContact.email": 1,
-    "images.url": 1,
-    "images.caption": 1,
-    "images.alt": 1,
+    contactName: 1,
+    email: 1,
   };
 
   async findAll(query: QueryCompanyDto) {
@@ -85,10 +77,7 @@ export class CompaniesService {
 
     const [raw, total] = await Promise.all([findQuery.exec(), countQuery]);
 
-    const items = raw.map(({ dart, ...rest }) => ({
-      ...rest,
-      dartVerified: !!(dart as any)?.corpCode,
-    }));
+    const items = raw;
 
     return {
       page,
@@ -106,20 +95,7 @@ export class CompaniesService {
   }
 
   async create(dto: CreateCompanyDto): Promise<CompanyDocument> {
-    const doc = await this.companyModel.create(dto);
-    if (!doc.images || doc.images.length === 0) {
-      doc.images = [
-        {
-          url: DEFAULT_IMAGE_URL,
-          caption: "Default image",
-          alt: doc.name,
-          tags: [],
-          clipEmbedding: [],
-        },
-      ];
-      await doc.save();
-    }
-    return doc;
+    return this.companyModel.create(dto);
   }
 
   async update(id: string, dto: UpdateCompanyDto): Promise<CompanyDocument> {

@@ -1,13 +1,7 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Buyer, BuyerDocument } from "./schemas/buyer.schema";
-import { CreateBuyerDto } from "./dto/create-buyer.dto";
-import { UpdateBuyerDto } from "./dto/update-buyer.dto";
+import { Buyer, BuyerDocument } from "../users/schemas/buyer.schema";
 import { QueryBuyerDto } from "./dto/query-buyer.dto";
 
 @Injectable()
@@ -61,32 +55,5 @@ export class BuyersService {
     const doc = await this.buyerModel.findById(id).exec();
     if (!doc) throw new NotFoundException("Buyer not found");
     return doc;
-  }
-
-  async create(dto: CreateBuyerDto): Promise<BuyerDocument> {
-    return this.buyerModel.create(dto);
-  }
-
-  async update(id: string, dto: UpdateBuyerDto): Promise<BuyerDocument> {
-    const fields = Object.fromEntries(
-      Object.entries(dto).filter(([, v]) => v !== undefined),
-    );
-    if (Object.keys(fields).length === 0) {
-      throw new BadRequestException("수정할 필드를 하나 이상 제공해야 합니다");
-    }
-    const doc = await this.buyerModel
-      .findByIdAndUpdate(
-        id,
-        { ...fields, updatedAt: new Date() },
-        { new: true, runValidators: true },
-      )
-      .exec();
-    if (!doc) throw new NotFoundException("Buyer not found");
-    return doc;
-  }
-
-  async remove(id: string): Promise<void> {
-    const doc = await this.buyerModel.findByIdAndDelete(id).exec();
-    if (!doc) throw new NotFoundException("Buyer not found");
   }
 }
