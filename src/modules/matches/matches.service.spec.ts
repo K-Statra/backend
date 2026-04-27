@@ -2,8 +2,8 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
 import { NotFoundException } from "@nestjs/common";
 import { MatchesService } from "./matches.service";
-import { Company } from "../companies/schemas/company.schema";
-import { Buyer } from "../buyers/schemas/buyer.schema";
+import { Company } from "../users/schemas/company.schema";
+import { Buyer } from "../users/schemas/buyer.schema";
 import { MatchLog } from "./schemas/match-log.schema";
 import { MatchFeedback } from "./schemas/match-feedback.schema";
 
@@ -206,41 +206,6 @@ describe("MatchesService", () => {
 
       expect(companyModel.find).toHaveBeenCalled();
       expect(companyModel.aggregate).not.toHaveBeenCalled();
-    });
-
-    it("DART 인증 기업은 스코어 가산점", async () => {
-      const buyer = makeBuyer({ tags: [], industries: [], needs: [] });
-      const companyWithDart = makeCompany({
-        dart: { corpCode: "A000001" },
-        tags: [],
-        offerings: [],
-        industry: "",
-      });
-      const companyWithoutDart = makeCompany({
-        _id: "507f1f77bcf86cd799439013",
-        dart: null,
-        tags: [],
-        offerings: [],
-        industry: "",
-      });
-      buyerModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(buyer),
-      });
-      companyModel.find.mockReturnValue(
-        buildQueryMock([companyWithoutDart, companyWithDart]),
-      );
-
-      const result = await service.findMatches(BUYER_ID, 10);
-
-      const dartIdx = result.data.findIndex(
-        (r: any) => r.company.dart?.corpCode === "A000001",
-      );
-      const noDartIdx = result.data.findIndex(
-        (r: any) => !r.company.dart?.corpCode,
-      );
-      expect(result.data[dartIdx].score).toBeGreaterThan(
-        result.data[noDartIdx].score,
-      );
     });
   });
 

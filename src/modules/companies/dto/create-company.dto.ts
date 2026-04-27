@@ -1,13 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Transform } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
+  IsIn,
   IsOptional,
   IsString,
   IsUrl,
   MaxLength,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from "class-validator";
 
 function trimDedupe(value: unknown): string[] {
@@ -17,6 +19,12 @@ function trimDedupe(value: unknown): string[] {
       (value as string[]).map((s) => String(s).trim()).filter(Boolean),
     ),
   ];
+}
+
+class LocationDto {
+  @IsOptional() @IsString() city?: string;
+  @IsOptional() @IsString() state?: string;
+  @IsOptional() @IsString() country?: string;
 }
 
 export class CreateCompanyDto {
@@ -37,14 +45,7 @@ export class CreateCompanyDto {
   @IsArray()
   @IsString({ each: true })
   @Transform(({ value }) => trimDedupe(value))
-  offerings?: string[];
-
-  @ApiPropertyOptional({ type: [String], example: ["OEM", "overseas partner"] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  @Transform(({ value }) => trimDedupe(value))
-  needs?: string[];
+  exportItems?: string[];
 
   @ApiPropertyOptional({ type: [String], example: ["B2B", "export"] })
   @IsOptional()
@@ -57,12 +58,33 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsString()
   @MaxLength(2000)
-  profileText?: string;
+  companyIntroduction?: string;
 
-  @ApiPropertyOptional({ example: "https://youtube.com/watch?v=xxx" })
+  @ApiPropertyOptional({ example: "EV 배터리 팩 및 BMS를 생산합니다." })
   @IsOptional()
-  @ValidateIf((o) => o.videoUrl !== "" && o.videoUrl != null)
+  @IsString()
+  @MaxLength(2000)
+  productIntroduction?: string;
+
+  @ApiPropertyOptional({ example: "https://acme.com" })
+  @IsOptional()
+  @ValidateIf((o) => o.websiteUrl !== "" && o.websiteUrl != null)
   @IsUrl({ protocols: ["http", "https"], require_protocol: true })
   @MaxLength(500)
-  videoUrl?: string;
+  websiteUrl?: string;
+
+  @ApiPropertyOptional({
+    example: { city: "Seoul", state: "", country: "South Korea" },
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LocationDto)
+  location?: LocationDto;
+
+  @ApiPropertyOptional({
+    enum: ["1-10", "11-50", "51-200", "201-1000", "1000+"],
+  })
+  @IsOptional()
+  @IsIn(["1-10", "11-50", "51-200", "201-1000", "1000+"])
+  sizeBucket?: string;
 }

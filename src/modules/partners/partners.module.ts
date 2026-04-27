@@ -1,15 +1,11 @@
 import { Module } from "@nestjs/common";
-import { MongooseModule } from "@nestjs/mongoose";
 import { PartnersController } from "./partners.controller";
 import { PartnersService } from "./partners.service";
-import { Company, CompanySchema } from "../companies/schemas/company.schema";
 import { EmbeddingsModule } from "../embeddings/embeddings.module";
+import { UsersModule } from "../users/users.module";
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([{ name: Company.name, schema: CompanySchema }]),
-    EmbeddingsModule,
-  ],
+  imports: [UsersModule, EmbeddingsModule],
   controllers: [PartnersController],
   providers: [PartnersService],
   exports: [PartnersService],

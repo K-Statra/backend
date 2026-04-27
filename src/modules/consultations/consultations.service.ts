@@ -10,8 +10,8 @@ import {
 import { CreateConsultationDto } from "./dto/create-consultation.dto";
 import { QueryConsultationDto } from "./dto/query-consultation.dto";
 import { UpdateConsultationStatusDto } from "./dto/update-consultation-status.dto";
-import { Buyer, BuyerDocument } from "../buyers/schemas/buyer.schema";
-import { Company, CompanyDocument } from "../companies/schemas/company.schema";
+import { Buyer, BuyerDocument } from "../users/schemas/buyer.schema";
+import { Company, CompanyDocument } from "../users/schemas/company.schema";
 
 @Injectable()
 export class ConsultationsService {
