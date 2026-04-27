@@ -4,6 +4,7 @@ reviews:
   profile: "chill"
   auto_review:
     enabled: true
+    draft: true
   high_level_summary: true
   review_instructions: |
     - 한 PR당 코멘트는 최대 20개까지만 작성해 주세요.
