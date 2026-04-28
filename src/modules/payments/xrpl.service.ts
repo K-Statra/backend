@@ -52,7 +52,11 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    await this.connect();
+    try {
+      await this.connect();
+    } catch (err: any) {
+      this.logger.warn(`XRPL initial connect failed: ${err.message}`);
+    }
   }
 
   async onModuleDestroy() {
@@ -95,11 +99,14 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
    */
   async fundAccount(wallet: XrplWallet): Promise<void> {
     try {
-      if (!this.client.isConnected()) {
-        await this.connect();
-      }
+      await this.connect();
 
       const xrplWallet = Wallet.fromSeed(wallet.seed);
+      if (xrplWallet.address !== wallet.address) {
+        throw new Error(
+          "Stored wallet address does not match the decrypted seed",
+        );
+      }
       await this.client.fundWallet(xrplWallet);
 
       this.logger.log(`Wallet funded and activated: ${wallet.address}`);
