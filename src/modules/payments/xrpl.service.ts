@@ -32,10 +32,11 @@ export interface XrplWallet {
 @Injectable()
 export class XrplService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(XrplService.name);
-  private client: Client;
   private readonly wsUrl: string;
   private readonly destAddress: string;
   private readonly encryptionKey: Buffer; // AES-256용 32바이트 키
+  private client: Client;
+  private connectPromise?: Promise<void>;
 
   constructor(private readonly config: ConfigService) {
     this.wsUrl = this.config.get<string>("xrpl.wsUrl")!;
@@ -60,14 +61,21 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // 중복 websocket 연결 방지 및 재연결 로직
+  // 중복 websocket 중복 연결 방지 및 재연결 로직
   private async connect() {
     if (!this.client) {
       this.client = new Client(this.wsUrl);
     }
-    if (!this.client.isConnected()) {
-      await this.client.connect();
+    if (this.client.isConnected()) {
+      return;
     }
+    if (!this.connectPromise) {
+      this.connectPromise = this.client.connect().finally(() => {
+        this.connectPromise = undefined;
+      });
+    }
+
+    await this.connectPromise;
     this.logger.log(`Connected to XRPL: ${this.wsUrl}`);
   }
 
