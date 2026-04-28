@@ -76,7 +76,13 @@ export default () => ({
   },
 
   session: {
-    secret: process.env.SESSION_SECRET || "dev-secret-change-in-production",
+    secret:
+      process.env.SESSION_SECRET ??
+      (process.env.NODE_ENV === "production"
+        ? (() => {
+            throw new Error("SESSION_SECRET env var is required in production");
+          })()
+        : "dev-secret-change-in-production"),
     ttl: Number(process.env.SESSION_TTL_SECONDS || 7 * 24 * 60 * 60), // 7일
   },
 

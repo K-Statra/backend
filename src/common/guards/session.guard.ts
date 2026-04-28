@@ -9,7 +9,8 @@ import {
 export class SessionGuard implements CanActivate {
   canActivate(ctx: ExecutionContext): boolean {
     const req = ctx.switchToHttp().getRequest();
-    if (!req.session?.userId || !req.session?.type) {
+    const type = req.session?.type;
+    if (!req.session?.userId || (type !== "buyer" && type !== "seller")) {
       throw new UnauthorizedException("User not authenticated");
     }
     return true;
