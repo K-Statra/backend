@@ -120,11 +120,28 @@ describe("AuthController", () => {
   describe("POST /auth/logout", () => {
     it("세션 파괴 후 로그아웃 메시지 반환", async () => {
       const req = { session: { destroy: jest.fn((cb: () => void) => cb()) } };
-
-      const result = await controller.logout(req);
+      const res = { clearCookie: jest.fn() };
+      const result = await controller.logout(req, res as any);
 
       expect(req.session.destroy).toHaveBeenCalled();
-      expect(result).toEqual({ message: "로그아웃 성공" });
+      expect(res.clearCookie).toHaveBeenCalledWith("connect.sid");
+      expect(result).toEqual({ message: "Success logout" });
+    });
+
+    it("세션 파괴 실패 → InternalServerErrorException", async () => {
+      const req = {
+        session: {
+          destroy: jest.fn((cb: (err: unknown) => void) =>
+            cb(new Error("destroy failed")),
+          ),
+        },
+      };
+      const res = { clearCookie: jest.fn() };
+
+      await expect(controller.logout(req, res as any)).rejects.toThrow(
+        "Failed to destroy session",
+      );
+      expect(res.clearCookie).not.toHaveBeenCalled();
     });
   });
 });

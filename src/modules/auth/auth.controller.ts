@@ -33,7 +33,7 @@ export class AuthController {
   @ApiOperation({ summary: "구매자(Buyer) 회원가입" })
   @ApiResponse({ status: 201, description: "회원가입 성공" })
   @ApiResponse({
-    status: 400,
+    status: 409,
     description: "유효성 검사 실패 또는 중복된 이메일",
   })
   async registerBuyer(@Body() dto: RegisterBuyerDto) {
