@@ -58,7 +58,12 @@ export class AuthService {
     });
 
     const saved = await newSeller.save();
-    this.activateAccountInBackground(wallet, saved._id, "seller");
+    void this.activateAccountInBackground(wallet, saved._id, "seller").catch(
+      (err) =>
+        this.logger.error(
+          `activateAccountInBackground unhandled: ${err?.message ?? err}`,
+        ),
+    );
     return this.toSafeResponse(saved.toObject());
   }
 
@@ -92,7 +97,12 @@ export class AuthService {
     });
 
     const saved = await newBuyer.save();
-    this.activateAccountInBackground(wallet, saved._id, "buyer");
+    void this.activateAccountInBackground(wallet, saved._id, "buyer").catch(
+      (err) =>
+        this.logger.error(
+          `activateAccountInBackground unhandled: ${err?.message ?? err}`,
+        ),
+    );
     return this.toSafeResponse(saved.toObject());
   }
 
@@ -113,9 +123,7 @@ export class AuthService {
         "이메일 또는 비밀번호가 올바르지 않습니다.",
       );
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _pw, ...safeUser } = user as any;
-    return safeUser;
+    return this.toSafeResponse(user);
   }
 
   // XRPL 계정 활성화(펀딩)
@@ -139,15 +147,22 @@ export class AuthService {
       this.logger.error(
         `Failed to activate ${type} (${String(id)}): ${err.message}`,
       );
-      if (type === "seller") {
-        await this.companyModel.updateOne(
-          { _id: id },
-          { status: "FAILED_ACTIVATION" },
-        );
-      } else {
-        await this.buyerModel.updateOne(
-          { _id: id },
-          { status: "FAILED_ACTIVATION" },
+      try {
+        if (type === "seller") {
+          await this.companyModel.updateOne(
+            { _id: id },
+            { status: "FAILED_ACTIVATION" },
+          );
+        } else {
+          await this.buyerModel.updateOne(
+            { _id: id },
+            { status: "FAILED_ACTIVATION" },
+          );
+        }
+      } catch (innerErr) {
+        this.logger.error(
+          `Failed to mark FAILED_ACTIVATION ${type} (${String(id)})`,
+          innerErr,
         );
       }
     }

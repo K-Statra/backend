@@ -7,6 +7,9 @@ import {
   IsNotEmpty,
   ArrayNotEmpty,
   MinLength,
+  ValidateIf,
+  IsUrl,
+  MaxLength,
 } from "class-validator";
 
 export class RegisterCommonDto {
@@ -70,7 +73,9 @@ export class RegisterBuyerDto extends RegisterCommonDto {
 
   @ApiPropertyOptional({ example: "https://buyer.example.com" })
   @IsString()
-  @IsOptional()
+  @ValidateIf((o) => o.websiteUrl !== "" && o.websiteUrl != null)
+  @IsUrl({ protocols: ["http", "https"], require_protocol: true })
+  @MaxLength(500)
   websiteUrl?: string;
 }
 
