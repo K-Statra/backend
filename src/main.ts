@@ -33,13 +33,14 @@ async function bootstrap() {
 
   app.use(
     session({
-      store: new RedisStore({ client: redisClient as any, ttl: sessionTtl }),
+      store: new RedisStore({ client: redisClient, ttl: sessionTtl }),
       secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
+        sameSite: "none",
         maxAge: sessionTtl * 1000,
       },
     }),

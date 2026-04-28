@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Req, HttpCode } from "@nestjs/common";
+import {
+  Controller,
+  Post,
+  Body,
+  Res,
+  Req,
+  HttpCode,
+  InternalServerErrorException,
+} from "@nestjs/common";
+import type { Response } from "express";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
 import { RegisterBuyerDto, RegisterSellerDto } from "./dto/register.dto";
@@ -50,9 +59,17 @@ export class AuthController {
   @HttpCode(200)
   @ApiOperation({ summary: "로그아웃 (세션 파괴)" })
   @ApiResponse({ status: 200, description: "로그아웃 성공" })
-  logout(@Req() req: any) {
-    return new Promise<{ message: string }>((resolve) => {
-      req.session.destroy(() => resolve({ message: "로그아웃 성공" }));
+  logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
+    return new Promise<{ message: string }>((resolve, reject) => {
+      req.session.destroy((err: unknown) => {
+        if (err) {
+          return reject(
+            new InternalServerErrorException("Failed to destroy session"),
+          );
+        }
+        res.clearCookie("connect.sid");
+        resolve({ message: "Success logout" });
+      });
     });
   }
 }
