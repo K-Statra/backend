@@ -5,7 +5,7 @@ export class WalletInfo {
   @Prop({ required: true })
   address: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, select: false })
   seed: string; // AES-256-GCM 암호화된 값
 
   @Prop({ required: true })

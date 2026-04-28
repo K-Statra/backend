@@ -42,7 +42,7 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
     this.destAddress = this.config.get<string>("xrpl.destAddress")!;
 
     const keyStr = this.config.get<string>("security.encryptionKey");
-    if (!keyStr || keyStr.length !== 64) {
+    if (!keyStr || !/^[0-9a-fA-F]{64}$/.test(keyStr)) {
       throw new Error(
         "security.encryptionKey must be a 64-character hex string (32 bytes)",
       );
@@ -60,9 +60,14 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // 중복 websocket 연결 방지 및 재연결 로직
   private async connect() {
-    this.client = new Client(this.wsUrl);
-    await this.client.connect();
+    if (!this.client) {
+      this.client = new Client(this.wsUrl);
+    }
+    if (!this.client.isConnected()) {
+      await this.client.connect();
+    }
     this.logger.log(`Connected to XRPL: ${this.wsUrl}`);
   }
 

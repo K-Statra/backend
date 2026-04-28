@@ -82,7 +82,11 @@ export default () => ({
 
   security: {
     encryptionKey:
-      process.env.ENCRYPTION_KEY ||
-      "3b1a51039ac4a559d0dcec462cce9a66381632ba7e5570b1f9b32a82b1d7e8cc",
+      process.env.ENCRYPTION_KEY ??
+      (process.env.NODE_ENV === "production"
+        ? (() => {
+            throw new Error("ENCRYPTION_KEY env var is required in production");
+          })()
+        : "3b1a51039ac4a559d0dcec462cce9a66381632ba7e5570b1f9b32a82b1d7e8cc"),
   },
 });
