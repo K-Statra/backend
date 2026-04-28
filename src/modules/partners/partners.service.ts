@@ -184,8 +184,8 @@ export class PartnersService {
           },
         },
       ];
-
-      const matchStage: Record<string, any> = {};
+      // Seller 만 검색함 (필터 적용)
+      const matchStage: Record<string, any> = { type: "seller" };
       if (industry) {
         matchStage.industry = INDUSTRY_MAPPING[industry]
           ? { $in: INDUSTRY_MAPPING[industry] }
@@ -469,12 +469,14 @@ export class PartnersService {
     };
   }
 
+  // Seller 만 검색함 (필터 적용)
   async getDebugInfo() {
     const docCount = await this.companyModel.countDocuments();
     const embeddingCount = await this.companyModel.countDocuments({
       embedding: { $exists: true, $not: { $size: 0 } },
     });
     const industryStats = await this.companyModel.aggregate([
+      { $match: { type: "seller" } },
       { $group: { _id: "$industry", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 20 },
