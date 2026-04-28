@@ -1,8 +1,14 @@
 language: "ko-KR"
-
+tone_instructions: |
+  - 한 PR당 코멘트는 최대 20개까지만 작성해 주세요.
+  - 너무 사소한 코드 스타일보다는 로직 오류, 보안, 성능 개선 위주로 적당한 수준의 리뷰를 제공해 주세요.
+  - 가장 중요한 문제부터 우선순위를 두어 리뷰해 주세요.
 reviews:
+  profile: "chill"
   auto_review:
     enabled: true
+    drafts: true
+  high_level_summary: true
 
 chat:
   auto_reply: true

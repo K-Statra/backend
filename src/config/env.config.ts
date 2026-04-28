@@ -3,13 +3,45 @@ export default () => ({
   nodeEnv: process.env.NODE_ENV || "development",
 
   mongodb: {
-    uri: process.env.MONGODB_URI || "mongodb://localhost:27017/k-statra",
+    uri: process.env.MONGODB_URI || "localhost:27017",
+    vectorIndex: process.env.ATLAS_VECTOR_INDEX || "vector_index",
+  },
+
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY || "",
+    modelId: process.env.GPT_MODEL_ID || "gpt-4o",
+  },
+
+  embeddings: {
+    provider: (process.env.EMBEDDINGS_PROVIDER || "mock").toLowerCase(),
+    openai: {
+      model: process.env.OPENAI_EMBED_MODEL || "text-embedding-3-small",
+      timeout: Number(process.env.OPENAI_TIMEOUT_MS || 20000),
+      debug: process.env.OPENAI_DEBUG === "1",
+    },
+    huggingface: {
+      apiToken: process.env.HF_API_TOKEN || "",
+      model: process.env.HF_EMBEDDING_MODEL || "intfloat/multilingual-e5-small",
+      timeout: Number(process.env.HF_TIMEOUT_MS || 20000),
+      debug: process.env.HF_DEBUG === "1",
+    },
+  },
+
+  tavily: {
+    apiKey: process.env.TAVILY_API_KEY || "",
   },
 
   neo4j: {
     uri: process.env.NEO4J_URI || "bolt://localhost:7687",
     user: process.env.NEO4J_USER || "neo4j",
     password: process.env.NEO4J_PASSWORD || "",
+    graphScoreWeight: Number(process.env.GRAPH_SCORE_WEIGHT || 0.3),
+  },
+
+  matching: {
+    useEmbedding: process.env.MATCH_USE_EMBEDDING === "true",
+    embeddingWeight: Number(process.env.MATCH_EMBEDDING_WEIGHT || 0.3),
+    useAtlasVector: process.env.MATCH_USE_ATLAS_VECTOR === "true",
   },
 
   xrpl: {
@@ -35,5 +67,32 @@ export default () => ({
 
   cors: {
     origins: (process.env.CORS_ORIGINS || "*").split(",").map((s) => s.trim()),
+  },
+
+  redis: {
+    password: process.env.REDIS_PASSWORD || "",
+    host: process.env.REDIS_HOST || "localhost",
+    port: Number(process.env.REDIS_PORT || 6379),
+  },
+
+  session: {
+    secret:
+      process.env.SESSION_SECRET ??
+      (process.env.NODE_ENV === "production"
+        ? (() => {
+            throw new Error("SESSION_SECRET env var is required in production");
+          })()
+        : "dev-secret-change-in-production"),
+    ttl: Number(process.env.SESSION_TTL_SECONDS || 7 * 24 * 60 * 60), // 7일
+  },
+
+  security: {
+    encryptionKey:
+      process.env.ENCRYPTION_KEY ??
+      (process.env.NODE_ENV === "production"
+        ? (() => {
+            throw new Error("ENCRYPTION_KEY env var is required in production");
+          })()
+        : "3b1a51039ac4a559d0dcec462cce9a66381632ba7e5570b1f9b32a82b1d7e8cc"),
   },
 });

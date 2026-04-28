@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import axios from "axios";
-import { Company, CompanyDocument } from "../companies/schemas/company.schema";
+import { Company, CompanyDocument } from "../users/schemas/company.schema";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 
 const INDUSTRY_MAPPING: Record<string, string[]> = {
@@ -67,12 +67,10 @@ const SEARCH_PROJECTION = {
   tags: 1,
   location: 1,
   sizeBucket: 1,
-  profileText: 1,
-  matchRecommendation: 1,
-  matchAnalysis: 1,
+  companyIntroduction: 1,
+  productIntroduction: 1,
+  websiteUrl: 1,
   updatedAt: 1,
-  "dart.corpCode": 1,
-  dataSource: 1,
 } as const;
 
 @Injectable()
@@ -186,8 +184,8 @@ export class PartnersService {
           },
         },
       ];
-
-      const matchStage: Record<string, any> = {};
+      // Seller 만 검색함 (필터 적용)
+      const matchStage: Record<string, any> = { type: "seller" };
       if (industry) {
         matchStage.industry = INDUSTRY_MAPPING[industry]
           ? { $in: INDUSTRY_MAPPING[industry] }
@@ -384,12 +382,10 @@ export class PartnersService {
           _id: `web_${index}`,
           name: item.title,
           industry: "Web Result",
-          location: { country: "Global", city: "" },
-          profileText: item.content,
-          website: item.url,
+          location: { country: "Global", city: "", state: "" },
+          companyIntroduction: item.content,
+          websiteUrl: item.url,
           tags: ["Web"],
-          matchRecommendation: `Discovered via real-time web search for ${detectedIntent}.`,
-          matchAnalysis: [],
           score: Math.min(1.0, Math.max(0.1, score)),
         };
       });
@@ -398,7 +394,7 @@ export class PartnersService {
         const countryLower = (intentData.country as string).toLowerCase();
         mappedWebResults = mappedWebResults.map((item: any) => {
           const text = (
-            (item.profileText || "") +
+            (item.companyIntroduction || "") +
             " " +
             (item.name || "")
           ).toLowerCase();
@@ -473,18 +469,20 @@ export class PartnersService {
     };
   }
 
+  // Seller 만 검색함 (필터 적용)
   async getDebugInfo() {
     const docCount = await this.companyModel.countDocuments();
     const embeddingCount = await this.companyModel.countDocuments({
       embedding: { $exists: true, $not: { $size: 0 } },
     });
     const industryStats = await this.companyModel.aggregate([
+      { $match: { type: "seller" } },
       { $group: { _id: "$industry", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 20 },
     ]);
     const sampleData = await this.companyModel
-      .find({}, { name: 1, industry: 1, profileText: 1 })
+      .find({}, { name: 1, industry: 1, companyIntroduction: 1 })
       .limit(5)
       .lean();
 

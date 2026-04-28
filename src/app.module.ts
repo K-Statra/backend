@@ -7,15 +7,14 @@ import { CompaniesModule } from "./modules/companies/companies.module";
 import { PartnersModule } from "./modules/partners/partners.module";
 import { MatchesModule } from "./modules/matches/matches.module";
 import { BuyersModule } from "./modules/buyers/buyers.module";
-import { AdminModule } from "./modules/admin/admin.module";
-import { InsightsModule } from "./modules/insights/insights.module";
-import { ConsultantsModule } from "./modules/consultants/consultants.module";
 import { ConsultationsModule } from "./modules/consultations/consultations.module";
+import { AuthModule } from "./modules/auth/auth.module";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: [`.env.${process.env.NODE_ENV || "development"}`, ".env"],
       load: [envConfig],
     }),
     MongooseModule.forRootAsync({
@@ -29,10 +28,8 @@ import { ConsultationsModule } from "./modules/consultations/consultations.modul
     PartnersModule,
     MatchesModule,
     BuyersModule,
-    AdminModule,
-    InsightsModule,
-    ConsultantsModule,
     ConsultationsModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

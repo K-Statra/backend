@@ -2,7 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { CompaniesService } from "./companies.service";
-import { Company } from "./schemas/company.schema";
+import { Company } from "../users/schemas/company.schema";
 
 function buildQueryMock(resolvedValue: any) {
   const mock: any = {
@@ -98,27 +98,6 @@ describe("CompaniesService", () => {
       });
     });
 
-    it("dart.corpCode 있으면 dartVerified=true로 변환", async () => {
-      const raw = [
-        { _id: VALID_ID, name: "Acme", dart: { corpCode: "ABC123" } },
-      ];
-      companyModel.find.mockReturnValue(buildQueryMock(raw));
-
-      const result = await service.findAll({});
-
-      expect(result.data[0].dartVerified).toBe(true);
-      expect((result.data[0] as any).dart).toBeUndefined();
-    });
-
-    it("dart 없으면 dartVerified=false", async () => {
-      const raw = [{ _id: VALID_ID, name: "Acme", dart: null }];
-      companyModel.find.mockReturnValue(buildQueryMock(raw));
-
-      const result = await service.findAll({});
-
-      expect(result.data[0].dartVerified).toBe(false);
-    });
-
     it("totalPages 올림 계산", async () => {
       companyModel.find.mockReturnValue(buildQueryMock([]));
       companyModel.estimatedDocumentCount.mockResolvedValue(21);
@@ -155,28 +134,13 @@ describe("CompaniesService", () => {
   // ── create ────────────────────────────────────────────────────────────────────
 
   describe("create", () => {
-    it("이미지 있으면 플레이스홀더 미삽입", async () => {
-      const doc = {
-        _id: VALID_ID,
-        name: "Acme",
-        images: [{ url: "http://img.com/a.jpg" }],
-        save: jest.fn(),
-      };
-      companyModel.create.mockResolvedValue(doc);
+    it("dto로 기업 생성 후 반환", async () => {
+      const dto = { name: "Acme" } as any;
+      const created = { _id: VALID_ID, name: "Acme" };
+      companyModel.create.mockResolvedValue(created);
 
-      await service.create({ name: "Acme" });
-
-      expect(doc.save).not.toHaveBeenCalled();
-    });
-
-    it("이미지 없으면 플레이스홀더 삽입 후 save", async () => {
-      const doc = { _id: VALID_ID, name: "Acme", images: [], save: jest.fn() };
-      companyModel.create.mockResolvedValue(doc);
-
-      await service.create({ name: "Acme" });
-
-      expect(doc.images).toHaveLength(1);
-      expect(doc.save).toHaveBeenCalled();
+      expect(await service.create(dto)).toEqual(created);
+      expect(companyModel.create).toHaveBeenCalledWith(dto);
     });
   });
 

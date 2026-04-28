@@ -1,8 +1,8 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Company, CompanyDocument } from "../companies/schemas/company.schema";
-import { Buyer, BuyerDocument } from "../buyers/schemas/buyer.schema";
+import { Company, CompanyDocument } from "../users/schemas/company.schema";
+import { Buyer, BuyerDocument } from "../users/schemas/buyer.schema";
 import { MatchLog, MatchLogDocument } from "./schemas/match-log.schema";
 import {
   MatchFeedback,
@@ -47,7 +47,7 @@ function scoreCompany(
   const companyIndustry = String(company.industry || "")
     .toLowerCase()
     .trim();
-  const companyOfferings = toSet(company.offerings);
+  const companyExportItems = toSet(company.exportItems);
 
   let score = 0;
   const reasons: string[] = [];
@@ -63,10 +63,10 @@ function scoreCompany(
     reasons.push("industry match");
   }
 
-  const needMatches = intersectCount(buyerNeeds, companyOfferings);
+  const needMatches = intersectCount(buyerNeeds, companyExportItems);
   if (needMatches > 0) {
     score += needMatches * 2;
-    reasons.push(`needs-offerings overlap x${needMatches}`);
+    reasons.push(`needs-exportItems overlap x${needMatches}`);
   }
 
   const days = Math.max(
@@ -87,11 +87,6 @@ function scoreCompany(
   ) {
     score += 2.0;
     reasons.push("Automotive sector priority");
-  }
-
-  if (company.dart?.corpCode) {
-    score += 1.5;
-    reasons.push("DART verified");
   }
 
   const useEmbedding = process.env.MATCH_USE_EMBEDDING === "true";

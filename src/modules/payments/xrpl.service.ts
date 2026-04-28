@@ -5,7 +5,7 @@ import {
   OnModuleInit,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { Client, xrpToDrops } from "xrpl";
+import { Client, xrpToDrops, Wallet } from "xrpl";
 import * as crypto from "crypto";
 
 export interface XrplInvoice {
@@ -22,71 +22,139 @@ export interface PaymentCheckResult {
   txHash?: string;
 }
 
+export interface XrplWallet {
+  address: string;
+  seed: string;
+  publicKey: string;
+  privateKey: string;
+}
+
 @Injectable()
 export class XrplService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(XrplService.name);
-  private client: Client;
   private readonly wsUrl: string;
   private readonly destAddress: string;
+  private readonly encryptionKey: Buffer; // AES-256용 32바이트 키
+  private client: Client;
+  private connectPromise?: Promise<void>;
 
   constructor(private readonly config: ConfigService) {
     this.wsUrl = this.config.get<string>("xrpl.wsUrl")!;
     this.destAddress = this.config.get<string>("xrpl.destAddress")!;
+
+    const keyStr = this.config.get<string>("security.encryptionKey");
+    if (!keyStr || !/^[0-9a-fA-F]{64}$/.test(keyStr)) {
+      throw new Error(
+        "security.encryptionKey must be a 64-character hex string (32 bytes)",
+      );
+    }
+    this.encryptionKey = Buffer.from(keyStr, "hex");
   }
 
-  // 서버 시작 시 XRPL 노드에 WebSocket 연결 (상시 유지)
   async onModuleInit() {
-    await this.connect();
+    try {
+      await this.connect();
+    } catch (err: any) {
+      this.logger.warn(`XRPL initial connect failed: ${err.message}`);
+    }
   }
 
-  // 서버 종료 시 연결 해제
   async onModuleDestroy() {
-    await this.disconnect();
+    if (this.client?.isConnected()) {
+      await this.client.disconnect();
+    }
   }
 
+  // 중복 websocket 중복 연결 방지 및 재연결 로직
   private async connect() {
-    try {
+    if (!this.client) {
       this.client = new Client(this.wsUrl);
-      await this.client.connect();
-      this.logger.log(`XRPL connected: ${this.wsUrl}`);
-
-      // 연결 끊기면 자동 재연결
-      this.client.on("disconnected", async (code) => {
-        this.logger.warn(`XRPL disconnected (code: ${code}), reconnecting...`);
-        await this.reconnect();
+    }
+    if (this.client.isConnected()) {
+      return;
+    }
+    if (!this.connectPromise) {
+      this.connectPromise = this.client.connect().finally(() => {
+        this.connectPromise = undefined;
       });
-    } catch (err) {
-      this.logger.error("XRPL connection failed", err);
     }
+
+    await this.connectPromise;
+    this.logger.log(`Connected to XRPL: ${this.wsUrl}`);
   }
 
-  private async reconnect(retries = 5, delayMs = 3000) {
-    for (let i = 0; i < retries; i++) {
-      try {
-        await new Promise((r) => setTimeout(r, delayMs));
-        await this.client.connect();
-        this.logger.log("XRPL reconnected");
-        return;
-      } catch {
-        this.logger.warn(`Reconnect attempt ${i + 1}/${retries} failed`);
-      }
-    }
-    this.logger.error("XRPL reconnection exhausted");
+  // 신규 지갑 생성
+  generateWallet(): XrplWallet {
+    const wallet = Wallet.generate();
+    return {
+      address: wallet.address,
+      seed: wallet.seed!,
+      publicKey: wallet.publicKey,
+      privateKey: wallet.privateKey,
+    };
   }
 
-  private async disconnect() {
+  /**
+   * 테스트넷에서 계정 활성화 (1 XRP 이상 펀딩)
+   */
+  async fundAccount(wallet: XrplWallet): Promise<void> {
     try {
-      if (this.client?.isConnected()) {
-        await this.client.disconnect();
-        this.logger.log("XRPL disconnected");
+      await this.connect();
+
+      const xrplWallet = Wallet.fromSeed(wallet.seed);
+      if (xrplWallet.address !== wallet.address) {
+        throw new Error(
+          "Stored wallet address does not match the decrypted seed",
+        );
       }
+      await this.client.fundWallet(xrplWallet);
+
+      this.logger.log(`Wallet funded and activated: ${wallet.address}`);
     } catch (err) {
-      this.logger.error("XRPL disconnect error", err);
+      this.logger.error(`Failed to fund wallet: ${wallet.address}`, err);
+      throw err;
     }
   }
 
-  isConnected(): boolean {
-    return this.client?.isConnected() ?? false;
+  /**
+   * AES-256-GCM으로 데이터 암호화
+   */
+  encrypt(text: string): string {
+    const iv = crypto.randomBytes(12); // GCM 권장 IV 길이는 12바이트
+    const cipher = crypto.createCipheriv("aes-256-gcm", this.encryptionKey, iv);
+
+    let encrypted = cipher.update(text, "utf8", "hex");
+    encrypted += cipher.final("hex");
+
+    const authTag = cipher.getAuthTag().toString("hex");
+
+    // iv:authTag:encryptedText 형태로 저장
+    return `${iv.toString("hex")}:${authTag}:${encrypted}`;
+  }
+
+  /**
+   * AES-256-GCM 데이터 복호화
+   */
+  decrypt(cipherText: string): string {
+    const [ivHex, authTagHex, encryptedHex] = cipherText.split(":");
+    if (!ivHex || !authTagHex || !encryptedHex) {
+      throw new Error("Invalid cipher text format");
+    }
+
+    const iv = Buffer.from(ivHex, "hex");
+    const authTag = Buffer.from(authTagHex, "hex");
+    const decipher = crypto.createDecipheriv(
+      "aes-256-gcm",
+      this.encryptionKey,
+      iv,
+    );
+
+    decipher.setAuthTag(authTag);
+
+    let decrypted = decipher.update(encryptedHex, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+
+    return decrypted;
   }
 
   // DestinationTag: paymentId를 SHA256 해시해서 uint32로 변환

@@ -2,7 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
 import { PartnersService } from "./partners.service";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
-import { Company } from "../companies/schemas/company.schema";
+import { Company } from "../users/schemas/company.schema";
 
 // Mongoose query는 exec() 없이 await 가능한 thenable → then/catch 추가
 function buildQueryMock(resolvedValue: any) {
