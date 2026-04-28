@@ -111,7 +111,7 @@ describe("XrplService (testnet integration)", () => {
       } finally {
         await client.disconnect();
       }
-    });
+    }, 60_000);
 
     it("이미 활성화된 지갑에 재시도해도 에러 없음", async () => {
       const wallet = service.generateWallet();
@@ -119,6 +119,6 @@ describe("XrplService (testnet integration)", () => {
 
       // 두 번째 호출 (스케줄러 재시도 시나리오)
       await expect(service.fundAccount(wallet)).resolves.not.toThrow();
-    });
+    }, 60_000);
   });
 });
