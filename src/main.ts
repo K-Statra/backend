@@ -17,8 +17,14 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>("port") ?? 3000;
   const origins = configService.get<string[]>("cors.origins") ?? ["*"];
-  const sessionSecret = configService.get<string>("session.secret")!;
-  const sessionTtl = configService.get<number>("session.ttl")!;
+  const sessionSecret = configService.get<string>("session.secret");
+  const sessionTtl = configService.get<number>("session.ttl");
+
+  if (!sessionSecret || !sessionTtl) {
+    throw new Error(
+      "Missing required session configuration: session.secret and session.ttl",
+    );
+  }
 
   // Redis session store
   const redisClient = createClient({
