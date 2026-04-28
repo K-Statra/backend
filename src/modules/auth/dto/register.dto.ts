@@ -112,7 +112,9 @@ export class RegisterSellerDto extends RegisterCommonDto {
   productIntroduction: string;
 
   @ApiPropertyOptional({ example: "https://seller.example.com" })
-  @IsString()
   @IsOptional()
+  @ValidateIf((o) => o.websiteUrl !== "" && o.websiteUrl != null)
+  @IsUrl({ protocols: ["http", "https"], require_protocol: true })
+  @MaxLength(500)
   websiteUrl?: string;
 }

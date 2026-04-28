@@ -176,7 +176,7 @@ export class PartnersService {
       const pipeline: any[] = [
         {
           $vectorSearch: {
-            index: process.env.ATLAS_VECTOR_INDEX,
+            index: process.env.ATLAS_VECTOR_INDEX || "vector_index",
             path: "embedding",
             queryVector: vector,
             numCandidates: 100,
@@ -394,7 +394,7 @@ export class PartnersService {
         const countryLower = (intentData.country as string).toLowerCase();
         mappedWebResults = mappedWebResults.map((item: any) => {
           const text = (
-            (item.profileText || "") +
+            (item.companyIntroduction || "") +
             " " +
             (item.name || "")
           ).toLowerCase();
