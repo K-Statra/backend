@@ -31,19 +31,13 @@ export class User {
   phone: string;
 
   @Prop({ type: [String], default: [] })
-  tags: string[];
+  industries: string[];
 
-  @Prop({ type: [Number], default: [] })
-  embedding: number[];
+  @Prop({ required: false })
+  sellerIntroduction: string;
 
-  @Prop({ required: true })
-  companyIntroduction: string;
-
-  @Prop({ required: true })
+  @Prop({ required: false })
   productIntroduction: string;
-
-  @Prop({ default: "" })
-  websiteUrl: string;
 
   @Prop({ type: WalletInfoSchema })
   wallet?: WalletInfo;
@@ -63,6 +57,6 @@ export const UserSchema = SchemaFactory.createForClass(User);
 UserSchema.index({ "wallet.address": 1 }, { unique: true, sparse: true });
 UserSchema.index({ status: 1 });
 UserSchema.index(
-  { name: "text", companyIntroduction: "text", productIntroduction: "text" },
-  { weights: { name: 10, companyIntroduction: 2, productIntroduction: 2 } },
+  { name: "text", sellerIntroduction: "text", productIntroduction: "text" },
+  { weights: { name: 10, sellerIntroduction: 2, productIntroduction: 2 } },
 );

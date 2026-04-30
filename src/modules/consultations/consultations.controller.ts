@@ -26,7 +26,7 @@ export class ConsultationsController {
   }
 
   @Get()
-  @ApiOperation({ summary: "미팅 예약 목록 조회 (buyerId / companyId 필터)" })
+  @ApiOperation({ summary: "미팅 예약 목록 조회 (buyerId / sellerId 필터)" })
   findAll(@Query() query: QueryConsultationDto) {
     return this.consultationsService.findAll(query);
   }

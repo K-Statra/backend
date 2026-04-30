@@ -21,14 +21,14 @@ export class Consultation {
   @Prop({ type: Types.ObjectId, ref: "Buyer", required: true })
   buyerId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: "Company", required: true })
-  companyId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: "Seller", required: true })
+  sellerId: Types.ObjectId;
 
   @Prop({ trim: true })
   buyerName: string;
 
   @Prop({ trim: true })
-  companyName: string;
+  sellerName: string;
 
   @Prop({ enum: ReqType, default: ReqType.OFFLINE })
   reqType: ReqType;
@@ -63,5 +63,5 @@ export class Consultation {
 
 export const ConsultationSchema = SchemaFactory.createForClass(Consultation);
 ConsultationSchema.index({ buyerId: 1 });
-ConsultationSchema.index({ companyId: 1 });
+ConsultationSchema.index({ sellerId: 1 });
 ConsultationSchema.index({ date: 1, timeSlot: 1 });

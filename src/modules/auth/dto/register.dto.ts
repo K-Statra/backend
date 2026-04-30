@@ -16,7 +16,7 @@ export class RegisterCommonDto {
   @ApiProperty({ example: "K-Statra Inc." })
   @IsString()
   @IsNotEmpty()
-  companyName: string;
+  sellerName: string;
 
   @ApiProperty({ example: "홍길동" })
   @IsString()
@@ -55,16 +55,10 @@ export class RegisterBuyerDto extends RegisterCommonDto {
   @IsOptional()
   industries?: string[];
 
-  @ApiPropertyOptional({ type: [String], example: ["Global", "Tech"] })
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  tags?: string[];
-
   @ApiProperty({ example: "글로벌 IT 솔루션을 찾는 구매자입니다." })
   @IsString()
   @IsNotEmpty()
-  companyIntroduction: string;
+  sellerIntroduction: string;
 
   @ApiProperty({ example: "클라우드 기반 협업 툴을 선호합니다." })
   @IsString()
@@ -90,21 +84,19 @@ export class RegisterSellerDto extends RegisterCommonDto {
   @IsNotEmpty({ each: true })
   exportItems: string[];
 
-  @ApiPropertyOptional({ example: "Industrial Tech" })
-  @IsString()
-  @IsOptional()
-  industry?: string;
-
-  @ApiPropertyOptional({ type: [String], example: ["IoT", "Smart Factory"] })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ["IT / AI / SaaS", "Industrial Tech"],
+  })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
-  tags?: string[];
+  industries?: string[];
 
   @ApiProperty({ example: "스마트 팩토리 솔루션 전문 기업입니다." })
   @IsString()
   @IsNotEmpty()
-  companyIntroduction: string;
+  sellerIntroduction: string;
 
   @ApiProperty({ example: "실시간 데이터 분석 솔루션을 제공합니다." })
   @IsString()

@@ -9,7 +9,7 @@ import {
 } from "class-validator";
 import { Type } from "class-transformer";
 
-export class QueryCompanyDto {
+export class QuerySellerDto {
   @ApiPropertyOptional() @IsOptional() @IsString() q?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() industry?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() tag?: string;

@@ -7,7 +7,7 @@ import {
   MatchFeedback,
   MatchFeedbackSchema,
 } from "./schemas/match-feedback.schema";
-import { CompaniesModule } from "../companies/companies.module";
+import { SellersModule } from "../sellers/sellers.module";
 import { BuyersModule } from "../buyers/buyers.module";
 
 @Module({
@@ -16,7 +16,7 @@ import { BuyersModule } from "../buyers/buyers.module";
       { name: MatchLog.name, schema: MatchLogSchema },
       { name: MatchFeedback.name, schema: MatchFeedbackSchema },
     ]),
-    CompaniesModule,
+    SellersModule,
     BuyersModule,
   ],
   controllers: [MatchesController],

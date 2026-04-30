@@ -2,7 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import axios from "axios";
-import { Company, CompanyDocument } from "../users/schemas/company.schema";
+import { Seller, SellerDocument } from "../sellers/schemas/seller.schema";
+import { Buyer, BuyerDocument } from "../buyers/schemas/buyer.schema";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 
 const INDUSTRY_MAPPING: Record<string, string[]> = {
@@ -63,27 +64,49 @@ export interface SearchResult {
 
 const SEARCH_PROJECTION = {
   name: 1,
+  nameEn: 1,
   industry: 1,
   tags: 1,
   location: 1,
   sizeBucket: 1,
-  companyIntroduction: 1,
-  productIntroduction: 1,
-  websiteUrl: 1,
+  profileText: 1,
+  address: 1,
+  dart: 1,
+  primaryContact: 1,
+  activities: 1,
+  products: 1,
   updatedAt: 1,
 } as const;
+
+// Buyer mapping to common format
+const mapBuyerToCommon = (b: any) => ({
+  _id: b._id,
+  name: b.name_kr || b.name_en,
+  nameEn: b.name_en,
+  industry: b.industry_kr || b.industry_en,
+  location: { country: b.country, city: "", state: "" },
+  profileText: b.intro_kr || b.intro_en,
+  websiteUrl: b.website,
+  email: b.email,
+  tags: ["Buyer"],
+  score: b.score,
+  updatedAt: b.updatedAt,
+});
 
 @Injectable()
 export class PartnersService {
   private readonly logger = new Logger(PartnersService.name);
 
   constructor(
-    @InjectModel(Company.name)
-    private readonly companyModel: Model<CompanyDocument>,
+    @InjectModel(Seller.name)
+    private readonly sellerModel: Model<SellerDocument>,
+    @InjectModel(Buyer.name)
+    private readonly buyerModel: Model<BuyerDocument>,
     private readonly embeddingsService: EmbeddingsService,
   ) {}
 
   async search(opts: SearchOptions): Promise<SearchResult> {
+    const startTime = performance.now();
     const {
       q,
       limit = 10,
@@ -98,11 +121,16 @@ export class PartnersService {
     const predictedIndustry: string | null = null;
     let extractedKeyword = q;
     let tavilyQuery = q ?? "";
-    let detectedIntent = "company";
+    let detectedIntent = "seller";
     let intentData: any = null;
     let aiResponse = "";
 
+    this.logger.log(
+      `[Search Start] query: "${q}", industry: ${industry}, country: ${country}`,
+    );
+
     if (q) {
+      const intentStartTime = performance.now();
       const qLower = q.toLowerCase();
       const hasRegion = REGION_KEYWORDS.some((kw) =>
         qLower.includes(kw.toLowerCase()),
@@ -139,6 +167,8 @@ export class PartnersService {
           intentData = await Promise.race([intentPromise, timeoutPromise]);
           tavilyQuery =
             intentData?.webQuery ?? buildTavilyQuery(q, detectedIntent);
+          if (intentData?.role === "Buyer") detectedIntent = "buyer";
+          else if (intentData?.role === "Seller") detectedIntent = "seller";
         } catch {
           tavilyQuery = buildTavilyQuery(q, detectedIntent);
         }
@@ -151,13 +181,22 @@ export class PartnersService {
       }
 
       extractedKeyword = q;
+      this.logger.log(
+        `[Step 1: Intent Analysis] took ${Math.round(performance.now() - intentStartTime)}ms. detectedIntent: ${detectedIntent}, forceWebSearch: ${forceWebSearch}`,
+      );
     }
+
+    const activeModel: Model<any> =
+      detectedIntent === "buyer" ? this.buyerModel : this.sellerModel;
+    const isBuyerSearch = detectedIntent === "buyer";
 
     // --- 1. DB search (vector) ---
     let dbResults: any[] = [];
     let vector: number[] = [];
 
+    const dbStartTime = performance.now();
     if (!forceWebSearch && q) {
+      const embedStartTime = performance.now();
       const strippedQ =
         q
           .replace(
@@ -167,6 +206,9 @@ export class PartnersService {
           .trim() || q;
       try {
         vector = await this.embeddingsService.embed(strippedQ);
+        this.logger.log(
+          `[Step 2.1: Embedding Gen] took ${Math.round(performance.now() - embedStartTime)}ms`,
+        );
       } catch {
         vector = [];
       }
@@ -184,24 +226,36 @@ export class PartnersService {
           },
         },
       ];
-      // Seller 만 검색함 (필터 적용)
-      const matchStage: Record<string, any> = { type: "seller" };
-      if (industry) {
-        matchStage.industry = INDUSTRY_MAPPING[industry]
-          ? { $in: INDUSTRY_MAPPING[industry] }
-          : industry;
-      }
-      if (country) matchStage["location.country"] = country;
-      if (partnership) matchStage.tags = partnership;
-      if (size) matchStage.sizeBucket = size;
 
-      if (!matchStage.industry && predictedIndustry) {
+      const matchStage: Record<string, any> = {};
+      if (industry) {
+        if (isBuyerSearch) {
+          matchStage.$or = [
+            { industry_kr: { $regex: industry, $options: "i" } },
+            { industry_en: { $regex: industry, $options: "i" } },
+          ];
+        } else {
+          matchStage.industry = INDUSTRY_MAPPING[industry]
+            ? { $in: INDUSTRY_MAPPING[industry] }
+            : industry;
+        }
+      }
+      if (country) {
+        if (isBuyerSearch) matchStage.country = country;
+        else matchStage["location.country"] = country;
+      }
+      if (!isBuyerSearch) {
+        if (partnership) matchStage.tags = partnership;
+        if (size) matchStage.sizeBucket = size;
+      }
+
+      if (!isBuyerSearch && !matchStage.industry && predictedIndustry) {
         matchStage.industry = INDUSTRY_MAPPING[predictedIndustry]
           ? { $in: INDUSTRY_MAPPING[predictedIndustry] }
           : predictedIndustry;
       }
 
-      if (!matchStage.industry) {
+      if (!isBuyerSearch && !matchStage.industry) {
         matchStage.industry = {
           $not: { $regex: /Investment|Fund|Asset|Capital/i },
         };
@@ -214,16 +268,40 @@ export class PartnersService {
         pipeline.push({ $match: matchStage });
       }
 
-      pipeline.push({
-        $project: {
-          ...SEARCH_PROJECTION,
-          score: { $meta: "vectorSearchScore" },
-        },
-      });
+      if (isBuyerSearch) {
+        pipeline.push({
+          $project: {
+            name_kr: 1,
+            name_en: 1,
+            industry_kr: 1,
+            industry_en: 1,
+            country: 1,
+            intro_kr: 1,
+            intro_en: 1,
+            website: 1,
+            email: 1,
+            updatedAt: 1,
+            score: { $meta: "vectorSearchScore" },
+          },
+        });
+      } else {
+        pipeline.push({
+          $project: {
+            ...SEARCH_PROJECTION,
+            score: { $meta: "vectorSearchScore" },
+          },
+        });
+      }
       pipeline.push({ $limit: Number(limit) });
 
       try {
-        dbResults = await this.companyModel.aggregate(pipeline);
+        const rawResults = await activeModel.aggregate(pipeline);
+        dbResults = isBuyerSearch
+          ? rawResults.map(mapBuyerToCommon)
+          : rawResults;
+        this.logger.log(
+          `[Step 2: Vector Search] found ${dbResults.length} items. took ${Math.round(performance.now() - dbStartTime)}ms`,
+        );
       } catch (err: any) {
         this.logger.error(`[Search] Vector search error: ${err.message}`);
         dbResults = [];
@@ -232,28 +310,65 @@ export class PartnersService {
 
     // --- 1.5. Text search fallback ---
     if (!forceWebSearch && dbResults.length === 0 && extractedKeyword) {
+      const textStartTime = performance.now();
       const filter: Record<string, any> = {
         $text: { $search: extractedKeyword },
       };
-      if (industry)
-        filter.industry = INDUSTRY_MAPPING[industry]
-          ? { $in: INDUSTRY_MAPPING[industry] }
-          : industry;
-      if (country) filter["location.country"] = country;
-      if (partnership) filter.tags = partnership;
-      if (size) filter.sizeBucket = size;
+      if (industry) {
+        if (isBuyerSearch) {
+          filter.$or = [
+            { industry_kr: { $regex: industry, $options: "i" } },
+            { industry_en: { $regex: industry, $options: "i" } },
+          ];
+        } else {
+          filter.industry = INDUSTRY_MAPPING[industry]
+            ? { $in: INDUSTRY_MAPPING[industry] }
+            : industry;
+        }
+      }
+      if (country) {
+        if (isBuyerSearch) filter.country = country;
+        else filter["location.country"] = country;
+      }
+      if (!isBuyerSearch) {
+        if (partnership) filter.tags = partnership;
+        if (size) filter.sizeBucket = size;
+      }
 
       try {
-        const raw = await this.companyModel
-          .find(filter)
-          .select({ ...SEARCH_PROJECTION, score: { $meta: "textScore" } })
-          .sort({ score: { $meta: "textScore" } })
+        const projection = isBuyerSearch
+          ? {
+              name_kr: 1,
+              name_en: 1,
+              industry_kr: 1,
+              industry_en: 1,
+              country: 1,
+              intro_kr: 1,
+              intro_en: 1,
+              website: 1,
+              email: 1,
+              updatedAt: 1,
+              score: { $meta: "textScore" },
+            }
+          : { ...SEARCH_PROJECTION, score: { $meta: "textScore" } };
+
+        const raw = await activeModel
+          .find(filter as any)
+          .select(projection as any)
+          .sort({ score: { $meta: "textScore" } } as any)
           .limit(Number(limit))
           .lean();
-        dbResults = raw.map((r: any) => ({
-          ...r,
-          score: Math.min(1.0, 0.5 + (r.score as number) / 10),
-        }));
+
+        dbResults = raw.map((r: any) => {
+          const common = isBuyerSearch ? mapBuyerToCommon(r) : r;
+          return {
+            ...common,
+            score: Math.min(1.0, 0.5 + (r.score as number) / 10),
+          };
+        });
+        this.logger.log(
+          `[Step 1.5: Text Fallback] found ${dbResults.length} items. took ${Math.round(performance.now() - textStartTime)}ms`,
+        );
       } catch (err: any) {
         this.logger.error(`[Search] Text search error: ${err.message}`);
         dbResults = [];
@@ -261,37 +376,91 @@ export class PartnersService {
     }
 
     // --- 1.8. Filter-only browsing ---
-    if (!forceWebSearch && !q && (industry || country || partnership || size)) {
+    if (
+      !forceWebSearch &&
+      !q &&
+      (industry || country || (isBuyerSearch ? false : partnership || size))
+    ) {
       const filter: Record<string, any> = {};
-      if (industry)
-        filter.industry = INDUSTRY_MAPPING[industry]
-          ? { $in: INDUSTRY_MAPPING[industry] }
-          : industry;
-      if (country) filter["location.country"] = country;
-      if (partnership) filter.tags = partnership;
-      if (size) filter.sizeBucket = size;
+      if (industry) {
+        if (isBuyerSearch) {
+          filter.$or = [
+            { industry_kr: { $regex: industry, $options: "i" } },
+            { industry_en: { $regex: industry, $options: "i" } },
+          ];
+        } else {
+          filter.industry = INDUSTRY_MAPPING[industry]
+            ? { $in: INDUSTRY_MAPPING[industry] }
+            : industry;
+        }
+      }
+      if (country) {
+        if (isBuyerSearch) filter.country = country;
+        else filter["location.country"] = country;
+      }
+      if (!isBuyerSearch) {
+        if (partnership) filter.tags = partnership;
+        if (size) filter.sizeBucket = size;
+      }
 
-      const raw = await this.companyModel
-        .find(filter, SEARCH_PROJECTION)
+      const projection = isBuyerSearch
+        ? {
+            name_kr: 1,
+            name_en: 1,
+            industry_kr: 1,
+            industry_en: 1,
+            country: 1,
+            intro_kr: 1,
+            intro_en: 1,
+            website: 1,
+            email: 1,
+            updatedAt: 1,
+          }
+        : SEARCH_PROJECTION;
+
+      const raw = await activeModel
+        .find(filter as any, projection as any)
         .limit(Number(limit))
-        .sort({ updatedAt: -1 })
+        .sort({ updatedAt: -1 } as any)
         .lean();
-      dbResults = raw.map((r) => ({ ...r, score: 1.0 }));
+      dbResults = raw.map((r) => {
+        const common = isBuyerSearch ? mapBuyerToCommon(r) : r;
+        return { ...common, score: 1.0 };
+      });
     }
 
     // --- 1.9. Default show-all ---
     if (!forceWebSearch && !q && dbResults.length === 0) {
-      const raw = await this.companyModel
-        .find({}, SEARCH_PROJECTION)
+      const projection = isBuyerSearch
+        ? {
+            name_kr: 1,
+            name_en: 1,
+            industry_kr: 1,
+            industry_en: 1,
+            country: 1,
+            intro_kr: 1,
+            intro_en: 1,
+            website: 1,
+            email: 1,
+            updatedAt: 1,
+          }
+        : SEARCH_PROJECTION;
+
+      const raw = await activeModel
+        .find({}, projection as any)
         .limit(Number(limit))
         .lean();
-      dbResults = raw.map((r) => ({ ...r, score: 1.0 }));
+      dbResults = raw.map((r) => {
+        const common = isBuyerSearch ? mapBuyerToCommon(r) : r;
+        return { ...common, score: 1.0 };
+      });
     }
 
     // --- 2. Web search fallback ---
     const shouldFallbackToWeb = forceWebSearch || dbResults.length === 0;
 
     if (shouldFallbackToWeb && q) {
+      const webStartTime = performance.now();
       let webResults: { results: any[]; answer?: string } = { results: [] };
       try {
         const tavilyPromise = this.searchWeb(tavilyQuery);
@@ -383,7 +552,7 @@ export class PartnersService {
           name: item.title,
           industry: "Web Result",
           location: { country: "Global", city: "", state: "" },
-          companyIntroduction: item.content,
+          profileText: item.content,
           websiteUrl: item.url,
           tags: ["Web"],
           score: Math.min(1.0, Math.max(0.1, score)),
@@ -394,7 +563,7 @@ export class PartnersService {
         const countryLower = (intentData.country as string).toLowerCase();
         mappedWebResults = mappedWebResults.map((item: any) => {
           const text = (
-            (item.companyIntroduction || "") +
+            (item.sellerIntroduction || "") +
             " " +
             (item.name || "")
           ).toLowerCase();
@@ -405,6 +574,14 @@ export class PartnersService {
       }
 
       mappedWebResults.sort((a: any, b: any) => b.score - a.score);
+      this.logger.log(
+        `[Step 2: Web Search] found ${mappedWebResults.length} items. took ${Math.round(performance.now() - webStartTime)}ms`,
+      );
+
+      const totalDuration = Math.round(performance.now() - startTime);
+      this.logger.log(
+        `[Search Complete] provider: tavily, count: ${mappedWebResults.length}, totalTime: ${totalDuration}ms`,
+      );
 
       return {
         data: mappedWebResults,
@@ -416,6 +593,7 @@ export class PartnersService {
           intent: detectedIntent,
           forceWebSearch: true,
           tavilyQuery,
+          duration: `${totalDuration}ms`,
         },
       };
     }
@@ -423,6 +601,7 @@ export class PartnersService {
     // --- 3. Neo4j graph re-ranking (optional) ---
     let hybridResults = dbResults;
     if (process.env.NEO4J_URI && dbResults.length > 0 && buyerId) {
+      const graphStartTime = performance.now();
       try {
         const graphScores = await this.getGraphScores(
           buyerId,
@@ -442,6 +621,9 @@ export class PartnersService {
             };
           })
           .sort((a, b) => b.score - a.score);
+        this.logger.log(
+          `[Step 3: Graph Re-ranking] took ${Math.round(performance.now() - graphStartTime)}ms`,
+        );
       } catch (err: any) {
         this.logger.error(`[Search] Graph scoring error: ${err.message}`);
       }
@@ -454,6 +636,11 @@ export class PartnersService {
           ? "VECTOR"
           : "BROWSE";
 
+    const totalDuration = Math.round(performance.now() - startTime);
+    this.logger.log(
+      `[Search Complete] provider: db, type: ${searchType}, count: ${hybridResults.length}, totalTime: ${totalDuration}ms`,
+    );
+
     return {
       data: hybridResults,
       aiResponse,
@@ -465,24 +652,24 @@ export class PartnersService {
         intent: detectedIntent,
         forceWebSearch,
         tavilyQuery: tavilyQuery || null,
+        duration: `${totalDuration}ms`,
       },
     };
   }
 
-  // Seller 만 검색함 (필터 적용)
   async getDebugInfo() {
-    const docCount = await this.companyModel.countDocuments();
-    const embeddingCount = await this.companyModel.countDocuments({
+    const docCount = await this.sellerModel.countDocuments();
+    const buyerCount = await this.buyerModel.countDocuments();
+    const embeddingCount = await this.sellerModel.countDocuments({
       embedding: { $exists: true, $not: { $size: 0 } },
     });
-    const industryStats = await this.companyModel.aggregate([
-      { $match: { type: "seller" } },
+    const industryStats = await this.sellerModel.aggregate([
       { $group: { _id: "$industry", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 20 },
     ]);
-    const sampleData = await this.companyModel
-      .find({}, { name: 1, industry: 1, companyIntroduction: 1 })
+    const sampleData = await this.sellerModel
+      .find({}, { name: 1, industry: 1, profileText: 1 })
       .limit(5)
       .lean();
 
@@ -504,7 +691,11 @@ export class PartnersService {
         MONGO_URI_CONFIGURED: !!process.env.MONGODB_URI,
         NODE_ENV: process.env.NODE_ENV,
       },
-      db: { status: "Connected", companyCount: docCount },
+      db: {
+        status: "Connected",
+        sellerCount: docCount,
+        buyerCount: buyerCount,
+      },
       embedding: { status: embeddingStatus, error: embeddingError },
       sampleData,
       industryStats,
@@ -577,10 +768,10 @@ export class PartnersService {
 
   private async getGraphScores(
     buyerMongoId: string,
-    companyMongoIds: string[],
+    sellerMongoIds: string[],
   ): Promise<Record<string, number>> {
     const scores: Record<string, number> = {};
-    companyMongoIds.forEach((id) => {
+    sellerMongoIds.forEach((id) => {
       scores[id] = 0;
     });
 
@@ -598,7 +789,7 @@ export class PartnersService {
         const result = await session.executeRead((tx) =>
           tx.run(
             `MATCH (b:Buyer {mongoId: $buyerMongoId})
-             MATCH (c:Company) WHERE c.mongoId IN $companyMongoIds
+             MATCH (c:Seller) WHERE c.mongoId IN $sellerMongoIds
              OPTIONAL MATCH (b)-[:INTERESTED_IN]->(i:Industry)<-[:IN_INDUSTRY]-(c)
              OPTIONAL MATCH (b)-[:LOCATED_IN]->(co:Country)<-[:LOCATED_IN]-(c)
              OPTIONAL MATCH (b)-[:NEEDS_TAG]->(t:Tag)<-[:HAS_TAG]-(c)
@@ -606,7 +797,7 @@ export class PartnersService {
                     COUNT(DISTINCT i) * 3.0 AS industryScore,
                     COUNT(DISTINCT co) * 1.0 AS countryScore,
                     COUNT(DISTINCT t) * 1.0 AS tagScore`,
-            { buyerMongoId, companyMongoIds },
+            { buyerMongoId, sellerMongoIds },
           ),
         );
         result.records.forEach((record) => {
@@ -807,7 +998,7 @@ function buildTavilyQuery(originalQuery: string, intent: string): string {
     "-software -crm -erp -platform -capterra -linkedin -yelp -facebook -twitter -instagram -pinterest -expo -exhibition -fair -event -conference";
 
   if (intent === "buyer") {
-    return `${regionEn ? regionEn + " " : ""}${productEn ? productEn + " " : ""}importer distributor buyer B2B company "contact" ${exclude}`;
+    return `${regionEn ? regionEn + " " : ""}${productEn ? productEn + " " : ""}importer distributor buyer B2B seller "contact" ${exclude}`;
   } else if (intent === "seller") {
     return `${regionEn ? regionEn + " " : ""}${productEn ? productEn + " " : ""}exporter supplier manufacturer factory B2B ${exclude}`;
   }

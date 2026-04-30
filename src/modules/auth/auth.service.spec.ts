@@ -4,8 +4,8 @@ import { ConflictException } from "@nestjs/common";
 import { Types } from "mongoose";
 import { AuthService } from "./auth.service";
 import { User } from "../users/schemas/user.schema";
-import { Company } from "../users/schemas/company.schema";
-import { Buyer } from "../users/schemas/buyer.schema";
+import { UserSeller } from "../users/schemas/user-seller.schema";
+import { UserBuyer } from "../users/schemas/user-buyer.schema";
 import { XrplService } from "../payments/xrpl.service";
 
 // ── 공통 픽스처 ──────────────────────────────────────────────────────────────
@@ -63,24 +63,24 @@ const makeXrplMock = () => ({
 });
 
 const SELLER_DTO = {
-  companyName: "테스트 판매사",
+  sellerName: "테스트 판매사",
   representativeName: "홍길동",
   representativeEmail: "seller@test.com",
   representativePhone: "010-1234-5678",
   password: "password123",
   exportItems: ["화장품", "식품"],
-  companyIntroduction: "회사 소개",
+  sellerIntroduction: "회사 소개",
   productIntroduction: "제품 소개",
 };
 
 const BUYER_DTO = {
-  companyName: "테스트 구매사",
+  sellerName: "테스트 구매사",
   representativeName: "김철수",
   representativeEmail: "buyer@test.com",
   representativePhone: "010-8765-4321",
   password: "password123",
   needs: ["전자부품"],
-  companyIntroduction: "회사 소개",
+  sellerIntroduction: "회사 소개",
   productIntroduction: "제품 소개",
 };
 
@@ -89,22 +89,22 @@ const BUYER_DTO = {
 describe("AuthService", () => {
   let service: AuthService;
   let userModel: ReturnType<typeof makeModelMock>;
-  let companyModel: ReturnType<typeof makeModelMock>;
-  let buyerModel: ReturnType<typeof makeModelMock>;
+  let userSellerModel: ReturnType<typeof makeModelMock>;
+  let userBuyerModel: ReturnType<typeof makeModelMock>;
   let xrplService: ReturnType<typeof makeXrplMock>;
 
   beforeEach(async () => {
     userModel = makeModelMock();
-    companyModel = makeModelMock();
-    buyerModel = makeModelMock();
+    userSellerModel = makeModelMock();
+    userBuyerModel = makeModelMock();
     xrplService = makeXrplMock();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: getModelToken(User.name), useValue: userModel },
-        { provide: getModelToken(Company.name), useValue: companyModel },
-        { provide: getModelToken(Buyer.name), useValue: buyerModel },
+        { provide: getModelToken(UserSeller.name), useValue: userSellerModel },
+        { provide: getModelToken(UserBuyer.name), useValue: userBuyerModel },
         { provide: XrplService, useValue: xrplService },
       ],
     }).compile();
@@ -118,8 +118,8 @@ describe("AuthService", () => {
     it("정상 가입 → 저장 후 응답 반환", async () => {
       const result = await service.registerSeller(SELLER_DTO);
 
-      expect(companyModel).toHaveBeenCalled();
-      expect(companyModel._instance.save).toHaveBeenCalled();
+      expect(userSellerModel).toHaveBeenCalled();
+      expect(userSellerModel._instance.save).toHaveBeenCalled();
       expect(result).toBeDefined();
     });
 
@@ -133,7 +133,7 @@ describe("AuthService", () => {
     it("contactName에 representativeName 사용", async () => {
       await service.registerSeller(SELLER_DTO);
 
-      const constructorCall = companyModel.mock.calls[0][0];
+      const constructorCall = userSellerModel.mock.calls[0][0];
       expect(constructorCall.contactName).toBe(SELLER_DTO.representativeName);
     });
 
@@ -145,9 +145,9 @@ describe("AuthService", () => {
           seed: ENCRYPTED_SEED,
           publicKey: MOCK_WALLET.publicKey,
         },
-        name: SELLER_DTO.companyName,
+        name: SELLER_DTO.sellerName,
       };
-      companyModel._instance.save.mockResolvedValue({
+      userSellerModel._instance.save.mockResolvedValue({
         _id: savedObj._id,
         toObject: jest.fn().mockReturnValue({ ...savedObj }),
       });
@@ -160,7 +160,7 @@ describe("AuthService", () => {
     it("status가 PENDING_ACTIVATION으로 저장", async () => {
       await service.registerSeller(SELLER_DTO);
 
-      const constructorCall = companyModel.mock.calls[0][0];
+      const constructorCall = userSellerModel.mock.calls[0][0];
       expect(constructorCall.status).toBe("PENDING_ACTIVATION");
     });
 
@@ -170,7 +170,7 @@ describe("AuthService", () => {
       await expect(service.registerSeller(SELLER_DTO as any)).rejects.toThrow(
         ConflictException,
       );
-      expect(companyModel._instance.save).not.toHaveBeenCalled();
+      expect(userSellerModel._instance.save).not.toHaveBeenCalled();
     });
   });
 
@@ -180,8 +180,8 @@ describe("AuthService", () => {
     it("정상 가입 → 저장 후 응답 반환", async () => {
       const result = await service.registerBuyer(BUYER_DTO);
 
-      expect(buyerModel).toHaveBeenCalled();
-      expect(buyerModel._instance.save).toHaveBeenCalled();
+      expect(userBuyerModel).toHaveBeenCalled();
+      expect(userBuyerModel._instance.save).toHaveBeenCalled();
       expect(result).toBeDefined();
     });
 
@@ -193,9 +193,9 @@ describe("AuthService", () => {
           seed: ENCRYPTED_SEED,
           publicKey: MOCK_WALLET.publicKey,
         },
-        name: BUYER_DTO.companyName,
+        name: BUYER_DTO.sellerName,
       };
-      buyerModel._instance.save.mockResolvedValue({
+      userBuyerModel._instance.save.mockResolvedValue({
         _id: savedObj._id,
         toObject: jest.fn().mockReturnValue({ ...savedObj }),
       });
@@ -211,7 +211,7 @@ describe("AuthService", () => {
       await expect(service.registerBuyer(BUYER_DTO as any)).rejects.toThrow(
         ConflictException,
       );
-      expect(buyerModel._instance.save).not.toHaveBeenCalled();
+      expect(userBuyerModel._instance.save).not.toHaveBeenCalled();
     });
   });
 
@@ -219,10 +219,10 @@ describe("AuthService", () => {
 
   describe("retryFailedActivations", () => {
     it("FAILED_ACTIVATION 계정 없으면 fundAccount 호출 안 함", async () => {
-      companyModel.find.mockReturnValue({
+      userSellerModel.find.mockReturnValue({
         lean: jest.fn().mockResolvedValue([]),
       });
-      buyerModel.find.mockReturnValue({
+      userBuyerModel.find.mockReturnValue({
         lean: jest.fn().mockResolvedValue([]),
       });
 
@@ -240,10 +240,10 @@ describe("AuthService", () => {
           publicKey: MOCK_WALLET.publicKey,
         },
       };
-      companyModel.find.mockReturnValue({
+      userSellerModel.find.mockReturnValue({
         lean: jest.fn().mockResolvedValue([failedSeller]),
       });
-      buyerModel.find.mockReturnValue({
+      userBuyerModel.find.mockReturnValue({
         lean: jest.fn().mockResolvedValue([]),
       });
 
@@ -251,7 +251,7 @@ describe("AuthService", () => {
 
       expect(xrplService.decrypt).toHaveBeenCalledWith(ENCRYPTED_SEED);
       expect(xrplService.fundAccount).toHaveBeenCalledTimes(1);
-      expect(companyModel.updateOne).toHaveBeenCalledWith(
+      expect(userSellerModel.updateOne).toHaveBeenCalledWith(
         { _id: failedSeller._id },
         { status: "ACTIVE" },
       );
@@ -266,17 +266,17 @@ describe("AuthService", () => {
           publicKey: MOCK_WALLET.publicKey,
         },
       };
-      companyModel.find.mockReturnValue({
+      userSellerModel.find.mockReturnValue({
         lean: jest.fn().mockResolvedValue([]),
       });
-      buyerModel.find.mockReturnValue({
+      userBuyerModel.find.mockReturnValue({
         lean: jest.fn().mockResolvedValue([failedBuyer]),
       });
 
       await service.retryFailedActivations();
 
       expect(xrplService.fundAccount).toHaveBeenCalledTimes(1);
-      expect(buyerModel.updateOne).toHaveBeenCalledWith(
+      expect(userBuyerModel.updateOne).toHaveBeenCalledWith(
         { _id: failedBuyer._id },
         { status: "ACTIVE" },
       );
@@ -292,10 +292,10 @@ describe("AuthService", () => {
         wallet: { address: "addr2", seed: ENCRYPTED_SEED, publicKey: "pk2" },
       };
 
-      companyModel.find.mockReturnValue({
+      userSellerModel.find.mockReturnValue({
         lean: jest.fn().mockResolvedValue([failedSeller1, failedSeller2]),
       });
-      buyerModel.find.mockReturnValue({
+      userBuyerModel.find.mockReturnValue({
         lean: jest.fn().mockResolvedValue([]),
       });
 
@@ -307,12 +307,12 @@ describe("AuthService", () => {
 
       expect(xrplService.fundAccount).toHaveBeenCalledTimes(2);
       // 두 번째는 성공 → ACTIVE
-      expect(companyModel.updateOne).toHaveBeenCalledWith(
+      expect(userSellerModel.updateOne).toHaveBeenCalledWith(
         { _id: failedSeller2._id },
         { status: "ACTIVE" },
       );
       // 첫 번째는 실패 → updateOne 호출 안 됨
-      expect(companyModel.updateOne).not.toHaveBeenCalledWith(
+      expect(userSellerModel.updateOne).not.toHaveBeenCalledWith(
         { _id: failedSeller1._id },
         { status: "ACTIVE" },
       );
@@ -328,21 +328,21 @@ describe("AuthService", () => {
         wallet: { address: "addr2", seed: ENCRYPTED_SEED, publicKey: "pk2" },
       };
 
-      companyModel.find.mockReturnValue({
+      userSellerModel.find.mockReturnValue({
         lean: jest.fn().mockResolvedValue([failedSeller]),
       });
-      buyerModel.find.mockReturnValue({
+      userBuyerModel.find.mockReturnValue({
         lean: jest.fn().mockResolvedValue([failedBuyer]),
       });
 
       await service.retryFailedActivations();
 
       expect(xrplService.fundAccount).toHaveBeenCalledTimes(2);
-      expect(companyModel.updateOne).toHaveBeenCalledWith(
+      expect(userSellerModel.updateOne).toHaveBeenCalledWith(
         { _id: failedSeller._id },
         { status: "ACTIVE" },
       );
-      expect(buyerModel.updateOne).toHaveBeenCalledWith(
+      expect(userBuyerModel.updateOne).toHaveBeenCalledWith(
         { _id: failedBuyer._id },
         { status: "ACTIVE" },
       );

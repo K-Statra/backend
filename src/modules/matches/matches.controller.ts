@@ -11,9 +11,9 @@ import { MatchesService } from "./matches.service";
 import { FindMatchesDto } from "./dto/find-matches.dto";
 import { SubmitFeedbackDto } from "./dto/submit-feedback.dto";
 
-class CompanyIdParam {
+class SellerIdParam {
   @IsMongoId()
-  companyId: string;
+  sellerId: string;
 }
 
 @ApiTags("Matches")
@@ -32,7 +32,7 @@ export class MatchesController {
         count: 2,
         data: [
           {
-            company: { _id: "...", name: "..." },
+            seller: { _id: "...", name: "..." },
             score: 8.5,
             reasons: ["tags overlap x2", "industry match"],
           },
@@ -49,10 +49,10 @@ export class MatchesController {
     return this.matchesService.findMatches(dto.buyerId, dto.limit ?? 10);
   }
 
-  @Post(":companyId/feedback")
+  @Post(":sellerId/feedback")
   @ApiOperation({ summary: "매칭 피드백 제출" })
   @ApiParam({
-    name: "companyId",
+    name: "sellerId",
     description: "기업 MongoDB ID (24자 hex)",
     example: "6632a1f0e4b0a1c2d3e4f5a6",
   })
@@ -66,13 +66,13 @@ export class MatchesController {
   })
   @ApiResponse({
     status: 400,
-    description: "유효성 검사 실패 (companyId 형식 오류 또는 rating 범위 초과)",
+    description: "유효성 검사 실패 (sellerId 형식 오류 또는 rating 범위 초과)",
   })
   @ApiResponse({ status: 404, description: "기업 없음" })
   submitFeedback(
-    @Param() params: CompanyIdParam,
+    @Param() params: SellerIdParam,
     @Body() dto: SubmitFeedbackDto,
   ) {
-    return this.matchesService.submitFeedback(params.companyId, dto);
+    return this.matchesService.submitFeedback(params.sellerId, dto);
   }
 }
