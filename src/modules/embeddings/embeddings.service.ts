@@ -20,7 +20,8 @@ export class EmbeddingsService {
         default:
           return this.embedMock(text);
       }
-    } catch {
+    } catch (err) {
+      this.logger.error(`[EmbeddingsService] embed error {err: ${err}}`);
       return [];
     }
   }

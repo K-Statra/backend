@@ -3,13 +3,13 @@ export default () => ({
   nodeEnv: process.env.NODE_ENV || "development",
 
   mongodb: {
-    uri: process.env.MONGODB_URI || "localhost:27017",
-    vectorIndex: process.env.ATLAS_VECTOR_INDEX || "vector_index",
+    uri: process.env.MONGODB_URI,
+    dbName: process.env.MONGODB_DB_NAME || "K-statra",
+    vectorIndex: process.env.ATLAS_VECTOR_INDEX,
   },
 
   openai: {
     apiKey: process.env.OPENAI_API_KEY || "",
-    modelId: process.env.GPT_MODEL_ID || "gpt-4o",
   },
 
   embeddings: {

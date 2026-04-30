@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Buyer, BuyerDocument } from "../users/schemas/buyer.schema";
+import { Buyer, BuyerDocument } from "./schemas/buyer.schema";
 import { QueryBuyerDto } from "./dto/query-buyer.dto";
 
 @Injectable()
@@ -15,7 +15,6 @@ export class BuyersService {
       q,
       country,
       industry,
-      tag,
       page = 1,
       limit = 10,
       sortBy = "updatedAt",
@@ -23,14 +22,22 @@ export class BuyersService {
     } = query;
 
     const filter: Record<string, any> = {};
-    if (q)
+    if (q) {
       filter.$or = [
-        { name: { $regex: q, $options: "i" } },
-        { profileText: { $regex: q, $options: "i" } },
+        { name_kr: { $regex: q, $options: "i" } },
+        { name_en: { $regex: q, $options: "i" } },
+        { intro_kr: { $regex: q, $options: "i" } },
+        { intro_en: { $regex: q, $options: "i" } },
       ];
+    }
     if (country) filter.country = country;
-    if (industry) filter.industries = industry;
-    if (tag) filter.tags = tag;
+    if (industry) {
+      filter.$or = [
+        ...(filter.$or || []),
+        { industry_kr: { $regex: industry, $options: "i" } },
+        { industry_en: { $regex: industry, $options: "i" } },
+      ];
+    }
 
     const sort: Record<string, 1 | -1> = { [sortBy]: order === "asc" ? 1 : -1 };
     const [items, total] = await Promise.all([
