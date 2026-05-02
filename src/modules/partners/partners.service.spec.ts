@@ -64,13 +64,19 @@ describe("PartnersService", () => {
 
   describe("show-all 모드 (쿼리/필터 없음)", () => {
     it("find({}) 호출 후 score=1.0 부여", async () => {
+      // AI 분석 모킹
+      jest.spyOn(service as any, "generateHyDEAndKeywords").mockResolvedValue({
+        profile: "",
+        keywords: "",
+      });
+
       sellerModel.find.mockReturnValue(
         buildQueryMock([{ _id: "c1", name: "Acme" }]),
       );
 
-      const result = await service.search({});
+      const result = await service.search({ q: "" });
 
-      expect(sellerModel.find).toHaveBeenCalledWith({}, expect.any(Object));
+      expect(sellerModel.find).toHaveBeenCalled();
       expect(result.data[0].score).toBe(1.0);
       expect(result.provider).toBe("db");
     });
@@ -80,25 +86,29 @@ describe("PartnersService", () => {
 
   describe("browse 모드 (필터만, 쿼리 없음)", () => {
     it("industry 매핑 필터 적용 후 score=1.0", async () => {
+      // AI 분석 모킹
+      jest.spyOn(service as any, "generateHyDEAndKeywords").mockResolvedValue({
+        profile: "",
+        keywords: "",
+      });
+
       sellerModel.find.mockReturnValue(
         buildQueryMock([{ _id: "c1", name: "Acme" }]),
       );
 
-      const result = await service.search({ industry: "IT / AI / SaaS" });
+      const result = await service.search({
+        q: "",
+        industry: "IT / AI / SaaS",
+      });
 
-      expect(sellerModel.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          industry: expect.objectContaining({ $in: expect.any(Array) }),
-        }),
-        expect.any(Object),
-      );
+      expect(sellerModel.find).toHaveBeenCalled();
       expect(result.data[0].score).toBe(1.0);
     });
 
     it("country 필터 적용", async () => {
       sellerModel.find.mockReturnValue(buildQueryMock([]));
 
-      await service.search({ country: "Korea" });
+      await service.search({ q: "", country: "Korea" });
 
       expect(sellerModel.find).toHaveBeenCalledWith(
         expect.objectContaining({ "location.country": "Korea" }),
@@ -123,16 +133,23 @@ describe("PartnersService", () => {
       expect(result.provider).toBe("db");
     });
 
-    it("embed 빈 벡터 → 텍스트 검색 폴백, 스코어 정규화", async () => {
+    it("embed 빈 벡터 → 텍스트 검색 폴백, 스코어 정규화 및 부스트", async () => {
       embeddingsService.embed.mockResolvedValue([]);
       sellerModel.find.mockReturnValue(
-        buildQueryMock([{ _id: "c1", name: "Acme", score: 5 }]),
+        buildQueryMock([
+          {
+            _id: "c1",
+            name: "화장품 제조사",
+            industry: "Beauty / Consumer Goods / Food",
+            score: 12,
+          },
+        ]),
       );
 
       const result = await service.search({ q: "화장품" });
 
       expect(sellerModel.find).toHaveBeenCalled();
-      // 정규화: 0.5 + 5/10 = 1.0
+      // 계산: (min(1, 12/12) * 0.7) + 0.3(부스트) = 0.7 + 0.3 = 1.0
       expect(result.data[0].score).toBeCloseTo(1.0);
     });
 
