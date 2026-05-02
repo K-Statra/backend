@@ -194,7 +194,7 @@ export class PartnersService {
     let hydeDocument: string | null = null;
     let aiKeywords: string | null = null;
 
-    if (!forceWebSearch) {
+    if (!forceWebSearch && q) {
       const aiStartTime = performance.now();
 
       // 1.0 AI Query Understanding (HyDE + Keywords)
