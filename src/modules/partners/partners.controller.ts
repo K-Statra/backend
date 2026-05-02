@@ -19,7 +19,7 @@ export class PartnersController {
   })
   @ApiQuery({
     name: "q",
-    required: false,
+    required: true,
     description: "자연어 검색어 (한국어/영어)",
   })
   @ApiQuery({
@@ -53,7 +53,7 @@ export class PartnersController {
     },
   })
   search(
-    @Query("q") q?: string,
+    @Query("q") q: string,
     @Query("limit", new DefaultValuePipe(10), ParseIntPipe) limit?: number,
     @Query("industry") industry?: string,
     @Query("country") country?: string,
