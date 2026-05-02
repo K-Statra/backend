@@ -6,16 +6,14 @@ import {
   Consultation,
   ConsultationSchema,
 } from "./schemas/consultation.schema";
-import { BuyersModule } from "../buyers/buyers.module";
-import { CompaniesModule } from "../companies/companies.module";
+import { UsersModule } from "../users/users.module";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Consultation.name, schema: ConsultationSchema },
     ]),
-    BuyersModule,
-    CompaniesModule,
+    UsersModule,
   ],
   controllers: [ConsultationsController],
   providers: [ConsultationsService],

@@ -8,7 +8,7 @@ const mockMatchesService = {
 };
 
 const BUYER_ID = "507f1f77bcf86cd799439011";
-const COMPANY_ID = "507f1f77bcf86cd799439012";
+const SELLER_ID = "507f1f77bcf86cd799439012";
 
 describe("MatchesController", () => {
   let controller: MatchesController;
@@ -61,21 +61,21 @@ describe("MatchesController", () => {
     });
   });
 
-  // ── POST /matches/:companyId/feedback ─────────────────────────────────────────
+  // ── POST /matches/:sellerId/feedback ─────────────────────────────────────────
 
-  describe("POST /matches/:companyId/feedback", () => {
+  describe("POST /matches/:sellerId/feedback", () => {
     it("서비스 결과 그대로 반환", async () => {
       const response = { message: "Feedback saved", id: "fb-1" };
       mockMatchesService.submitFeedback.mockResolvedValue(response);
 
       const result = await controller.submitFeedback(
-        { companyId: COMPANY_ID },
+        { sellerId: SELLER_ID },
         { rating: 4, comments: "좋습니다" },
       );
 
       expect(result).toEqual(response);
       expect(mockMatchesService.submitFeedback).toHaveBeenCalledWith(
-        COMPANY_ID,
+        SELLER_ID,
         { rating: 4, comments: "좋습니다" },
       );
     });
@@ -86,10 +86,10 @@ describe("MatchesController", () => {
         id: "fb-2",
       });
 
-      await controller.submitFeedback({ companyId: COMPANY_ID }, { rating: 5 });
+      await controller.submitFeedback({ sellerId: SELLER_ID }, { rating: 5 });
 
       expect(mockMatchesService.submitFeedback).toHaveBeenCalledWith(
-        COMPANY_ID,
+        SELLER_ID,
         { rating: 5 },
       );
     });
@@ -101,7 +101,7 @@ describe("MatchesController", () => {
       });
 
       await controller.submitFeedback(
-        { companyId: COMPANY_ID },
+        { sellerId: SELLER_ID },
         {
           rating: 3,
           locale: "ko",
@@ -110,7 +110,7 @@ describe("MatchesController", () => {
       );
 
       expect(mockMatchesService.submitFeedback).toHaveBeenCalledWith(
-        COMPANY_ID,
+        SELLER_ID,
         { rating: 3, locale: "ko", source: "admin-panel" },
       );
     });

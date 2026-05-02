@@ -1,8 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
-import { CompaniesService } from "./companies.service";
-import { Company } from "../users/schemas/company.schema";
+import { SellersService } from "./sellers.service";
+import { Seller } from "../sellers/schemas/seller.schema";
 
 function buildQueryMock(resolvedValue: any) {
   const mock: any = {
@@ -16,7 +16,7 @@ function buildQueryMock(resolvedValue: any) {
   return mock;
 }
 
-const makeCompanyModel = (overrides = {}) => ({
+const makeSellerModel = (overrides = {}) => ({
   find: jest.fn().mockReturnValue(buildQueryMock([])),
   findById: jest
     .fn()
@@ -35,52 +35,52 @@ const makeCompanyModel = (overrides = {}) => ({
 
 const VALID_ID = "507f1f77bcf86cd799439011";
 
-describe("CompaniesService", () => {
-  let service: CompaniesService;
-  let companyModel: ReturnType<typeof makeCompanyModel>;
+describe("SellersService", () => {
+  let service: SellersService;
+  let sellerModel: ReturnType<typeof makeSellerModel>;
 
   beforeEach(async () => {
-    companyModel = makeCompanyModel();
+    sellerModel = makeSellerModel();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        CompaniesService,
-        { provide: getModelToken(Company.name), useValue: companyModel },
+        SellersService,
+        { provide: getModelToken(Seller.name), useValue: sellerModel },
       ],
     }).compile();
 
-    service = module.get<CompaniesService>(CompaniesService);
+    service = module.get<SellersService>(SellersService);
   });
 
   // ── findAll ───────────────────────────────────────────────────────────────────
 
   describe("findAll", () => {
     it("필터 없을 때 estimatedDocumentCount 사용", async () => {
-      companyModel.find.mockReturnValue(buildQueryMock([]));
-      companyModel.estimatedDocumentCount.mockResolvedValue(50);
+      sellerModel.find.mockReturnValue(buildQueryMock([]));
+      sellerModel.estimatedDocumentCount.mockResolvedValue(50);
 
       const result = await service.findAll({});
 
-      expect(companyModel.estimatedDocumentCount).toHaveBeenCalled();
+      expect(sellerModel.estimatedDocumentCount).toHaveBeenCalled();
       expect(result.total).toBe(50);
     });
 
     it("필터 있을 때 countDocuments 사용", async () => {
-      companyModel.find.mockReturnValue(buildQueryMock([]));
-      companyModel.countDocuments.mockResolvedValue(5);
+      sellerModel.find.mockReturnValue(buildQueryMock([]));
+      sellerModel.countDocuments.mockResolvedValue(5);
 
       const result = await service.findAll({ q: "acme" });
 
-      expect(companyModel.countDocuments).toHaveBeenCalled();
+      expect(sellerModel.countDocuments).toHaveBeenCalled();
       expect(result.total).toBe(5);
     });
 
     it("q 검색 시 $text 필터 적용", async () => {
-      companyModel.find.mockReturnValue(buildQueryMock([]));
+      sellerModel.find.mockReturnValue(buildQueryMock([]));
 
       await service.findAll({ q: "acme" });
 
-      expect(companyModel.find).toHaveBeenCalledWith(
+      expect(sellerModel.find).toHaveBeenCalledWith(
         expect.objectContaining({ $text: { $search: "acme" } }),
         expect.any(Object),
       );
@@ -88,7 +88,7 @@ describe("CompaniesService", () => {
 
     it("nameNumeric 정렬 시 collation 적용", async () => {
       const qm = buildQueryMock([]);
-      companyModel.find.mockReturnValue(qm);
+      sellerModel.find.mockReturnValue(qm);
 
       await service.findAll({ sortBy: "nameNumeric" });
 
@@ -99,8 +99,8 @@ describe("CompaniesService", () => {
     });
 
     it("totalPages 올림 계산", async () => {
-      companyModel.find.mockReturnValue(buildQueryMock([]));
-      companyModel.estimatedDocumentCount.mockResolvedValue(21);
+      sellerModel.find.mockReturnValue(buildQueryMock([]));
+      sellerModel.estimatedDocumentCount.mockResolvedValue(21);
 
       const result = await service.findAll({ limit: 10 });
 
@@ -112,16 +112,16 @@ describe("CompaniesService", () => {
 
   describe("findById", () => {
     it("존재하는 기업 반환", async () => {
-      const company = { _id: VALID_ID, name: "Acme" };
-      companyModel.findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(company),
+      const seller = { _id: VALID_ID, name: "Acme" };
+      sellerModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(seller),
       });
 
-      expect(await service.findById(VALID_ID)).toEqual(company);
+      expect(await service.findById(VALID_ID)).toEqual(seller);
     });
 
     it("없으면 NotFoundException", async () => {
-      companyModel.findById.mockReturnValue({
+      sellerModel.findById.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
@@ -137,10 +137,10 @@ describe("CompaniesService", () => {
     it("dto로 기업 생성 후 반환", async () => {
       const dto = { name: "Acme" } as any;
       const created = { _id: VALID_ID, name: "Acme" };
-      companyModel.create.mockResolvedValue(created);
+      sellerModel.create.mockResolvedValue(created);
 
       expect(await service.create(dto)).toEqual(created);
-      expect(companyModel.create).toHaveBeenCalledWith(dto);
+      expect(sellerModel.create).toHaveBeenCalledWith(dto);
     });
   });
 
@@ -149,7 +149,7 @@ describe("CompaniesService", () => {
   describe("update", () => {
     it("존재하는 기업 수정", async () => {
       const updated = { _id: VALID_ID, name: "New Name" };
-      companyModel.findByIdAndUpdate.mockReturnValue({
+      sellerModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(updated),
       });
 
@@ -159,7 +159,7 @@ describe("CompaniesService", () => {
     });
 
     it("없는 기업 → NotFoundException", async () => {
-      companyModel.findByIdAndUpdate.mockReturnValue({
+      sellerModel.findByIdAndUpdate.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 
@@ -179,7 +179,7 @@ describe("CompaniesService", () => {
 
   describe("remove", () => {
     it("존재하는 기업 삭제", async () => {
-      companyModel.findByIdAndDelete.mockReturnValue({
+      sellerModel.findByIdAndDelete.mockReturnValue({
         exec: jest.fn().mockResolvedValue({ _id: VALID_ID }),
       });
 
@@ -187,7 +187,7 @@ describe("CompaniesService", () => {
     });
 
     it("없는 기업 → NotFoundException", async () => {
-      companyModel.findByIdAndDelete.mockReturnValue({
+      sellerModel.findByIdAndDelete.mockReturnValue({
         exec: jest.fn().mockResolvedValue(null),
       });
 

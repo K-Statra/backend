@@ -27,7 +27,7 @@ class LocationDto {
   @IsOptional() @IsString() country?: string;
 }
 
-export class CreateCompanyDto {
+export class CreateSellerDto {
   @ApiProperty({ example: "Acme Corp" })
   @IsString()
   @MinLength(1)
@@ -58,7 +58,7 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsString()
   @MaxLength(2000)
-  companyIntroduction?: string;
+  sellerIntroduction?: string;
 
   @ApiPropertyOptional({ example: "EV 배터리 팩 및 BMS를 생산합니다." })
   @IsOptional()

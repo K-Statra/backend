@@ -1,8 +1,8 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { User, UserSchema } from "./schemas/user.schema";
-import { Buyer, BuyerSchema } from "./schemas/buyer.schema";
-import { Company, CompanySchema } from "./schemas/company.schema";
+import { UserBuyer, UserBuyerSchema } from "./schemas/user-buyer.schema";
+import { UserSeller, UserSellerSchema } from "./schemas/user-seller.schema";
 
 @Module({
   imports: [
@@ -11,8 +11,8 @@ import { Company, CompanySchema } from "./schemas/company.schema";
         name: User.name,
         schema: UserSchema,
         discriminators: [
-          { name: Buyer.name, schema: BuyerSchema, value: "buyer" }, // buyer, company 는 User 의 하위 스키마
-          { name: Company.name, schema: CompanySchema, value: "seller" },
+          { name: UserBuyer.name, schema: UserBuyerSchema, value: "buyer" },
+          { name: UserSeller.name, schema: UserSellerSchema, value: "seller" },
         ],
       },
     ]),

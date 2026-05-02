@@ -5,33 +5,30 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Company, CompanyDocument } from "../users/schemas/company.schema";
-import { CreateCompanyDto } from "./dto/create-company.dto";
-import { UpdateCompanyDto } from "./dto/update-company.dto";
-import { QueryCompanyDto } from "./dto/query-company.dto";
+import { Seller, SellerDocument } from "./schemas/seller.schema";
+import { CreateSellerDto } from "./dto/create-seller.dto";
+import { UpdateSellerDto } from "./dto/update-seller.dto";
+import { QuerySellerDto } from "./dto/query-seller.dto";
 
 @Injectable()
-export class CompaniesService {
+export class SellersService {
   constructor(
-    @InjectModel(Company.name)
-    private readonly companyModel: Model<CompanyDocument>,
+    @InjectModel(Seller.name)
+    private readonly sellerModel: Model<SellerDocument>,
   ) {}
 
   private static readonly LIST_PROJECTION = {
     name: 1,
+    nameEn: 1,
     industry: 1,
     tags: 1,
     location: 1,
     sizeBucket: 1,
-    companyIntroduction: 1,
-    productIntroduction: 1,
-    websiteUrl: 1,
+    profileText: 1,
     updatedAt: 1,
-    contactName: 1,
-    email: 1,
   };
 
-  async findAll(query: QueryCompanyDto) {
+  async findAll(query: QuerySellerDto) {
     const {
       q,
       industry,
@@ -60,8 +57,8 @@ export class CompaniesService {
     };
     const skip = (page - 1) * limit;
 
-    let findQuery = this.companyModel
-      .find(filter, CompaniesService.LIST_PROJECTION)
+    let findQuery = this.sellerModel
+      .find(filter, SellersService.LIST_PROJECTION)
       .sort(sort)
       .skip(skip)
       .limit(limit)
@@ -72,8 +69,8 @@ export class CompaniesService {
     }
 
     const countQuery = hasFilter
-      ? this.companyModel.countDocuments(filter)
-      : this.companyModel.estimatedDocumentCount();
+      ? this.sellerModel.countDocuments(filter)
+      : this.sellerModel.estimatedDocumentCount();
 
     const [raw, total] = await Promise.all([findQuery.exec(), countQuery]);
 
@@ -88,36 +85,52 @@ export class CompaniesService {
     };
   }
 
-  async findById(id: string): Promise<CompanyDocument> {
-    const doc = await this.companyModel.findById(id).exec();
-    if (!doc) throw new NotFoundException("Company not found");
+  async findById(id: string): Promise<SellerDocument> {
+    const doc = await this.sellerModel.findById(id).exec();
+    if (!doc) throw new NotFoundException("Seller not found");
     return doc;
   }
 
-  async create(dto: CreateCompanyDto): Promise<CompanyDocument> {
-    return this.companyModel.create(dto);
+  async create(dto: CreateSellerDto): Promise<SellerDocument> {
+    return this.sellerModel.create(this.toPersistenceFields(dto));
   }
 
-  async update(id: string, dto: UpdateCompanyDto): Promise<CompanyDocument> {
+  async update(id: string, dto: UpdateSellerDto): Promise<SellerDocument> {
     const fields = Object.fromEntries(
-      Object.entries(dto).filter(([, v]) => v !== undefined),
+      Object.entries(this.toPersistenceFields(dto)).filter(
+        ([, v]) => v !== undefined,
+      ),
     );
     if (Object.keys(fields).length === 0) {
       throw new BadRequestException("수정할 필드를 하나 이상 제공해야 합니다");
     }
-    const doc = await this.companyModel
+    const doc = await this.sellerModel
       .findByIdAndUpdate(
         id,
         { ...fields, updatedAt: new Date() },
         { new: true, runValidators: true },
       )
       .exec();
-    if (!doc) throw new NotFoundException("Company not found");
+    if (!doc) throw new NotFoundException("Seller not found");
     return doc;
   }
 
   async remove(id: string): Promise<void> {
-    const doc = await this.companyModel.findByIdAndDelete(id).exec();
-    if (!doc) throw new NotFoundException("Company not found");
+    const doc = await this.sellerModel.findByIdAndDelete(id).exec();
+    if (!doc) throw new NotFoundException("Seller not found");
+  }
+
+  private toPersistenceFields(dto: Partial<CreateSellerDto & UpdateSellerDto>) {
+    return {
+      name: dto.name,
+      industry: dto.industry,
+      tags: dto.tags,
+      location: dto.location,
+      sizeBucket: dto.sizeBucket,
+      profileText:
+        [dto.sellerIntroduction, dto.productIntroduction]
+          .filter(Boolean)
+          .join("\n") || undefined,
+    };
   }
 }

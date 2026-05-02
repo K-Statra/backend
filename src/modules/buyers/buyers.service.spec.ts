@@ -2,7 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
 import { NotFoundException } from "@nestjs/common";
 import { BuyersService } from "./buyers.service";
-import { Buyer } from "../users/schemas/buyer.schema";
+import { Buyer } from "../buyers/schemas/buyer.schema";
 
 function buildQueryMock(resolvedValue: any) {
   const mock: any = {
@@ -46,7 +46,7 @@ describe("BuyersService", () => {
 
   describe("findAll", () => {
     it("기본값으로 목록 반환", async () => {
-      const items = [{ name: "Acme" }];
+      const items = [{ name_kr: "라온시큐어" }];
       buyerModel.find.mockReturnValue(buildQueryMock(items));
       buyerModel.countDocuments.mockResolvedValue(1);
 
@@ -67,28 +67,31 @@ describe("BuyersService", () => {
       expect(buyerModel.find).toHaveBeenCalledWith(
         expect.objectContaining({
           $or: [
-            { name: { $regex: "acme", $options: "i" } },
-            { profileText: { $regex: "acme", $options: "i" } },
+            { name_kr: { $regex: "acme", $options: "i" } },
+            { name_en: { $regex: "acme", $options: "i" } },
+            { intro_kr: { $regex: "acme", $options: "i" } },
+            { intro_en: { $regex: "acme", $options: "i" } },
           ],
         }),
       );
     });
 
-    it("country, industry, tag 필터 적용", async () => {
+    it("country, industry 필터 적용", async () => {
       buyerModel.find.mockReturnValue(buildQueryMock([]));
       buyerModel.countDocuments.mockResolvedValue(0);
 
       await service.findAll({
-        country: "US",
-        industry: "Auto",
-        tag: "B2B",
+        country: "South Korea",
+        industry: "Security",
       });
 
       expect(buyerModel.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          country: "US",
-          industries: "Auto",
-          tags: "B2B",
+          country: "South Korea",
+          $or: [
+            { industry_kr: { $regex: "Security", $options: "i" } },
+            { industry_en: { $regex: "Security", $options: "i" } },
+          ],
         }),
       );
     });
@@ -117,7 +120,7 @@ describe("BuyersService", () => {
 
   describe("findById", () => {
     it("존재하는 ID → 문서 반환", async () => {
-      const buyer = { _id: VALID_ID, name: "Acme" };
+      const buyer = { _id: VALID_ID, name_kr: "라온시큐어" };
       buyerModel.findById.mockReturnValue({
         exec: jest.fn().mockResolvedValue(buyer),
       });

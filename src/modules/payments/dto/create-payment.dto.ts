@@ -26,7 +26,7 @@ export class CreatePaymentDto {
 
   @ApiProperty({ example: "507f1f77bcf86cd799439012" })
   @IsMongoId()
-  companyId: string;
+  sellerId: string;
 
   @ApiPropertyOptional({ example: "파트너 매칭 결제" })
   @IsOptional()

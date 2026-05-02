@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
 import envConfig from "./config/env.config";
 import { PaymentsModule } from "./modules/payments/payments.module";
-import { CompaniesModule } from "./modules/companies/companies.module";
+import { SellersModule } from "./modules/sellers/sellers.module";
 import { PartnersModule } from "./modules/partners/partners.module";
 import { MatchesModule } from "./modules/matches/matches.module";
 import { BuyersModule } from "./modules/buyers/buyers.module";
@@ -21,10 +21,11 @@ import { AuthModule } from "./modules/auth/auth.module";
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         uri: config.get<string>("mongodb.uri"),
+        dbName: config.get<string>("mongodb.dbName"),
       }),
     }),
     PaymentsModule,
-    CompaniesModule,
+    SellersModule,
     PartnersModule,
     MatchesModule,
     BuyersModule,

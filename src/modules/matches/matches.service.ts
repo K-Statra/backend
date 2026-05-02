@@ -1,8 +1,8 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Company, CompanyDocument } from "../users/schemas/company.schema";
-import { Buyer, BuyerDocument } from "../users/schemas/buyer.schema";
+import { Seller, SellerDocument } from "../sellers/schemas/seller.schema";
+import { Buyer, BuyerDocument } from "../buyers/schemas/buyer.schema";
 import { MatchLog, MatchLogDocument } from "./schemas/match-log.schema";
 import {
   MatchFeedback,
@@ -36,42 +36,38 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return Math.max(0, Math.min(1, dot / (Math.sqrt(na) * Math.sqrt(nb))));
 }
 
-function scoreCompany(
+function scoreSeller(
   buyer: BuyerDocument,
-  company: any,
+  seller: any,
 ): { score: number; reasons: string[] } {
-  const buyerTags = toSet(buyer.tags);
-  const buyerIndustries = toSet(buyer.industries);
-  const buyerNeeds = toSet(buyer.needs);
-  const companyTags = toSet(company.tags);
-  const companyIndustry = String(company.industry || "")
+  const buyerIndustries = new Set(
+    [buyer.industry_kr, buyer.industry_en]
+      .filter(Boolean)
+      .map((s) => s.toLowerCase().trim()),
+  );
+  const sellerTags = toSet(seller.tags);
+  const sellerIndustry = String(seller.industry || "")
     .toLowerCase()
     .trim();
-  const companyExportItems = toSet(company.exportItems);
 
   let score = 0;
   const reasons: string[] = [];
 
-  const tagMatches = intersectCount(buyerTags, companyTags);
-  if (tagMatches > 0) {
-    score += tagMatches * 2;
-    reasons.push(`tags overlap x${tagMatches}`);
-  }
-
-  if (companyIndustry && buyerIndustries.has(companyIndustry)) {
+  if (sellerIndustry && buyerIndustries.has(sellerIndustry)) {
     score += 3;
     reasons.push("industry match");
   }
 
-  const needMatches = intersectCount(buyerNeeds, companyExportItems);
-  if (needMatches > 0) {
-    score += needMatches * 2;
-    reasons.push(`needs-exportItems overlap x${needMatches}`);
+  // Tags overlap with buyer industries as a fallback since buyer tags are removed
+  const tagIndustryMatches = intersectCount(buyerIndustries, sellerTags);
+  if (tagIndustryMatches > 0) {
+    score += tagIndustryMatches * 2;
+    reasons.push(`industry-tag overlap x${tagIndustryMatches}`);
   }
 
   const days = Math.max(
     0,
-    (Date.now() - new Date(company.updatedAt || Date.now()).getTime()) /
+    (Date.now() - new Date(seller.updatedAt || Date.now()).getTime()) /
       86400000,
   );
   const recency = Math.max(0, 30 - days) / 30;
@@ -82,8 +78,8 @@ function scoreCompany(
 
   const autoRegex = /자동차|부품|Automotive|Car parts|EV|Machinery|parts/i;
   if (
-    autoRegex.test(companyIndustry) ||
-    Array.from(companyTags).some((t) => autoRegex.test(t))
+    autoRegex.test(sellerIndustry) ||
+    Array.from(sellerTags).some((t) => autoRegex.test(t))
   ) {
     score += 2.0;
     reasons.push("Automotive sector priority");
@@ -93,9 +89,9 @@ function scoreCompany(
   if (useEmbedding) {
     const weight = Number(process.env.MATCH_EMBEDDING_WEIGHT || 0.3);
     const sim =
-      typeof company.vectorScore === "number"
-        ? company.vectorScore
-        : cosineSimilarity(buyer.embedding, company.embedding);
+      typeof seller.vectorScore === "number"
+        ? seller.vectorScore
+        : cosineSimilarity(buyer.embedding, seller.embedding);
     if (sim > 0 && weight > 0) {
       score += sim * 10 * Math.min(1, weight);
       reasons.push(`embedding sim ${sim.toFixed(2)}`);
@@ -110,8 +106,8 @@ export class MatchesService {
   private readonly logger = new Logger(MatchesService.name);
 
   constructor(
-    @InjectModel(Company.name)
-    private readonly companyModel: Model<CompanyDocument>,
+    @InjectModel(Seller.name)
+    private readonly sellerModel: Model<SellerDocument>,
     @InjectModel(Buyer.name) private readonly buyerModel: Model<BuyerDocument>,
     @InjectModel(MatchLog.name)
     private readonly matchLogModel: Model<MatchLogDocument>,
@@ -128,7 +124,7 @@ export class MatchesService {
 
     if (useAtlasVector && buyer.embedding?.length) {
       try {
-        candidates = await this.companyModel.aggregate([
+        candidates = await this.sellerModel.aggregate([
           {
             $vectorSearch: {
               index: process.env.ATLAS_VECTOR_INDEX || "vector_index",
@@ -142,14 +138,14 @@ export class MatchesService {
         ]);
       } catch (err) {
         this.logger.warn("Vector search failed, falling back", err);
-        candidates = await this.companyModel
+        candidates = await this.sellerModel
           .find({})
           .sort({ updatedAt: -1 })
           .limit(200)
           .lean();
       }
     } else {
-      candidates = await this.companyModel
+      candidates = await this.sellerModel
         .find({})
         .sort({ updatedAt: -1 })
         .limit(200)
@@ -157,7 +153,7 @@ export class MatchesService {
     }
 
     const scored = candidates
-      .map((c) => ({ company: c, ...scoreCompany(buyer, c) }))
+      .map((c) => ({ seller: c, ...scoreSeller(buyer, c) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
 
@@ -166,7 +162,7 @@ export class MatchesService {
         buyerId: buyer._id,
         params: { limit },
         results: scored.map((r) => ({
-          companyId: r.company._id,
+          sellerId: r.seller._id,
           score: r.score,
           reasons: r.reasons.slice(0, 5),
         })),
@@ -179,7 +175,7 @@ export class MatchesService {
   }
 
   async submitFeedback(
-    companyId: string,
+    sellerId: string,
     dto: {
       rating: number;
       comments?: string;
@@ -187,10 +183,10 @@ export class MatchesService {
       source?: string;
     },
   ) {
-    const company = await this.companyModel.findById(companyId).exec();
-    if (!company) throw new NotFoundException("Company not found");
+    const seller = await this.sellerModel.findById(sellerId).exec();
+    if (!seller) throw new NotFoundException("Seller not found");
     const doc = await this.feedbackModel.create({
-      companyId: company._id,
+      sellerId: seller._id,
       rating: dto.rating,
       comments: dto.comments || "",
       locale: dto.locale || "",

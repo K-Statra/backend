@@ -77,7 +77,7 @@ describe("PartnersController", () => {
     it("디버그 정보 반환", async () => {
       const debugInfo = {
         status: "ok",
-        db: { companyCount: 100 },
+        db: { sellerCount: 100 },
         embedding: { status: "Success" },
       };
       mockPartnersService.getDebugInfo.mockResolvedValue(debugInfo);

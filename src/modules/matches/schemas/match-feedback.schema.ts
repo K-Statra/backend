@@ -5,8 +5,8 @@ export type MatchFeedbackDocument = MatchFeedback & Document;
 
 @Schema({ timestamps: true })
 export class MatchFeedback {
-  @Prop({ type: Types.ObjectId, ref: "Company", required: true, index: true })
-  companyId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: "Seller", required: true, index: true })
+  sellerId: Types.ObjectId;
 
   @Prop({ required: true, min: 1, max: 5 }) rating: number;
   @Prop({ default: "" }) comments: string;
@@ -15,4 +15,4 @@ export class MatchFeedback {
 }
 
 export const MatchFeedbackSchema = SchemaFactory.createForClass(MatchFeedback);
-MatchFeedbackSchema.index({ companyId: 1, createdAt: -1 });
+MatchFeedbackSchema.index({ sellerId: 1, createdAt: -1 });

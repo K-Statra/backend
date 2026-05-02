@@ -10,22 +10,22 @@ const makeAuthServiceMock = () => ({
 });
 
 const SELLER_DTO = {
-  companyName: "테스트 판매사",
+  sellerName: "테스트 판매사",
   representativeName: "홍길동",
   representativeEmail: "seller@test.com",
   representativePhone: "010-1234-5678",
   exportItems: ["화장품"],
-  companyIntroduction: "회사 소개",
+  sellerIntroduction: "회사 소개",
   productIntroduction: "제품 소개",
 };
 
 const BUYER_DTO = {
-  companyName: "테스트 구매사",
+  sellerName: "테스트 구매사",
   representativeName: "김철수",
   representativeEmail: "buyer@test.com",
   representativePhone: "010-8765-4321",
   needs: ["전자부품"],
-  companyIntroduction: "회사 소개",
+  sellerIntroduction: "회사 소개",
   productIntroduction: "제품 소개",
 };
 
@@ -48,7 +48,7 @@ describe("AuthController", () => {
     it("서비스 결과 그대로 반환", async () => {
       const expected = {
         _id: "id1",
-        name: SELLER_DTO.companyName,
+        name: SELLER_DTO.sellerName,
         status: "PENDING_ACTIVATION",
       };
       authService.registerSeller.mockResolvedValue(expected);
@@ -72,7 +72,7 @@ describe("AuthController", () => {
     it("서비스 결과 그대로 반환", async () => {
       const expected = {
         _id: "id2",
-        name: BUYER_DTO.companyName,
+        name: BUYER_DTO.sellerName,
         status: "PENDING_ACTIVATION",
       };
       authService.registerBuyer.mockResolvedValue(expected);

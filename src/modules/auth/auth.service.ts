@@ -9,8 +9,14 @@ import { Model, Types } from "mongoose";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import * as bcrypt from "bcrypt";
 import { User, UserDocument } from "../users/schemas/user.schema";
-import { Company, CompanyDocument } from "../users/schemas/company.schema";
-import { Buyer, BuyerDocument } from "../users/schemas/buyer.schema";
+import {
+  UserSeller,
+  UserSellerDocument,
+} from "../users/schemas/user-seller.schema";
+import {
+  UserBuyer,
+  UserBuyerDocument,
+} from "../users/schemas/user-buyer.schema";
 import { XrplService, XrplWallet } from "../payments/xrpl.service";
 import { RegisterBuyerDto, RegisterSellerDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -23,8 +29,10 @@ export class AuthService {
 
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(Company.name) private companyModel: Model<CompanyDocument>,
-    @InjectModel(Buyer.name) private buyerModel: Model<BuyerDocument>,
+    @InjectModel(UserSeller.name)
+    private userSellerModel: Model<UserSellerDocument>,
+    @InjectModel(UserBuyer.name)
+    private userBuyerModel: Model<UserBuyerDocument>,
     private readonly xrplService: XrplService,
   ) {}
 
@@ -37,18 +45,16 @@ export class AuthService {
     const wallet = this.xrplService.generateWallet();
     const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
-    const newSeller = new this.companyModel({
-      name: dto.companyName,
+    const newSeller = new this.userSellerModel({
+      name: dto.sellerName,
       email: dto.representativeEmail,
       contactName: dto.representativeName,
       phone: dto.representativePhone,
       password: hashedPassword,
       exportItems: dto.exportItems,
-      industry: dto.industry ?? "",
-      tags: dto.tags ?? [],
-      companyIntroduction: dto.companyIntroduction,
+      industries: dto.industries ?? [],
+      sellerIntroduction: dto.sellerIntroduction,
       productIntroduction: dto.productIntroduction,
-      websiteUrl: dto.websiteUrl,
       wallet: {
         address: wallet.address,
         seed: this.xrplService.encrypt(wallet.seed),
@@ -76,18 +82,16 @@ export class AuthService {
     const wallet = this.xrplService.generateWallet();
     const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
-    const newBuyer = new this.buyerModel({
-      name: dto.companyName,
+    const newBuyer = new this.userBuyerModel({
+      name: dto.sellerName,
       email: dto.representativeEmail,
       contactName: dto.representativeName,
       phone: dto.representativePhone,
       password: hashedPassword,
       needs: dto.needs,
       industries: dto.industries ?? [],
-      tags: dto.tags ?? [],
-      companyIntroduction: dto.companyIntroduction,
+      sellerIntroduction: dto.sellerIntroduction,
       productIntroduction: dto.productIntroduction,
-      websiteUrl: dto.websiteUrl,
       wallet: {
         address: wallet.address,
         seed: this.xrplService.encrypt(wallet.seed),
@@ -138,9 +142,9 @@ export class AuthService {
       );
       await this.xrplService.fundAccount(wallet);
       if (type === "seller") {
-        await this.companyModel.updateOne({ _id: id }, { status: "ACTIVE" });
+        await this.userSellerModel.updateOne({ _id: id }, { status: "ACTIVE" });
       } else {
-        await this.buyerModel.updateOne({ _id: id }, { status: "ACTIVE" });
+        await this.userBuyerModel.updateOne({ _id: id }, { status: "ACTIVE" });
       }
       this.logger.log(`Successfully activated ${type} (${String(id)})`);
     } catch (err) {
@@ -149,12 +153,12 @@ export class AuthService {
       );
       try {
         if (type === "seller") {
-          await this.companyModel.updateOne(
+          await this.userSellerModel.updateOne(
             { _id: id },
             { status: "FAILED_ACTIVATION" },
           );
         } else {
-          await this.buyerModel.updateOne(
+          await this.userBuyerModel.updateOne(
             { _id: id },
             { status: "FAILED_ACTIVATION" },
           );
@@ -172,8 +176,8 @@ export class AuthService {
   @Cron(CronExpression.EVERY_30_MINUTES)
   async retryFailedActivations() {
     const [failedSellers, failedBuyers] = await Promise.all([
-      this.companyModel.find({ status: "FAILED_ACTIVATION" }).lean(),
-      this.buyerModel.find({ status: "FAILED_ACTIVATION" }).lean(),
+      this.userSellerModel.find({ status: "FAILED_ACTIVATION" }).lean(),
+      this.userBuyerModel.find({ status: "FAILED_ACTIVATION" }).lean(),
     ]);
 
     if (failedSellers.length === 0 && failedBuyers.length === 0) return;
@@ -193,12 +197,12 @@ export class AuthService {
         };
         await this.xrplService.fundAccount(wallet);
         if (type === "seller") {
-          await this.companyModel.updateOne(
+          await this.userSellerModel.updateOne(
             { _id: doc._id },
             { status: "ACTIVE" },
           );
         } else {
-          await this.buyerModel.updateOne(
+          await this.userBuyerModel.updateOne(
             { _id: doc._id },
             { status: "ACTIVE" },
           );

@@ -10,28 +10,34 @@ import {
 import { CreateConsultationDto } from "./dto/create-consultation.dto";
 import { QueryConsultationDto } from "./dto/query-consultation.dto";
 import { UpdateConsultationStatusDto } from "./dto/update-consultation-status.dto";
-import { Buyer, BuyerDocument } from "../users/schemas/buyer.schema";
-import { Company, CompanyDocument } from "../users/schemas/company.schema";
+import {
+  UserBuyer,
+  UserBuyerDocument,
+} from "../users/schemas/user-buyer.schema";
+import {
+  UserSeller,
+  UserSellerDocument,
+} from "../users/schemas/user-seller.schema";
 
 @Injectable()
 export class ConsultationsService {
   constructor(
     @InjectModel(Consultation.name)
     private readonly consultationModel: Model<ConsultationDocument>,
-    @InjectModel(Buyer.name)
-    private readonly buyerModel: Model<BuyerDocument>,
-    @InjectModel(Company.name)
-    private readonly companyModel: Model<CompanyDocument>,
+    @InjectModel(UserBuyer.name)
+    private readonly buyerModel: Model<UserBuyerDocument>,
+    @InjectModel(UserSeller.name)
+    private readonly sellerModel: Model<UserSellerDocument>,
   ) {}
 
   async create(dto: CreateConsultationDto): Promise<Consultation> {
-    const [buyer, company] = await Promise.all([
+    const [buyer, seller] = await Promise.all([
       this.buyerModel.findById(dto.buyerId).lean(),
-      this.companyModel.findById(dto.companyId).lean(),
+      this.sellerModel.findById(dto.sellerId).lean(),
     ]);
 
-    if (!buyer || !company) {
-      throw new NotFoundException("Buyer or Company not found");
+    if (!buyer || !seller) {
+      throw new NotFoundException("Buyer or Seller not found");
     }
 
     const reqType = dto.reqType ?? ReqType.OFFLINE;
@@ -46,9 +52,9 @@ export class ConsultationsService {
 
     return this.consultationModel.create({
       buyerId: new Types.ObjectId(dto.buyerId),
-      companyId: new Types.ObjectId(dto.companyId),
+      sellerId: new Types.ObjectId(dto.sellerId),
       buyerName: buyer.name,
-      companyName: company.name,
+      sellerName: seller.name,
       reqType,
       date: new Date(dto.date),
       timeSlot: dto.timeSlot,
@@ -61,7 +67,7 @@ export class ConsultationsService {
   findAll(query: QueryConsultationDto): Promise<Consultation[]> {
     const filter: Record<string, unknown> = {};
     if (query.buyerId) filter.buyerId = new Types.ObjectId(query.buyerId);
-    if (query.companyId) filter.companyId = new Types.ObjectId(query.companyId);
+    if (query.sellerId) filter.sellerId = new Types.ObjectId(query.sellerId);
 
     return this.consultationModel
       .find(filter)

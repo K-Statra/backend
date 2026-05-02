@@ -2,18 +2,14 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 import { User } from "./user.schema";
 
-export type CompanyDocument = Company &
+export type UserSellerDocument = UserSeller &
   User &
   Document & { _id: Types.ObjectId; type: "seller" };
 
-// User 스키마를 상속받아 Company 스키마를 정의합니다.
 @Schema()
-export class Company {
+export class UserSeller {
   @Prop({ type: [String], required: true })
   exportItems: string[];
-
-  @Prop({ default: "" })
-  industry: string;
 
   @Prop({ type: { city: String, state: String, country: String }, default: {} })
   location: { city: string; state: string; country: string };
@@ -25,9 +21,8 @@ export class Company {
   sizeBucket: string;
 }
 
-export const CompanySchema = SchemaFactory.createForClass(Company);
+export const UserSellerSchema = SchemaFactory.createForClass(UserSeller);
 
-CompanySchema.index({ exportItems: 1 });
-CompanySchema.index({ industry: 1 });
-CompanySchema.index({ "location.country": 1 });
-CompanySchema.index({ sizeBucket: 1 });
+UserSellerSchema.index({ exportItems: 1 });
+UserSellerSchema.index({ "location.country": 1 });
+UserSellerSchema.index({ sizeBucket: 1 });

@@ -10,16 +10,16 @@ import {
   Query,
 } from "@nestjs/common";
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { CompaniesService } from "./companies.service";
-import { CreateCompanyDto } from "./dto/create-company.dto";
-import { UpdateCompanyDto } from "./dto/update-company.dto";
-import { QueryCompanyDto } from "./dto/query-company.dto";
+import { SellersService } from "./sellers.service";
+import { CreateSellerDto } from "./dto/create-seller.dto";
+import { UpdateSellerDto } from "./dto/update-seller.dto";
+import { QuerySellerDto } from "./dto/query-seller.dto";
 import { ParseMongoIdPipe } from "../../common/pipes/parse-mongo-id.pipe";
 
-@ApiTags("Companies")
-@Controller("companies")
-export class CompaniesController {
-  constructor(private readonly companiesService: CompaniesService) {}
+@ApiTags("Sellers")
+@Controller("sellers")
+export class SellersController {
+  constructor(private readonly sellersService: SellersService) {}
 
   @Get()
   @ApiOperation({ summary: "기업 목록 (검색/페이지네이션/정렬)" })
@@ -30,8 +30,8 @@ export class CompaniesController {
       example: { page: 1, limit: 10, total: 100, totalPages: 10, data: [] },
     },
   })
-  findAll(@Query() query: QueryCompanyDto) {
-    return this.companiesService.findAll(query);
+  findAll(@Query() query: QuerySellerDto) {
+    return this.sellersService.findAll(query);
   }
 
   @Get(":id")
@@ -41,15 +41,15 @@ export class CompaniesController {
   @ApiResponse({ status: 400, description: "유효하지 않은 ID" })
   @ApiResponse({ status: 404, description: "기업 없음" })
   findOne(@Param("id", ParseMongoIdPipe) id: string) {
-    return this.companiesService.findById(id);
+    return this.sellersService.findById(id);
   }
 
   @Post()
   @ApiOperation({ summary: "기업 생성 (이미지 없으면 플레이스홀더 자동 삽입)" })
   @ApiResponse({ status: 201, description: "생성된 기업" })
   @ApiResponse({ status: 400, description: "유효성 검사 실패" })
-  create(@Body() dto: CreateCompanyDto) {
-    return this.companiesService.create(dto);
+  create(@Body() dto: CreateSellerDto) {
+    return this.sellersService.create(dto);
   }
 
   @Patch(":id")
@@ -60,9 +60,9 @@ export class CompaniesController {
   @ApiResponse({ status: 404, description: "기업 없음" })
   update(
     @Param("id", ParseMongoIdPipe) id: string,
-    @Body() dto: UpdateCompanyDto,
+    @Body() dto: UpdateSellerDto,
   ) {
-    return this.companiesService.update(id, dto);
+    return this.sellersService.update(id, dto);
   }
 
   @Delete(":id")
@@ -73,6 +73,6 @@ export class CompaniesController {
   @ApiResponse({ status: 400, description: "유효하지 않은 ID" })
   @ApiResponse({ status: 404, description: "기업 없음" })
   remove(@Param("id", ParseMongoIdPipe) id: string) {
-    return this.companiesService.remove(id);
+    return this.sellersService.remove(id);
   }
 }

@@ -67,7 +67,7 @@ export class PaymentsService {
     // 결제 생성
     const payment = await this.paymentModel.create({
       buyerId: dto.buyerId,
-      companyId: dto.companyId,
+      sellerId: dto.sellerId,
       amount: dto.amount,
       currency: dto.currency ?? "XRP",
       memo: dto.memo ?? "",
@@ -162,8 +162,8 @@ export class PaymentsService {
       .find()
       .sort({ createdAt: -1 })
       .limit(limit)
-      .select("amount currency status memo createdAt companyId")
-      .populate("companyId", "name")
+      .select("amount currency status memo createdAt sellerId")
+      .populate("sellerId", "name")
       .lean();
   }
 }

@@ -41,8 +41,8 @@ export class Payment {
   @Prop({ type: Types.ObjectId, ref: "Buyer", required: true, index: true })
   buyerId: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: "Company", required: true, index: true })
-  companyId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: "Seller", required: true, index: true })
+  sellerId: Types.ObjectId;
 
   @Prop({ required: true, min: 0 }) amount: number;
 
