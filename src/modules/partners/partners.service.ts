@@ -93,6 +93,8 @@ const mapBuyerToCommon = (b: any) => ({
   updatedAt: b.updatedAt,
 });
 
+const escapeRegex = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 @Injectable()
 export class PartnersService {
   private readonly logger = new Logger(PartnersService.name);
@@ -216,8 +218,18 @@ export class PartnersService {
               { $text: { $search: aiKeywords } },
               {
                 $or: [
-                  { industry_kr: { $regex: industry, $options: "i" } },
-                  { industry_en: { $regex: industry, $options: "i" } },
+                  {
+                    industry_kr: {
+                      $regex: escapeRegex(industry),
+                      $options: "i",
+                    },
+                  },
+                  {
+                    industry_en: {
+                      $regex: escapeRegex(industry),
+                      $options: "i",
+                    },
+                  },
                 ],
               },
             ];
