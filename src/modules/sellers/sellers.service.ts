@@ -92,12 +92,14 @@ export class SellersService {
   }
 
   async create(dto: CreateSellerDto): Promise<SellerDocument> {
-    return this.sellerModel.create(dto);
+    return this.sellerModel.create(this.toPersistenceFields(dto));
   }
 
   async update(id: string, dto: UpdateSellerDto): Promise<SellerDocument> {
     const fields = Object.fromEntries(
-      Object.entries(dto).filter(([, v]) => v !== undefined),
+      Object.entries(this.toPersistenceFields(dto)).filter(
+        ([, v]) => v !== undefined,
+      ),
     );
     if (Object.keys(fields).length === 0) {
       throw new BadRequestException("수정할 필드를 하나 이상 제공해야 합니다");
@@ -116,5 +118,19 @@ export class SellersService {
   async remove(id: string): Promise<void> {
     const doc = await this.sellerModel.findByIdAndDelete(id).exec();
     if (!doc) throw new NotFoundException("Seller not found");
+  }
+
+  private toPersistenceFields(dto: Partial<CreateSellerDto & UpdateSellerDto>) {
+    return {
+      name: dto.name,
+      industry: dto.industry,
+      tags: dto.tags,
+      location: dto.location,
+      sizeBucket: dto.sizeBucket,
+      profileText:
+        [dto.sellerIntroduction, dto.productIntroduction]
+          .filter(Boolean)
+          .join("\n") || undefined,
+    };
   }
 }
