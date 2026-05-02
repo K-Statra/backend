@@ -22,22 +22,33 @@ export class BuyersService {
     } = query;
 
     const filter: Record<string, any> = {};
+    const andClauses: Record<string, any>[] = [];
+    const escapeRegex = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
     if (q) {
-      filter.$or = [
-        { name_kr: { $regex: q, $options: "i" } },
-        { name_en: { $regex: q, $options: "i" } },
-        { intro_kr: { $regex: q, $options: "i" } },
-        { intro_en: { $regex: q, $options: "i" } },
-      ];
+      const safeQ = escapeRegex(q);
+      andClauses.push({
+        $or: [
+          { name_kr: { $regex: safeQ, $options: "i" } },
+          { name_en: { $regex: safeQ, $options: "i" } },
+          { intro_kr: { $regex: safeQ, $options: "i" } },
+          { intro_en: { $regex: safeQ, $options: "i" } },
+        ],
+      });
     }
     if (country) filter.country = country;
     if (industry) {
-      filter.$or = [
-        ...(filter.$or || []),
-        { industry_kr: { $regex: industry, $options: "i" } },
-        { industry_en: { $regex: industry, $options: "i" } },
-      ];
+      const safeIndustry = escapeRegex(industry);
+      andClauses.push({
+        $or: [
+          { industry_kr: { $regex: safeIndustry, $options: "i" } },
+          { industry_en: { $regex: safeIndustry, $options: "i" } },
+        ],
+      });
     }
+
+    if (andClauses.length === 1) Object.assign(filter, andClauses[0]);
+    if (andClauses.length > 1) filter.$and = andClauses;
 
     const sort: Record<string, 1 | -1> = { [sortBy]: order === "asc" ? 1 : -1 };
     const [items, total] = await Promise.all([
