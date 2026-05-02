@@ -3,11 +3,13 @@ export default () => ({
   nodeEnv: process.env.NODE_ENV || "development",
 
   mongodb: {
-    uri:
-      process.env.MONGODB_URI ??
-      (() => {
+    uri: (() => {
+      const uri = process.env.MONGODB_URI?.trim();
+      if (!uri) {
         throw new Error("MONGODB_URI env var is required");
-      })(),
+      }
+      return uri;
+    })(),
     dbName: process.env.MONGODB_DB_NAME || "K-statra",
     vectorIndex: process.env.ATLAS_VECTOR_INDEX,
   },
