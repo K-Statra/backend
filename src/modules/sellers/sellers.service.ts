@@ -29,7 +29,6 @@ export class SellersService {
       tag,
       country,
       size,
-      partnership,
       page = 1,
       limit = 10,
       sortBy = "updatedAt",
@@ -42,7 +41,6 @@ export class SellersService {
     if (tag) filter.tags = tag;
     if (country) filter["location.country"] = country;
     if (size) filter.sizeBucket = size;
-    if (partnership) filter.tags = partnership;
 
     const hasFilter = Object.keys(filter).length > 0;
     const sortField = sortBy === "nameNumeric" ? "name" : sortBy;
