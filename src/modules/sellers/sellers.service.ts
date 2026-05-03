@@ -1,13 +1,7 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Seller, SellerDocument } from "./schemas/seller.schema";
-import { CreateSellerDto } from "./dto/create-seller.dto";
-import { UpdateSellerDto } from "./dto/update-seller.dto";
 import { QuerySellerDto } from "./dto/query-seller.dto";
 
 @Injectable()
@@ -82,55 +76,6 @@ export class SellersService {
       total,
       totalPages: Math.ceil(total / limit),
       data: items,
-    };
-  }
-
-  async findById(id: string): Promise<SellerDocument> {
-    const doc = await this.sellerModel.findById(id).exec();
-    if (!doc) throw new NotFoundException("Seller not found");
-    return doc;
-  }
-
-  async create(dto: CreateSellerDto): Promise<SellerDocument> {
-    return this.sellerModel.create(this.toPersistenceFields(dto));
-  }
-
-  async update(id: string, dto: UpdateSellerDto): Promise<SellerDocument> {
-    const fields = Object.fromEntries(
-      Object.entries(this.toPersistenceFields(dto)).filter(
-        ([, v]) => v !== undefined,
-      ),
-    );
-    if (Object.keys(fields).length === 0) {
-      throw new BadRequestException("수정할 필드를 하나 이상 제공해야 합니다");
-    }
-    const doc = await this.sellerModel
-      .findByIdAndUpdate(
-        id,
-        { ...fields, updatedAt: new Date() },
-        { new: true, runValidators: true },
-      )
-      .exec();
-    if (!doc) throw new NotFoundException("Seller not found");
-    return doc;
-  }
-
-  async remove(id: string): Promise<void> {
-    const doc = await this.sellerModel.findByIdAndDelete(id).exec();
-    if (!doc) throw new NotFoundException("Seller not found");
-  }
-
-  private toPersistenceFields(dto: Partial<CreateSellerDto & UpdateSellerDto>) {
-    return {
-      name: dto.name,
-      industry: dto.industry,
-      tags: dto.tags,
-      location: dto.location,
-      sizeBucket: dto.sizeBucket,
-      profileText:
-        [dto.sellerIntroduction, dto.productIntroduction]
-          .filter(Boolean)
-          .join("\n") || undefined,
     };
   }
 }
