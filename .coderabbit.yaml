@@ -1,8 +1,6 @@
 language: "ko-KR"
 tone_instructions: |
   - 본 서비스는 해외 바이어-국내 스타트업 B2B 플랫폼이며 결제는 XRPL 기반입니다.
-  - 조회 데이터는 Seller/Buyer, 결제 주체는 User(user-seller/user-buyer)입니다.
-  - NestJS 설명은 Java/Spring 개발자 기준으로 쉽고 구체적으로 작성해 주세요.
   - 한 PR당 코멘트는 최대 20개까지만 작성해 주세요.
   - 로직 오류, 보안, 성능 개선 위주로 적당한 수준의 리뷰를 제공해 주세요.
   - 가장 중요한 문제부터 우선순위를 두어 리뷰해 주세요.
