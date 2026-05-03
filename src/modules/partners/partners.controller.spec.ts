@@ -4,7 +4,6 @@ import { PartnersService } from "./partners.service";
 
 const mockPartnersService = {
   search: jest.fn(),
-  getDebugInfo: jest.fn(),
 };
 
 describe("PartnersController", () => {
@@ -63,27 +62,11 @@ describe("PartnersController", () => {
     it("파라미터 없이 호출 시 undefined 전달", async () => {
       mockPartnersService.search.mockResolvedValue({ data: [] });
 
-      await controller.search(undefined, 10);
+      await controller.search(undefined as any, 10);
 
       expect(mockPartnersService.search).toHaveBeenCalledWith(
         expect.objectContaining({ q: undefined, limit: 10 }),
       );
-    });
-  });
-
-  // ── debug ─────────────────────────────────────────────────────────────────────
-
-  describe("GET /partners/debug", () => {
-    it("디버그 정보 반환", async () => {
-      const debugInfo = {
-        status: "ok",
-        db: { sellerCount: 100 },
-        embedding: { status: "Success" },
-      };
-      mockPartnersService.getDebugInfo.mockResolvedValue(debugInfo);
-
-      expect(await controller.debug()).toEqual(debugInfo);
-      expect(mockPartnersService.getDebugInfo).toHaveBeenCalledTimes(1);
     });
   });
 });

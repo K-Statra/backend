@@ -706,52 +706,6 @@ export class PartnersService {
     };
   }
 
-  async getDebugInfo() {
-    const docCount = await this.sellerModel.countDocuments();
-    const buyerCount = await this.buyerModel.countDocuments();
-    const embeddingCount = await this.sellerModel.countDocuments({
-      embedding: { $exists: true, $not: { $size: 0 } },
-    });
-    const industryStats = await this.sellerModel.aggregate([
-      { $group: { _id: "$industry", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 20 },
-    ]);
-    const sampleData = await this.sellerModel
-      .find({}, { name: 1, industry: 1, profileText: 1 })
-      .limit(5)
-      .lean();
-
-    let embeddingStatus = "Not Tested";
-    let embeddingError: string | null = null;
-    try {
-      const v = await this.embeddingsService.embed("test");
-      embeddingStatus = `Success (Length: ${v.length})`;
-    } catch (e: any) {
-      embeddingStatus = "Failed";
-      embeddingError = e.message as string;
-    }
-
-    return {
-      status: "ok",
-      env: {
-        ATLAS_VECTOR_INDEX: process.env.ATLAS_VECTOR_INDEX || "(not set)",
-        OPENAI_API_KEY_EXISTS: !!process.env.OPENAI_API_KEY,
-        MONGO_URI_CONFIGURED: !!process.env.MONGODB_URI,
-        NODE_ENV: process.env.NODE_ENV,
-      },
-      db: {
-        status: "Connected",
-        sellerCount: docCount,
-        buyerCount: buyerCount,
-      },
-      embedding: { status: embeddingStatus, error: embeddingError },
-      sampleData,
-      industryStats,
-      embeddingCount,
-    };
-  }
-
   private async generateHyDEAndKeywords(
     query: string,
     intent: string,
