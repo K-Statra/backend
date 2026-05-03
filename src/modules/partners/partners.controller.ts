@@ -71,25 +71,4 @@ export class PartnersController {
       buyerId,
     });
   }
-
-  @Get("debug")
-  @ApiOperation({
-    summary: "파트너 서비스 디버그 정보 (DB 연결, 임베딩 상태, 샘플 데이터)",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "디버그 정보",
-    schema: {
-      example: {
-        status: "ok",
-        db: {},
-        embedding: {},
-        industryStats: [],
-        embeddingCount: 0,
-      },
-    },
-  })
-  debug() {
-    return this.partnersService.getDebugInfo();
-  }
 }

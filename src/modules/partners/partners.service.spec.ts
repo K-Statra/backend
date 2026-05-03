@@ -239,28 +239,4 @@ describe("PartnersService", () => {
       expect(result.data[0].score).toBeLessThan(0.5);
     });
   });
-
-  // ── getDebugInfo ──────────────────────────────────────────────────────────────
-
-  describe("getDebugInfo", () => {
-    it("DB 카운트와 임베딩 상태 반환", async () => {
-      sellerModel.countDocuments
-        .mockResolvedValueOnce(100)
-        .mockResolvedValueOnce(80);
-      buyerModel.countDocuments.mockResolvedValue(50);
-      sellerModel.aggregate.mockResolvedValue([
-        { _id: "Automotive", count: 50 },
-      ]);
-      sellerModel.find.mockReturnValue(buildQueryMock([{ name: "Sample" }]));
-      embeddingsService.embed.mockResolvedValue(new Array(64).fill(0));
-
-      const result = await service.getDebugInfo();
-
-      expect(result.status).toBe("ok");
-      expect(result.db.sellerCount).toBe(100);
-      expect(result.db.buyerCount).toBe(50);
-      expect(result.embeddingCount).toBe(80);
-      expect(result.embedding.status).toContain("Success");
-    });
-  });
 });
