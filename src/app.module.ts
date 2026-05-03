@@ -5,7 +5,6 @@ import envConfig from "./config/env.config";
 import { PaymentsModule } from "./modules/payments/payments.module";
 import { SellersModule } from "./modules/sellers/sellers.module";
 import { PartnersModule } from "./modules/partners/partners.module";
-import { MatchesModule } from "./modules/matches/matches.module";
 import { BuyersModule } from "./modules/buyers/buyers.module";
 import { ConsultationsModule } from "./modules/consultations/consultations.module";
 import { AuthModule } from "./modules/auth/auth.module";
@@ -27,7 +26,6 @@ import { AuthModule } from "./modules/auth/auth.module";
     PaymentsModule,
     SellersModule,
     PartnersModule,
-    MatchesModule,
     BuyersModule,
     ConsultationsModule,
     AuthModule,
