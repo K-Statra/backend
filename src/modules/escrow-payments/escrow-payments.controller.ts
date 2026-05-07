@@ -77,8 +77,11 @@ export class EscrowPaymentsController {
   @ApiResponse({ status: 200, description: "조회 성공" })
   @ApiResponse({ status: 401, description: "인증되지 않은 사용자" })
   @ApiResponse({ status: 404, description: "결제 내역 없음" })
-  findById(@Param("id", ParseMongoIdPipe) id: string) {
-    return this.service.findById(id);
+  findById(
+    @Param("id", ParseMongoIdPipe) id: string,
+    @CurrentUser() user: SessionUser,
+  ) {
+    return this.service.findById(id, user.userId);
   }
 
   @Post(":id/approve")

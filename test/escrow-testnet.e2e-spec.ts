@@ -54,12 +54,13 @@ async function waitForEscrowStatus(
 async function waitForPaymentStatus(
   service: EscrowPaymentsService,
   paymentId: string,
+  userId: string,
   expected: string,
   timeoutMs = 60_000,
 ) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const payment = await service.findById(paymentId);
+    const payment = await service.findById(paymentId, userId);
     if (payment.status === expected) return payment;
     await new Promise((r) => setTimeout(r, 1_000));
   }
@@ -251,6 +252,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
     const activePayment = await waitForPaymentStatus(
       escrowPaymentsService,
       paymentId,
+      buyerObjectId.toString(),
       "ACTIVE",
       5_000,
     );

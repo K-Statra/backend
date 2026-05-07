@@ -354,7 +354,10 @@ describe("EscrowPaymentsService", () => {
       const payment = makePayment();
       escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
-      const result = await service.findById(PAYMENT_ID.toString());
+      const result = await service.findById(
+        PAYMENT_ID.toString(),
+        BUYER_ID.toString(),
+      );
 
       expect(result).toEqual(payment);
     });
@@ -362,9 +365,19 @@ describe("EscrowPaymentsService", () => {
     it("존재하지 않는 ID → NotFoundException", async () => {
       escrowPaymentModel.findById.mockReturnValue(makeQueryChain(null));
 
-      await expect(service.findById(PAYMENT_ID.toString())).rejects.toThrow(
-        EscrowPaymentNotFoundException,
-      );
+      await expect(
+        service.findById(PAYMENT_ID.toString(), BUYER_ID.toString()),
+      ).rejects.toThrow(EscrowPaymentNotFoundException);
+    });
+
+    it("buyer도 seller도 아닌 제3자 → UnauthorizedPaymentActionException", async () => {
+      const payment = makePayment();
+      escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+      const thirdPartyId = new Types.ObjectId().toString();
+
+      await expect(
+        service.findById(PAYMENT_ID.toString(), thirdPartyId),
+      ).rejects.toThrow(UnauthorizedPaymentActionException);
     });
   });
 

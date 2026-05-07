@@ -118,9 +118,16 @@ export class EscrowPaymentsService {
     };
   }
 
-  async findById(id: string): Promise<EscrowPaymentDocument> {
+  async findById(id: string, userId: string): Promise<EscrowPaymentDocument> {
     const doc = await this.escrowPaymentModel.findById(id).lean();
     if (!doc) throw new EscrowPaymentNotFoundException();
+
+    const isParticipant =
+      doc.buyerId.toString() === userId || doc.sellerId.toString() === userId;
+    if (!isParticipant) {
+      throw new UnauthorizedPaymentActionException();
+    }
+
     return doc;
   }
 
