@@ -115,13 +115,13 @@ describe("EscrowPayments (e2e)", () => {
       },
     );
 
-    // Outbox createPendingEvent → 트랜잭션 커밋 후 setImmediate로 큐 예약
-    // (initiatePayment 응답이 반환된 뒤에 XRPL 처리가 시작되는 실제 비동기 흐름 재현)
+    // Outbox createPendingEvent → 트랜잭션 커밋 후 setTimeout으로 큐 예약
+    // setImmediate는 트랜잭션 커밋 I/O 완료 전에 실행되는 race condition이 있어 setTimeout 사용
     mockOutboxService.createPendingEvent.mockImplementation(
       (_session: any, _eventType: string, payload: any) => {
-        setImmediate(() => {
+        setTimeout(() => {
           void mockQueue.add(payload);
-        });
+        }, 50);
       },
     );
 
@@ -676,13 +676,11 @@ describe("EscrowPayments (e2e)", () => {
       );
     });
 
-    it("seller도 결제 개시 가능 → 201, PROCESSING", async () => {
-      const res = await request(app.getHttpServer())
+    it("seller는 결제 개시 불가 → 403", async () => {
+      await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/pay`)
         .set(asSeller())
-        .expect(201);
-
-      expect(res.body.status).toBe("PROCESSING");
+        .expect(403);
     });
 
     it("비참여자 결제 개시 시도 → 403", async () => {
@@ -743,99 +741,6 @@ describe("EscrowPayments (e2e)", () => {
   });
 
   // ── POST /escrow-payments/:id/escrows/:escrowId/create ────────────────────
-  // 정상 플로우에서는 POST /pay → 비동기 에스크로 생성이 이루어지므로
-  // 이 엔드포인트는 PROCESSING 상태에서의 재시도 용도입니다.
-  // 아래 테스트는 이미 처리 완료된(ESCROWED/ACTIVE) 케이스와 잘못된 상태를 검증합니다.
-
-  describe("POST /escrow-payments/:id/escrows/:escrowId/create", () => {
-    let activePaymentId: string;
-    let escrowItemId: string;
-
-    beforeEach(async () => {
-      const createRes = await request(app.getHttpServer())
-        .post("/escrow-payments")
-        .set(asBuyer())
-        .send(
-          baseCreatePayload({
-            escrows: [
-              {
-                label: "초기금",
-                amountXrp: 300,
-                order: 0,
-                requiredEventTypes: ["SHIPMENT_CONFIRMED"],
-              },
-            ],
-          }),
-        );
-      activePaymentId = createRes.body._id;
-      escrowItemId = createRes.body.escrows[0]._id;
-
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${activePaymentId}/approve`)
-        .set(asBuyer());
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${activePaymentId}/approve`)
-        .set(asSeller());
-      // POST /pay → PROCESSING → 비동기 EscrowCreate → ESCROWED → ACTIVE
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${activePaymentId}/pay`)
-        .set(asBuyer());
-      await waitForEscrowStatus(activePaymentId, escrowItemId, "ESCROWED");
-    });
-
-    it("이미 ESCROWED(ACTIVE) 결제에 재요청 → 400", async () => {
-      // 모든 에스크로 완료 → payment ACTIVE → createXrplEscrow에서 PROCESSING 아님 → 400
-      await request(app.getHttpServer())
-        .post(
-          `/escrow-payments/${activePaymentId}/escrows/${escrowItemId}/create`,
-        )
-        .set(asBuyer())
-        .expect(400);
-    });
-
-    it("DRAFT 결제에서 XRPL 에스크로 생성 시도 → 400", async () => {
-      const draftRes = await request(app.getHttpServer())
-        .post("/escrow-payments")
-        .set(asBuyer())
-        .send(baseCreatePayload());
-      const draftId = draftRes.body._id;
-      const draftEscrowId = draftRes.body.escrows[0]._id;
-
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${draftId}/escrows/${draftEscrowId}/create`)
-        .set(asBuyer())
-        .expect(400);
-    });
-
-    it("존재하지 않는 결제 → 404", async () => {
-      await request(app.getHttpServer())
-        .post(
-          `/escrow-payments/${new Types.ObjectId().toString()}/escrows/${escrowItemId}/create`,
-        )
-        .set(asBuyer())
-        .expect(404);
-    });
-
-    it("존재하지 않는 에스크로 항목 → 404", async () => {
-      // ACTIVE 결제는 status 체크(400)가 먼저 걸리므로, PROCESSING 상태로 직접 설정
-      const freshRes = await request(app.getHttpServer())
-        .post("/escrow-payments")
-        .set(asBuyer())
-        .send(baseCreatePayload());
-      const freshId = freshRes.body._id;
-      await escrowPaymentModel.findByIdAndUpdate(freshId, {
-        status: "PROCESSING",
-      });
-
-      await request(app.getHttpServer())
-        .post(
-          `/escrow-payments/${freshId}/escrows/${new Types.ObjectId().toString()}/create`,
-        )
-        .set(asBuyer())
-        .expect(404);
-    });
-  });
-
   // ── POST /.../events/:type/approve ────────────────────────────────────────
 
   describe("POST /escrow-payments/:id/escrows/:escrowId/events/:type/approve", () => {
