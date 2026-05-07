@@ -61,8 +61,11 @@ export class EscrowPaymentsController {
   @ApiResponse({ status: 201, description: "결제 내역 생성 성공" })
   @ApiResponse({ status: 400, description: "잘못된 요청 (유효성 검사 실패)" })
   @ApiResponse({ status: 401, description: "인증되지 않은 사용자" })
-  create(@Body() dto: CreateEscrowPaymentDto) {
-    return this.service.create(dto);
+  create(
+    @Body() dto: CreateEscrowPaymentDto,
+    @CurrentUser() user: SessionUser,
+  ) {
+    return this.service.create(dto, user.userId);
   }
 
   @Get(":id")

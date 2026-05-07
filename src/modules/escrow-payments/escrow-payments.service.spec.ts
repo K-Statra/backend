@@ -233,14 +233,14 @@ describe("EscrowPaymentsService", () => {
     };
 
     it("totalAmountXrp를 escrow 항목 합산으로 계산", async () => {
-      await service.create(dto);
+      await service.create(dto, BUYER_ID.toString());
 
       const constructorArg = escrowPaymentModel.mock.calls[0][0];
       expect(constructorArg.totalAmountXrp).toBe(1000);
     });
 
     it("각 escrow 항목의 approvals를 requiredEventTypes로 초기화", async () => {
-      await service.create(dto);
+      await service.create(dto, BUYER_ID.toString());
 
       const constructorArg = escrowPaymentModel.mock.calls[0][0];
       expect(constructorArg.escrows[0].approvals).toEqual([
@@ -257,7 +257,7 @@ describe("EscrowPaymentsService", () => {
       const instance = { save: jest.fn().mockResolvedValue({}) };
       escrowPaymentModel.mockReturnValue(instance);
 
-      await service.create(dto);
+      await service.create(dto, BUYER_ID.toString());
 
       expect(instance.save).toHaveBeenCalled();
     });

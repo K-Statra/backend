@@ -42,7 +42,14 @@ export class EscrowPaymentsService {
     private readonly outboxService: OutboxService,
   ) {}
 
-  async create(dto: CreateEscrowPaymentDto): Promise<EscrowPaymentDocument> {
+  async create(
+    dto: CreateEscrowPaymentDto,
+    userId: string,
+  ): Promise<EscrowPaymentDocument> {
+    if (userId !== dto.buyerId && userId !== dto.sellerId) {
+      throw new UnauthorizedPaymentActionException();
+    }
+
     const totalAmountXrp = dto.escrows.reduce((sum, e) => sum + e.amountXrp, 0);
 
     const doc = new this.escrowPaymentModel({

@@ -178,19 +178,22 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
 
   it("초기금 에스크로 생성 → 이벤트 2개 양방향 승인 완료 시 자동 EscrowFinish", async () => {
     // ── 1. 결제 내역 생성 ─────────────────────────────────────────────────
-    const payment = await escrowPaymentsService.create({
-      buyerId: buyerObjectId.toString(),
-      sellerId: sellerObjectId.toString(),
-      memo: "테스트넷 초기금 에스크로",
-      escrows: [
-        {
-          label: "초기금",
-          amountXrp: 10,
-          order: 0,
-          requiredEventTypes: ["SHIPMENT_CONFIRMED", "INSPECTION_PASSED"],
-        },
-      ],
-    });
+    const payment = await escrowPaymentsService.create(
+      {
+        buyerId: buyerObjectId.toString(),
+        sellerId: sellerObjectId.toString(),
+        memo: "테스트넷 초기금 에스크로",
+        escrows: [
+          {
+            label: "초기금",
+            amountXrp: 10,
+            order: 0,
+            requiredEventTypes: ["SHIPMENT_CONFIRMED", "INSPECTION_PASSED"],
+          },
+        ],
+      },
+      buyerObjectId.toString(),
+    );
 
     const paymentId = payment._id.toString();
     const escrowItemId = payment.escrows[0]._id.toString();
