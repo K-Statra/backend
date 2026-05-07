@@ -103,7 +103,7 @@ export class EscrowPaymentsController {
     @Param("id", ParseMongoIdPipe) id: string,
     @CurrentUser() user: SessionUser,
   ) {
-    return this.service.approvePayment(id, user.type);
+    return this.service.approvePayment(id, user.userId);
   }
 
   @Post(":id/pay")
@@ -127,38 +127,6 @@ export class EscrowPaymentsController {
     @CurrentUser() user: SessionUser,
   ) {
     return this.service.initiatePayment(id, user.userId);
-  }
-
-  @Post(":id/escrows/:escrowId/create")
-  @ApiOperation({
-    summary: "XRPL 에스크로 생성 (EscrowCreate)",
-    description:
-      "결제가 ACTIVE 상태일 때 특정 에스크로 항목에 대해 XRPL EscrowCreate 트랜잭션을 제출합니다. " +
-      "buyer 지갑에서 XRP가 잠금 처리되며, PREIMAGE-SHA-256 crypto-condition 방식을 사용합니다.",
-  })
-  @ApiParam({ name: "id", description: "에스크로 결제 ID (MongoDB ObjectId)" })
-  @ApiParam({
-    name: "escrowId",
-    description: "에스크로 항목 ID (MongoDB ObjectId)",
-  })
-  @ApiResponse({
-    status: 201,
-    description: "EscrowCreate 제출 성공, 항목 상태 ESCROWED로 전환",
-  })
-  @ApiResponse({
-    status: 400,
-    description:
-      "결제가 ACTIVE 상태가 아니거나 항목 상태가 PENDING_ESCROW가 아님, 또는 지갑 미활성",
-  })
-  @ApiResponse({
-    status: 404,
-    description: "결제 내역 또는 에스크로 항목 없음",
-  })
-  createXrplEscrow(
-    @Param("id", ParseMongoIdPipe) id: string,
-    @Param("escrowId", ParseMongoIdPipe) escrowId: string,
-  ) {
-    return this.service.createXrplEscrow(id, escrowId);
   }
 
   @Post(":id/escrows/:escrowId/events/:type/approve")
@@ -196,7 +164,7 @@ export class EscrowPaymentsController {
     @Param("type") eventType: string,
     @CurrentUser() user: SessionUser,
   ) {
-    return this.service.approveEvent(id, escrowId, eventType, user.type);
+    return this.service.approveEvent(id, escrowId, eventType, user.userId);
   }
 
   @Get(":id/escrows/:escrowId/status")
