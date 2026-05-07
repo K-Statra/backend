@@ -118,7 +118,7 @@ describe("EscrowPayments (e2e)", () => {
     // Outbox createPendingEvent → 트랜잭션 커밋 후 setImmediate로 큐 예약
     // (initiatePayment 응답이 반환된 뒤에 XRPL 처리가 시작되는 실제 비동기 흐름 재현)
     mockOutboxService.createPendingEvent.mockImplementation(
-      async (_session: any, _eventType: string, payload: any) => {
+      (_session: any, _eventType: string, payload: any) => {
         setImmediate(() => {
           void mockQueue.add(payload);
         });
@@ -422,8 +422,8 @@ describe("EscrowPayments (e2e)", () => {
     });
 
     it("escrows 배열 누락 → 400", async () => {
-      const { escrows: _unused, ...withoutEscrows } =
-        baseCreatePayload() as any;
+      const withoutEscrows = { ...baseCreatePayload() } as any;
+      delete withoutEscrows.escrows;
       await request(app.getHttpServer())
         .post("/escrow-payments")
         .set(asBuyer())
@@ -514,7 +514,7 @@ describe("EscrowPayments (e2e)", () => {
 
     it("존재하지 않는 id → 404", async () => {
       await request(app.getHttpServer())
-        .get(`/escrow-payments/${new Types.ObjectId()}`)
+        .get(`/escrow-payments/${new Types.ObjectId().toString()}`)
         .set(asBuyer())
         .expect(404);
     });
@@ -592,7 +592,7 @@ describe("EscrowPayments (e2e)", () => {
 
     it("존재하지 않는 결제 → 404", async () => {
       await request(app.getHttpServer())
-        .post(`/escrow-payments/${new Types.ObjectId()}/approve`)
+        .post(`/escrow-payments/${new Types.ObjectId().toString()}/approve`)
         .set(asBuyer())
         .expect(404);
     });
@@ -707,7 +707,7 @@ describe("EscrowPayments (e2e)", () => {
 
     it("존재하지 않는 결제 → 404", async () => {
       await request(app.getHttpServer())
-        .post(`/escrow-payments/${new Types.ObjectId()}/pay`)
+        .post(`/escrow-payments/${new Types.ObjectId().toString()}/pay`)
         .set(asBuyer())
         .expect(404);
     });
@@ -810,7 +810,7 @@ describe("EscrowPayments (e2e)", () => {
     it("존재하지 않는 결제 → 404", async () => {
       await request(app.getHttpServer())
         .post(
-          `/escrow-payments/${new Types.ObjectId()}/escrows/${escrowItemId}/create`,
+          `/escrow-payments/${new Types.ObjectId().toString()}/escrows/${escrowItemId}/create`,
         )
         .set(asBuyer())
         .expect(404);
@@ -829,7 +829,7 @@ describe("EscrowPayments (e2e)", () => {
 
       await request(app.getHttpServer())
         .post(
-          `/escrow-payments/${freshId}/escrows/${new Types.ObjectId()}/create`,
+          `/escrow-payments/${freshId}/escrows/${new Types.ObjectId().toString()}/create`,
         )
         .set(asBuyer())
         .expect(404);
@@ -1066,7 +1066,7 @@ describe("EscrowPayments (e2e)", () => {
     it("존재하지 않는 escrowId → 404", async () => {
       await request(app.getHttpServer())
         .get(
-          `/escrow-payments/${paymentId}/escrows/${new Types.ObjectId()}/status`,
+          `/escrow-payments/${paymentId}/escrows/${new Types.ObjectId().toString()}/status`,
         )
         .set(asBuyer())
         .expect(404);
@@ -1075,7 +1075,7 @@ describe("EscrowPayments (e2e)", () => {
     it("존재하지 않는 paymentId → 404", async () => {
       await request(app.getHttpServer())
         .get(
-          `/escrow-payments/${new Types.ObjectId()}/escrows/${escrowItemId}/status`,
+          `/escrow-payments/${new Types.ObjectId().toString()}/escrows/${escrowItemId}/status`,
         )
         .set(asBuyer())
         .expect(404);
@@ -1152,7 +1152,7 @@ describe("EscrowPayments (e2e)", () => {
     it("존재하지 않는 paymentId → 404", async () => {
       await request(app.getHttpServer())
         .post(
-          `/escrow-payments/${new Types.ObjectId()}/escrows/${escrowItemId}/cancel`,
+          `/escrow-payments/${new Types.ObjectId().toString()}/escrows/${escrowItemId}/cancel`,
         )
         .set(asBuyer())
         .expect(404);
@@ -1161,7 +1161,7 @@ describe("EscrowPayments (e2e)", () => {
     it("존재하지 않는 escrowId → 404", async () => {
       await request(app.getHttpServer())
         .post(
-          `/escrow-payments/${paymentId}/escrows/${new Types.ObjectId()}/cancel`,
+          `/escrow-payments/${paymentId}/escrows/${new Types.ObjectId().toString()}/cancel`,
         )
         .set(asBuyer())
         .expect(404);
