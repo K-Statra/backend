@@ -102,7 +102,13 @@ describe("EscrowPayments (e2e)", () => {
 
     // 큐 add → 에스크로 항목별로 createXrplEscrow 인라인 실행
     mockQueue.add.mockImplementation(
-      async ({ paymentId, escrowIds }: { paymentId: string; escrowIds: string[] }) => {
+      async ({
+        paymentId,
+        escrowIds,
+      }: {
+        paymentId: string;
+        escrowIds: string[];
+      }) => {
         for (const id of escrowIds) {
           await escrowService.createXrplEscrow(paymentId, id);
         }
@@ -113,7 +119,9 @@ describe("EscrowPayments (e2e)", () => {
     // (initiatePayment 응답이 반환된 뒤에 XRPL 처리가 시작되는 실제 비동기 흐름 재현)
     mockOutboxService.createPendingEvent.mockImplementation(
       async (_session: any, _eventType: string, payload: any) => {
-        setImmediate(() => { void mockQueue.add(payload); });
+        setImmediate(() => {
+          void mockQueue.add(payload);
+        });
       },
     );
 
@@ -140,7 +148,9 @@ describe("EscrowPayments (e2e)", () => {
       next();
     });
 
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     app.useGlobalFilters(new HttpExceptionFilter());
 
     await app.init();
@@ -244,7 +254,9 @@ describe("EscrowPayments (e2e)", () => {
       if (res.body.status === expected) return;
       await new Promise((r) => setTimeout(r, 50));
     }
-    throw new Error(`Escrow ${escrowId} did not reach '${expected}' within ${timeoutMs}ms`);
+    throw new Error(
+      `Escrow ${escrowId} did not reach '${expected}' within ${timeoutMs}ms`,
+    );
   }
 
   // 기본 생성 payload 헬퍼
@@ -397,7 +409,12 @@ describe("EscrowPayments (e2e)", () => {
         .send(
           baseCreatePayload({
             escrows: [
-              { label: "초기금", amountXrp: -100, order: 0, requiredEventTypes: [] },
+              {
+                label: "초기금",
+                amountXrp: -100,
+                order: 0,
+                requiredEventTypes: [],
+              },
             ],
           }),
         )
@@ -405,7 +422,8 @@ describe("EscrowPayments (e2e)", () => {
     });
 
     it("escrows 배열 누락 → 400", async () => {
-      const { escrows: _unused, ...withoutEscrows } = baseCreatePayload() as any;
+      const { escrows: _unused, ...withoutEscrows } =
+        baseCreatePayload() as any;
       await request(app.getHttpServer())
         .post("/escrow-payments")
         .set(asBuyer())
@@ -438,9 +456,13 @@ describe("EscrowPayments (e2e)", () => {
         .expect(200);
 
       for (const p of res.body.data) {
-        expect(["DRAFT", "PENDING_APPROVAL", "APPROVED", "PROCESSING", "ACTIVE"]).toContain(
-          p.status,
-        );
+        expect([
+          "DRAFT",
+          "PENDING_APPROVAL",
+          "APPROVED",
+          "PROCESSING",
+          "ACTIVE",
+        ]).toContain(p.status);
       }
     });
 
@@ -604,7 +626,12 @@ describe("EscrowPayments (e2e)", () => {
         .send(
           baseCreatePayload({
             escrows: [
-              { label: "초기금", amountXrp: 300, order: 0, requiredEventTypes: ["SHIPMENT_CONFIRMED"] },
+              {
+                label: "초기금",
+                amountXrp: 300,
+                order: 0,
+                requiredEventTypes: ["SHIPMENT_CONFIRMED"],
+              },
             ],
           }),
         );
@@ -695,9 +722,7 @@ describe("EscrowPayments (e2e)", () => {
       expect(mockXrplService.validateEscrowFunds).toHaveBeenCalledTimes(1);
       expect(mockXrplService.validateEscrowFunds).toHaveBeenCalledWith(
         "rBuyerE2ETestAddr1234",
-        expect.arrayContaining([
-          expect.objectContaining({ amountXrp: 300 }),
-        ]),
+        expect.arrayContaining([expect.objectContaining({ amountXrp: 300 })]),
       );
     });
 
@@ -733,7 +758,12 @@ describe("EscrowPayments (e2e)", () => {
         .send(
           baseCreatePayload({
             escrows: [
-              { label: "초기금", amountXrp: 300, order: 0, requiredEventTypes: ["SHIPMENT_CONFIRMED"] },
+              {
+                label: "초기금",
+                amountXrp: 300,
+                order: 0,
+                requiredEventTypes: ["SHIPMENT_CONFIRMED"],
+              },
             ],
           }),
         );
@@ -756,7 +786,9 @@ describe("EscrowPayments (e2e)", () => {
     it("이미 ESCROWED(ACTIVE) 결제에 재요청 → 400", async () => {
       // 모든 에스크로 완료 → payment ACTIVE → createXrplEscrow에서 PROCESSING 아님 → 400
       await request(app.getHttpServer())
-        .post(`/escrow-payments/${activePaymentId}/escrows/${escrowItemId}/create`)
+        .post(
+          `/escrow-payments/${activePaymentId}/escrows/${escrowItemId}/create`,
+        )
         .set(asBuyer())
         .expect(400);
     });
@@ -777,7 +809,9 @@ describe("EscrowPayments (e2e)", () => {
 
     it("존재하지 않는 결제 → 404", async () => {
       await request(app.getHttpServer())
-        .post(`/escrow-payments/${new Types.ObjectId()}/escrows/${escrowItemId}/create`)
+        .post(
+          `/escrow-payments/${new Types.ObjectId()}/escrows/${escrowItemId}/create`,
+        )
         .set(asBuyer())
         .expect(404);
     });
@@ -789,10 +823,14 @@ describe("EscrowPayments (e2e)", () => {
         .set(asBuyer())
         .send(baseCreatePayload());
       const freshId = freshRes.body._id;
-      await escrowPaymentModel.findByIdAndUpdate(freshId, { status: "PROCESSING" });
+      await escrowPaymentModel.findByIdAndUpdate(freshId, {
+        status: "PROCESSING",
+      });
 
       await request(app.getHttpServer())
-        .post(`/escrow-payments/${freshId}/escrows/${new Types.ObjectId()}/create`)
+        .post(
+          `/escrow-payments/${freshId}/escrows/${new Types.ObjectId()}/create`,
+        )
         .set(asBuyer())
         .expect(404);
     });
@@ -892,7 +930,12 @@ describe("EscrowPayments (e2e)", () => {
         .send(
           baseCreatePayload({
             escrows: [
-              { label: "미에스크로", amountXrp: 100, order: 0, requiredEventTypes: ["DELIVERY_CONFIRMED"] },
+              {
+                label: "미에스크로",
+                amountXrp: 100,
+                order: 0,
+                requiredEventTypes: ["DELIVERY_CONFIRMED"],
+              },
             ],
           }),
         );
@@ -972,7 +1015,9 @@ describe("EscrowPayments (e2e)", () => {
         .set(asSeller())
         .expect(201);
 
-      const finalEscrow = finalRes.body.escrows.find((e: any) => e._id === twoEscrowId);
+      const finalEscrow = finalRes.body.escrows.find(
+        (e: any) => e._id === twoEscrowId,
+      );
       expect(finalEscrow.amountXrp).toBe(200);
       expect(finalEscrow.status).toBe("RELEASED");
       expect(mockXrplService.finishEscrow).toHaveBeenCalledTimes(1);
@@ -993,7 +1038,12 @@ describe("EscrowPayments (e2e)", () => {
           baseCreatePayload({
             memo: "상태조회 테스트",
             escrows: [
-              { label: "상태조회용", amountXrp: 50, order: 0, requiredEventTypes: ["CUSTOM"] },
+              {
+                label: "상태조회용",
+                amountXrp: 50,
+                order: 0,
+                requiredEventTypes: ["CUSTOM"],
+              },
             ],
           }),
         );
@@ -1015,14 +1065,18 @@ describe("EscrowPayments (e2e)", () => {
 
     it("존재하지 않는 escrowId → 404", async () => {
       await request(app.getHttpServer())
-        .get(`/escrow-payments/${paymentId}/escrows/${new Types.ObjectId()}/status`)
+        .get(
+          `/escrow-payments/${paymentId}/escrows/${new Types.ObjectId()}/status`,
+        )
         .set(asBuyer())
         .expect(404);
     });
 
     it("존재하지 않는 paymentId → 404", async () => {
       await request(app.getHttpServer())
-        .get(`/escrow-payments/${new Types.ObjectId()}/escrows/${escrowItemId}/status`)
+        .get(
+          `/escrow-payments/${new Types.ObjectId()}/escrows/${escrowItemId}/status`,
+        )
         .set(asBuyer())
         .expect(404);
     });
@@ -1041,7 +1095,12 @@ describe("EscrowPayments (e2e)", () => {
         .send(
           baseCreatePayload({
             escrows: [
-              { label: "취소 테스트", amountXrp: 100, order: 0, requiredEventTypes: ["CUSTOM"] },
+              {
+                label: "취소 테스트",
+                amountXrp: 100,
+                order: 0,
+                requiredEventTypes: ["CUSTOM"],
+              },
             ],
           }),
         );
@@ -1092,14 +1151,18 @@ describe("EscrowPayments (e2e)", () => {
 
     it("존재하지 않는 paymentId → 404", async () => {
       await request(app.getHttpServer())
-        .post(`/escrow-payments/${new Types.ObjectId()}/escrows/${escrowItemId}/cancel`)
+        .post(
+          `/escrow-payments/${new Types.ObjectId()}/escrows/${escrowItemId}/cancel`,
+        )
         .set(asBuyer())
         .expect(404);
     });
 
     it("존재하지 않는 escrowId → 404", async () => {
       await request(app.getHttpServer())
-        .post(`/escrow-payments/${paymentId}/escrows/${new Types.ObjectId()}/cancel`)
+        .post(
+          `/escrow-payments/${paymentId}/escrows/${new Types.ObjectId()}/cancel`,
+        )
         .set(asBuyer())
         .expect(404);
     });
