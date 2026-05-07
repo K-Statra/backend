@@ -6,7 +6,7 @@ import {
 
 export class DuplicateEmailException extends ConflictException {
   constructor() {
-    super("Already registered Email");
+    super("요청을 처리할 수 없습니다.");
   }
 }
 

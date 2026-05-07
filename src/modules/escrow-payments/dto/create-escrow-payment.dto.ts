@@ -2,6 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   IsArray,
+  ArrayMinSize,
   IsInt,
   IsMongoId,
   IsNumber,
@@ -28,15 +29,8 @@ export class EscrowItemDto {
   order: number;
 
   @ApiProperty({
-    description: "에스크로 해제 조건 이벤트 타입 목록",
+    description: "에스크로 해제 조건 이벤트 목록",
     example: ["SHIPMENT_CONFIRMED", "INSPECTION_PASSED"],
-    enum: [
-      "SHIPMENT_CONFIRMED",
-      "INSPECTION_PASSED",
-      "DOCUMENT_SUBMITTED",
-      "DELIVERY_CONFIRMED",
-      "CUSTOM",
-    ],
     isArray: true,
   })
   @IsArray()
@@ -73,6 +67,7 @@ export class CreateEscrowPaymentDto {
     type: [EscrowItemDto],
   })
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => EscrowItemDto)
   escrows: EscrowItemDto[];

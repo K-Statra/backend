@@ -39,6 +39,7 @@ async function bootstrap() {
 
   app.use(
     session({
+      name: "sessionId",
       store: new RedisStore({ client: redisClient, ttl: sessionTtl }),
       secret: sessionSecret,
       resave: false,

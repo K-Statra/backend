@@ -5,7 +5,6 @@ import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
 import { RegisterBuyerDto, RegisterSellerDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
-import { loggers } from "winston";
 
 @ApiTags("Auth")
 @Controller("auth")
@@ -46,7 +45,6 @@ export class AuthController {
     const user = await this.authService.login(dto);
     req.session.userId = user._id.toString();
     req.session.type = user.type;
-    loggers.get("auth").info(`cookie ${req.session.id} logged in successfully`);
     return { message: "로그인 성공", user };
   }
 
