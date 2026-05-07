@@ -11,6 +11,9 @@ import {
   dropsToXrp,
   Wallet,
   unixTimeToRippleTime,
+  type EscrowCreate,
+  type EscrowFinish,
+  type EscrowCancel,
 } from "xrpl";
 import * as crypto from "crypto";
 import {
@@ -214,14 +217,15 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
     const cancelAfter = unixTimeToRippleTime(
       Date.now() + 365 * 24 * 60 * 60 * 1_000,
     );
-    const prepared = await this.client.autofill({
-      TransactionType: "EscrowCreate" as const,
+    const tx: EscrowCreate = {
+      TransactionType: "EscrowCreate",
       Account: wallet.address,
       Amount: xrpToDrops(amountXrp),
       Destination: sellerAddress,
       Condition: condition,
       CancelAfter: cancelAfter,
-    });
+    };
+    const prepared = await this.client.autofill(tx);
 
     const sequence = prepared.Sequence as number;
     const { tx_blob } = wallet.sign(prepared);
@@ -254,14 +258,15 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
     await this.connect();
     const wallet = Wallet.fromSeed(submitterWallet.seed);
 
-    const prepared = await this.client.autofill({
-      TransactionType: "EscrowFinish" as const,
+    const tx: EscrowFinish = {
+      TransactionType: "EscrowFinish",
       Account: wallet.address,
       Owner: ownerAddress,
       OfferSequence: offerSequence,
       Condition: condition,
       Fulfillment: fulfillment,
-    });
+    };
+    const prepared = await this.client.autofill(tx);
 
     const { tx_blob } = wallet.sign(prepared);
     const result = await this.client.submitAndWait(tx_blob);
@@ -288,12 +293,13 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
     await this.connect();
     const wallet = Wallet.fromSeed(submitterWallet.seed);
 
-    const prepared = await this.client.autofill({
-      TransactionType: "EscrowCancel" as const,
+    const tx: EscrowCancel = {
+      TransactionType: "EscrowCancel",
       Account: wallet.address,
       Owner: ownerAddress,
       OfferSequence: offerSequence,
-    });
+    };
+    const prepared = await this.client.autofill(tx);
 
     const { tx_blob } = wallet.sign(prepared);
     const result = await this.client.submitAndWait(tx_blob);
