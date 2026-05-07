@@ -38,29 +38,28 @@ export class EscrowCancelScheduler {
     );
 
     for (const payment of payments) {
+      const buyerUser = await this.userModel
+        .findById(payment.buyerId)
+        .select("+wallet.seed");
+
+      if (!buyerUser?.wallet?.seed) {
+        this.logger.warn(
+          `Buyer wallet unavailable for payment ${payment._id.toString()}`,
+        );
+        continue;
+      }
+
+      const decryptedSeed = this.xrplService.decrypt(buyerUser.wallet.seed);
+      const buyerWallet: XrplWallet = {
+        address: buyerUser.wallet.address,
+        seed: decryptedSeed,
+        publicKey: buyerUser.wallet.publicKey,
+        privateKey: "",
+      };
+
       for (const escrow of payment.escrows) {
         if (escrow.status !== "CANCELLING" || !escrow.xrplSequence) continue;
-
         try {
-          const buyerUser = await this.userModel
-            .findById(payment.buyerId)
-            .select("+wallet.seed");
-
-          if (!buyerUser?.wallet?.seed) {
-            this.logger.warn(
-              `Buyer wallet unavailable for payment ${payment._id.toString()}`,
-            );
-            continue;
-          }
-
-          const decryptedSeed = this.xrplService.decrypt(buyerUser.wallet.seed);
-          const buyerWallet: XrplWallet = {
-            address: buyerUser.wallet.address,
-            seed: decryptedSeed,
-            publicKey: buyerUser.wallet.publicKey,
-            privateKey: "",
-          };
-
           await this.xrplService.cancelEscrow(
             buyerWallet,
             buyerUser.wallet.address,

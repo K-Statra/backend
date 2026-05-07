@@ -12,6 +12,7 @@ export type EscrowPaymentStatus =
   | "CANCELLED";
 export type EscrowItemStatus =
   | "PENDING_ESCROW"
+  | "SUBMITTING"
   | "ESCROWED"
   | "RELEASING"
   | "RELEASED"
@@ -42,6 +43,7 @@ export class EscrowItem {
     type: String,
     enum: [
       "PENDING_ESCROW",
+      "SUBMITTING",
       "ESCROWED",
       "RELEASING",
       "RELEASED",
@@ -61,6 +63,7 @@ export class EscrowItem {
   @Prop({ select: false }) fulfillment?: string; // AES-256-GCM 암호화
   @Prop() txHashCreate?: string;
   @Prop() txHashRelease?: string;
+  @Prop() submittingAt?: Date;
   @Prop() escrowedAt?: Date;
   @Prop() releasedAt?: Date;
 }

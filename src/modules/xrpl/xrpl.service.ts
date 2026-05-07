@@ -385,6 +385,38 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * buyer 계정에서 condition이 일치하는 에스크로 조회
+   * SUBMITTING 복구 스케줄러에서 XRPL 제출 여부 확인에 사용
+   */
+  async findEscrowByCondition(
+    buyerAddress: string,
+    condition: string,
+  ): Promise<{ txHash: string; sequence: number } | null> {
+    await this.connect();
+
+    const resp = await this.client.request({
+      command: "account_objects",
+      account: buyerAddress,
+      type: "escrow",
+    } as any);
+
+    const escrowObj = ((resp.result as any).account_objects as any[]).find(
+      (obj) => obj.Condition === condition,
+    );
+    if (!escrowObj) return null;
+
+    const txResp = await this.client.request({
+      command: "tx",
+      transaction: escrowObj.PreviousTxnID,
+    } as any);
+
+    return {
+      txHash: escrowObj.PreviousTxnID as string,
+      sequence: (txResp.result as any).Sequence as number,
+    };
+  }
+
+  /**
    * 에스크로 생성 전 buyer 잔고 사전 검증
    * 필요 금액 = 에스크로 합계 + 에스크로당 owner reserve(2 XRP) + 수수료 버퍼
    * 현재 계정 reserve(base + 기존 owner) 초과분만 사용 가능

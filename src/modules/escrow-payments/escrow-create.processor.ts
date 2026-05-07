@@ -43,6 +43,14 @@ export class EscrowCreateProcessor {
         this.logger.log(`Skip already-ESCROWED: escrowId=${escrowId}`);
         continue;
       }
+      if (current.status === "SUBMITTING") {
+        // XRPL 제출 성공 후 post-flight DB 저장 실패 상태
+        // 재시도 시 중복 EscrowCreate 방지를 위해 건너뜀 — 수동 복구 필요
+        this.logger.error(
+          `escrowId=${escrowId} is SUBMITTING — XRPL may have succeeded but DB save failed. Manual recovery required (paymentId=${paymentId})`,
+        );
+        continue;
+      }
       if (current.status !== "PENDING_ESCROW") {
         this.logger.warn(
           `Unexpected status ${current.status} for escrowId=${escrowId}, skipping`,
@@ -75,6 +83,14 @@ export class EscrowCreateProcessor {
       `EscrowCreate job FAILED after ${job.attemptsMade} attempts: paymentId=${job.data.paymentId} — ${error.message}`,
       error.stack,
     );
-    await this.escrowPaymentsService.rollbackAllEscrows(job.data.paymentId);
+
+    try {
+      await this.escrowPaymentsService.rollbackAllEscrows(job.data.paymentId);
+    } catch (err) {
+      this.logger.error(
+        `rollbackAllEscrows failed for paymentId=${job.data.paymentId}: ${err.message}`,
+        err.stack,
+      );
+    }
   }
 }
