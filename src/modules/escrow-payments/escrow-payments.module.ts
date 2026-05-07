@@ -12,6 +12,7 @@ import { UsersModule } from "../users/users.module";
 import { ESCROW_CREATE_QUEUE } from "./escrow-create.constants";
 import { EscrowCreateProcessor } from "./escrow-create.processor";
 import { EscrowCancelScheduler } from "./escrow-cancel.scheduler";
+import { EscrowSubmitRecoveryScheduler } from "./escrow-submit-recovery.scheduler";
 import { OutboxModule } from "../outbox/outbox.module";
 
 @Module({
@@ -29,6 +30,7 @@ import { OutboxModule } from "../outbox/outbox.module";
     EscrowPaymentsService,
     EscrowCreateProcessor,
     EscrowCancelScheduler,
+    EscrowSubmitRecoveryScheduler,
   ],
 })
 export class EscrowPaymentsModule {}
