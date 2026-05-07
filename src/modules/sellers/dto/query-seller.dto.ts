@@ -20,7 +20,6 @@ export class QuerySellerDto {
   @IsOptional()
   @IsIn(["1-10", "11-50", "51-200", "201-1000", "1000+"])
   size?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() partnership?: string;
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)

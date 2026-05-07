@@ -78,6 +78,7 @@ async function bootstrap() {
     .setDescription("K-Statra 백엔드 API")
     .setVersion("1.0")
     .addBearerAuth()
+    .addCookieAuth("sessionId")
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup("api/docs", app, document);
