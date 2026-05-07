@@ -78,17 +78,10 @@ export class OutboxWatcherService
       options.resumeAfter = resumeTokenDoc.token;
     }
 
-    try {
-      this.changeStream = this.outboxModel.watch(
-        [{ $match: { operationType: "insert" } }],
-        options,
-      );
-    } catch {
-      // resume token이 만료됐을 경우 토큰 없이 재시작
-      this.changeStream = this.outboxModel.watch([
-        { $match: { operationType: "insert" } },
-      ]);
-    }
+    this.changeStream = this.outboxModel.watch(
+      [{ $match: { operationType: "insert" } }],
+      options,
+    );
 
     this.changeStream.on("change", async (event: any) => {
       const doc = event.fullDocument as OutboxEventDocument;
@@ -99,6 +92,14 @@ export class OutboxWatcherService
     this.changeStream.on("error", async (err: Error) => {
       if (this.isShuttingDown) return;
       this.logger.error(`Change stream error: ${err.message}`, err.stack);
+      if (
+        err.message.includes("resume") ||
+        err.message.includes("ChangeStreamHistoryLost")
+      ) {
+        await this.resumeTokenModel
+          .deleteOne({ streamId: STREAM_ID })
+          .catch(() => {});
+      }
       await this.restartWithBackoff();
     });
 
