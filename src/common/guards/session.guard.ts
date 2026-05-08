@@ -1,9 +1,5 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  UnauthorizedException,
-} from "@nestjs/common";
+import { Injectable, CanActivate, ExecutionContext } from "@nestjs/common";
+import { NotAuthenticatedException } from "../exceptions";
 
 @Injectable()
 export class SessionGuard implements CanActivate {
@@ -11,7 +7,7 @@ export class SessionGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest();
     const type = req.session?.type;
     if (!req.session?.userId || (type !== "buyer" && type !== "seller")) {
-      throw new UnauthorizedException("User not authenticated");
+      throw new NotAuthenticatedException();
     }
     return true;
   }

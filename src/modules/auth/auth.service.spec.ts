@@ -6,7 +6,7 @@ import { AuthService } from "./auth.service";
 import { User } from "../users/schemas/user.schema";
 import { UserSeller } from "../users/schemas/user-seller.schema";
 import { UserBuyer } from "../users/schemas/user-buyer.schema";
-import { XrplService } from "../payments/xrpl.service";
+import { XrplService } from "../xrpl/xrpl.service";
 
 // ── 공통 픽스처 ──────────────────────────────────────────────────────────────
 

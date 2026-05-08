@@ -1,9 +1,8 @@
+import { Injectable, Logger } from "@nestjs/common";
 import {
-  Injectable,
-  Logger,
-  ConflictException,
-  UnauthorizedException,
-} from "@nestjs/common";
+  DuplicateEmailException,
+  InvalidCredentialsException,
+} from "../../common/exceptions";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { Cron, CronExpression } from "@nestjs/schedule";
@@ -17,7 +16,7 @@ import {
   UserBuyer,
   UserBuyerDocument,
 } from "../users/schemas/user-buyer.schema";
-import { XrplService, XrplWallet } from "../payments/xrpl.service";
+import { XrplService, XrplWallet } from "../xrpl/xrpl.service";
 import { RegisterBuyerDto, RegisterSellerDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 
@@ -40,7 +39,7 @@ export class AuthService {
     const exists = await this.userModel.exists({
       email: dto.representativeEmail,
     });
-    if (exists) throw new ConflictException("Already registered Email");
+    if (exists) throw new DuplicateEmailException();
 
     const wallet = this.xrplService.generateWallet();
     const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
@@ -77,7 +76,7 @@ export class AuthService {
     const exists = await this.userModel.exists({
       email: dto.representativeEmail,
     });
-    if (exists) throw new ConflictException("Already registered Email");
+    if (exists) throw new DuplicateEmailException();
 
     const wallet = this.xrplService.generateWallet();
     const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
@@ -116,16 +115,10 @@ export class AuthService {
       .select("+password")
       .lean();
 
-    if (!user)
-      throw new UnauthorizedException(
-        "이메일 또는 비밀번호가 올바르지 않습니다.",
-      );
+    if (!user) throw new InvalidCredentialsException();
 
     const isMatch = await bcrypt.compare(dto.password, user.password);
-    if (!isMatch)
-      throw new UnauthorizedException(
-        "이메일 또는 비밀번호가 올바르지 않습니다.",
-      );
+    if (!isMatch) throw new InvalidCredentialsException();
 
     return this.toSafeResponse(user);
   }
