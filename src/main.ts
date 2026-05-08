@@ -14,12 +14,19 @@ async function bootstrap() {
     logger: ["error", "warn", "log"],
   });
 
+  if (process.env.NODE_ENV === "production") {
+    app.getHttpAdapter().getInstance().set("trust proxy", 1);
+  }
+
   const configService = app.get(ConfigService);
   const port = configService.get<number>("port") ?? 3000;
-  const origins = configService.get<string[]>("cors.origins") ?? ["*"];
+  const origins = configService.get<string[]>("cors.origins");
   const sessionSecret = configService.get<string>("session.secret");
   const sessionTtl = configService.get<number>("session.ttl");
 
+  if (!origins || origins.length === 0) {
+    throw new Error("Missing required configuration: cors.origins");
+  }
   if (!sessionSecret || !sessionTtl) {
     throw new Error(
       "Missing required session configuration: session.secret and session.ttl",
@@ -39,14 +46,15 @@ async function bootstrap() {
 
   app.use(
     session({
+      name: "sessionId",
       store: new RedisStore({ client: redisClient, ttl: sessionTtl }),
       secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: true,
-        sameSite: "none",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         maxAge: sessionTtl * 1000,
       },
     }),
@@ -78,6 +86,7 @@ async function bootstrap() {
     .setDescription("K-Statra 백엔드 API")
     .setVersion("1.0")
     .addBearerAuth()
+    .addCookieAuth("sessionId")
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup("api/docs", app, document);
