@@ -257,7 +257,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
       paymentId,
       buyerObjectId.toString(),
       "ACTIVE",
-      5_000,
+      30_000,
     );
 
     expect(escrowItem.status).toBe("ESCROWED");

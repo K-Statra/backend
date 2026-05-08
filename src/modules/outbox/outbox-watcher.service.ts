@@ -45,8 +45,8 @@ export class OutboxWatcherService
 
   async onApplicationBootstrap() {
     // 서버 시작 시 미처리된 PENDING 이벤트 먼저 처리 (다운타임 동안 누락된 이벤트 보정)
-    await this.processPendingEvents();
     await this.startWatcher();
+    await this.processPendingEvents();
   }
 
   async onApplicationShutdown() {
@@ -142,8 +142,17 @@ export class OutboxWatcherService
       );
       // PUBLISHED → PENDING 롤백: 다른 인스턴스 또는 재시작 시 재처리 허용
       await this.outboxModel
-        .findByIdAndUpdate(doc._id, { status: "PENDING" })
+        .findByIdAndUpdate(doc._id, {
+          status: "PENDING",
+          $unset: { publishedAt: "" },
+        })
         .catch(() => {});
+      // insert 이벤트는 재발행되지 않으므로 즉시 백필 재구동
+      setTimeout(() => {
+        void this.processPendingEvents().catch((e: Error) =>
+          this.logger.error(`Pending reprocess failed: ${e.message}`),
+        );
+      }, 1_000);
       return;
     }
 
