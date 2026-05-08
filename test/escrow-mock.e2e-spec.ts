@@ -25,7 +25,7 @@ import { ESCROW_CREATE_QUEUE } from "../src/modules/escrow-payments/escrow-creat
 import { XrplService } from "../src/modules/xrpl/xrpl.service";
 import { OutboxService } from "../src/modules/outbox/outbox.service";
 import { OutboxWatcherService } from "../src/modules/outbox/outbox-watcher.service";
-import { EscrowPayment } from "../src/modules/escrow-payments/schemas/escrow-payment.schema";
+
 import { User } from "../src/modules/users/schemas/user.schema";
 import { HttpExceptionFilter } from "../src/common/filters/http-exception.filter";
 import { InsufficientXrpBalanceException } from "../src/common/exceptions";
@@ -33,7 +33,6 @@ import { InsufficientXrpBalanceException } from "../src/common/exceptions";
 describe("EscrowPayments (e2e)", () => {
   let app: INestApplication;
   let mongoServer: MongoMemoryReplSet;
-  let escrowPaymentModel: Model<EscrowPayment>;
   let userModel: Model<User>;
 
   const buyerObjectId = new Types.ObjectId();
@@ -155,9 +154,6 @@ describe("EscrowPayments (e2e)", () => {
 
     await app.init();
 
-    escrowPaymentModel = moduleFixture.get<Model<EscrowPayment>>(
-      getModelToken(EscrowPayment.name),
-    );
     userModel = moduleFixture.get<Model<User>>(getModelToken(User.name));
 
     // 테스트용 buyer / seller 사용자 생성 (지갑 포함)
