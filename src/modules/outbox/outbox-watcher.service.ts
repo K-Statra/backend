@@ -92,10 +92,16 @@ export class OutboxWatcherService
     this.changeStream.on("error", async (err: Error) => {
       if (this.isShuttingDown) return;
       this.logger.error(`Change stream error: ${err.message}`, err.stack);
-      if (
-        err.message.includes("resume") ||
-        err.message.includes("ChangeStreamHistoryLost")
-      ) {
+      const code = (err as any).code as number | undefined;
+      const codeName = (err as any).codeName as string | undefined;
+      // code 286 = ChangeStreamHistoryLost, code 280 = ChangeStreamFatalError
+      // Invalidate 이벤트 이후 스트림이 닫힌 경우 code가 없을 수 있어 codeName도 함께 확인
+      const isTokenInvalid =
+        code === 286 ||
+        code === 280 ||
+        codeName === "ChangeStreamHistoryLost" ||
+        codeName === "ChangeStreamFatalError";
+      if (isTokenInvalid) {
         await this.resumeTokenModel
           .deleteOne({ streamId: STREAM_ID })
           .catch(() => {});
@@ -107,42 +113,58 @@ export class OutboxWatcherService
   }
 
   private async handleEvent(doc: OutboxEventDocument, resumeToken: any) {
+    // 원자적 acquire: 다중 인스턴스 환경에서 중복 처리 방지
+    let acquired: OutboxEventDocument | null;
     try {
-      // 원자적 acquire: 다중 인스턴스 환경에서 중복 처리 방지
-      const acquired = await this.outboxModel.findOneAndUpdate(
+      acquired = await this.outboxModel.findOneAndUpdate(
         { _id: doc._id, status: "PENDING" },
         { status: "PUBLISHED", publishedAt: new Date() },
         { returnDocument: "before" },
       );
-      if (!acquired) return; // 다른 인스턴스가 먼저 처리함
+    } catch (err: any) {
+      this.logger.error(
+        `Failed to acquire outbox event ${doc._id.toString()}: ${err.message}`,
+      );
+      return;
+    }
+    if (!acquired) return; // 다른 인스턴스가 먼저 처리함
 
-      // 금액 오류는 프로세서에서 즉시 중단, 그 외(네트워크 등)는 적극 재시도
-      // 10회, 초기 60초 지수 백오프 → 최대 누적 대기 ~17시간
+    // 금액 오류는 프로세서에서 즉시 중단, 그 외(네트워크 등)는 적극 재시도
+    // 10회, 초기 60초 지수 백오프 → 최대 누적 대기 ~17시간
+    try {
       await this.escrowCreateQueue.add(doc.payload as EscrowCreateJobData, {
         attempts: 10,
         backoff: { type: "exponential", delay: 60_000 },
       });
+    } catch (err: any) {
+      this.logger.error(
+        `Failed to enqueue outbox event ${doc._id.toString()}: ${err.message}`,
+      );
+      // PUBLISHED → PENDING 롤백: 다른 인스턴스 또는 재시작 시 재처리 허용
+      await this.outboxModel
+        .findByIdAndUpdate(doc._id, { status: "PENDING" })
+        .catch(() => {});
+      return;
+    }
 
-      if (resumeToken) {
-        await this.resumeTokenModel.findOneAndUpdate(
+    // resume token 갱신 실패는 fatal이 아니므로 swallow
+    if (resumeToken) {
+      await this.resumeTokenModel
+        .findOneAndUpdate(
           { streamId: STREAM_ID },
           { token: resumeToken },
           { upsert: true },
-        );
-      }
-
-      this.logger.log(
-        `Outbox event published: ${doc._id.toString()} (type=${doc.eventType})`,
-      );
-    } catch (err: any) {
-      this.logger.error(
-        `Failed to publish outbox event ${doc._id.toString()}: ${err.message}`,
-      );
-      await this.outboxModel.findByIdAndUpdate(doc._id, {
-        status: "FAILED",
-        failedReason: err.message,
-      });
+        )
+        .catch((err: Error) => {
+          this.logger.warn(
+            `Resume token update failed (non-fatal): ${err.message}`,
+          );
+        });
     }
+
+    this.logger.log(
+      `Outbox event published: ${doc._id.toString()} (type=${doc.eventType})`,
+    );
   }
 
   private async restartWithBackoff(attempt = 0) {
