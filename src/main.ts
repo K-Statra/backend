@@ -14,12 +14,19 @@ async function bootstrap() {
     logger: ["error", "warn", "log"],
   });
 
+  if (process.env.NODE_ENV === "production") {
+    app.getHttpAdapter().getInstance().set("trust proxy", 1);
+  }
+
   const configService = app.get(ConfigService);
   const port = configService.get<number>("port") ?? 3000;
-  const origins = configService.get<string[]>("cors.origins") ?? ["*"];
+  const origins = configService.get<string[]>("cors.origins");
   const sessionSecret = configService.get<string>("session.secret");
   const sessionTtl = configService.get<number>("session.ttl");
 
+  if (!origins || origins.length === 0) {
+    throw new Error("Missing required configuration: cors.origins");
+  }
   if (!sessionSecret || !sessionTtl) {
     throw new Error(
       "Missing required session configuration: session.secret and session.ttl",
@@ -46,8 +53,8 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: true,
-        sameSite: "none",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         maxAge: sessionTtl * 1000,
       },
     }),
