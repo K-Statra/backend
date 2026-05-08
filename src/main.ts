@@ -14,6 +14,10 @@ async function bootstrap() {
     logger: ["error", "warn", "log"],
   });
 
+  if (process.env.NODE_ENV === "production") {
+    app.getHttpAdapter().getInstance().set("trust proxy", 1);
+  }
+
   const configService = app.get(ConfigService);
   const port = configService.get<number>("port") ?? 3000;
   const origins = configService.get<string[]>("cors.origins") ?? ["*"];
