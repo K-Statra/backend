@@ -359,7 +359,15 @@ export class EscrowPaymentsService {
           },
           { new: true },
         );
-        break;
+        if (result) break;
+        // null 반환 = 다른 경로가 상태를 변경한 경우 (동시성 충돌)
+        if (attempt === 3) {
+          this.logger.error(
+            `Post-flight DB update missed for paymentId=${paymentId} escrowId=${escrow._id.toString()}; recovery scheduler must reconcile via condition lookup`,
+          );
+          throw new Error("Post-flight DB update did not match");
+        }
+        await new Promise((res) => setTimeout(res, attempt * 200));
       } catch (err: any) {
         if (attempt === 3) throw err;
         await new Promise((res) => setTimeout(res, attempt * 200));
