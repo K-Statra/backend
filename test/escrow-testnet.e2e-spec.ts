@@ -211,10 +211,13 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
     ).toBe(true);
 
     // ── 2. 결제 양측 승인 → APPROVED (XRPL 미실행) ───────────────────────
-    await escrowPaymentsService.approvePayment(paymentId, "buyer");
+    await escrowPaymentsService.approvePayment(
+      paymentId,
+      buyerObjectId.toString(),
+    );
     const afterBothApprove = await escrowPaymentsService.approvePayment(
       paymentId,
-      "seller",
+      sellerObjectId.toString(),
     );
 
     expect(afterBothApprove.status).toBe("APPROVED");
@@ -269,7 +272,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
       paymentId,
       escrowItemId,
       "SHIPMENT_CONFIRMED",
-      "buyer",
+      buyerObjectId.toString(),
     );
     const e1b = afterE1Buyer.escrows.find(
       (e) => e._id.toString() === escrowItemId,
@@ -288,7 +291,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
       paymentId,
       escrowItemId,
       "SHIPMENT_CONFIRMED",
-      "seller",
+      sellerObjectId.toString(),
     );
     const e1s = afterE1Seller.escrows.find(
       (e) => e._id.toString() === escrowItemId,
@@ -311,7 +314,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
       paymentId,
       escrowItemId,
       "INSPECTION_PASSED",
-      "buyer",
+      buyerObjectId.toString(),
     );
     const e2b = afterE2Buyer.escrows.find(
       (e) => e._id.toString() === escrowItemId,
@@ -329,7 +332,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
       paymentId,
       escrowItemId,
       "INSPECTION_PASSED",
-      "seller",
+      sellerObjectId.toString(),
     );
     const finalEscrow = finalPayment.escrows.find(
       (e) => e._id.toString() === escrowItemId,
