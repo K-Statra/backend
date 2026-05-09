@@ -20,7 +20,7 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { Model, Types } from "mongoose";
 import session from "express-session";
 import { EscrowPaymentsModule } from "../src/modules/escrow-payments/escrow-payments.module";
-import { EscrowPaymentsService } from "../src/modules/escrow-payments/escrow-payments.service";
+import { EscrowCreateProcessor } from "../src/modules/escrow-payments/escrow-create.processor";
 import { ESCROW_CREATE_QUEUE } from "../src/modules/escrow-payments/escrow-create.constants";
 import { XrplService } from "../src/modules/xrpl/xrpl.service";
 import { OutboxService } from "../src/modules/outbox/outbox.service";
@@ -97,7 +97,7 @@ describe("EscrowPayments (e2e)", () => {
       .compile();
 
     // compile() 후 서비스 참조를 얻어 mock 구현 완성
-    const escrowService = moduleFixture.get(EscrowPaymentsService);
+    const processor = moduleFixture.get(EscrowCreateProcessor);
 
     // 큐 add → 에스크로 항목별로 createXrplEscrow 인라인 실행
     mockQueue.add.mockImplementation(
@@ -109,7 +109,7 @@ describe("EscrowPayments (e2e)", () => {
         escrowIds: string[];
       }) => {
         for (const id of escrowIds) {
-          await escrowService.createXrplEscrow(paymentId, id);
+          await processor.createXrplEscrow(paymentId, id);
         }
       },
     );
@@ -669,6 +669,7 @@ describe("EscrowPayments (e2e)", () => {
         "rSellerE2ETestAddr5678",
         300,
         "A02580204ABCDEF",
+        "XRP",
       );
     });
 
