@@ -659,7 +659,7 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
       return xrpToDrops(amount);
     }
     return {
-      value: new BigNumber(amount).toFixed(),
+      value: amount.toFixed(6),
       currency: this.iouCurrencyCode,
       issuer: this.iouIssuer,
     };
