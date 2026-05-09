@@ -20,6 +20,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:e2e:testnet": "jest --config ./test/jest-e2e-testnet.json",
+    "test:e2e:rlusd-testnet": "jest --config ./test/jest-e2e-rlusd-testnet.json",
     "prepare": "husky || true"
   },
   "lint-staged": {

@@ -26,4 +26,8 @@ step "E2E 테스트 (mock)"
 npm run test:e2e || fail "E2E 테스트 실패"
 pass "E2E 테스트 (mock)"
 
-echo -e "\n${GREEN}✓ 모든 검사 통과 — push 해도 됩니다${NC}"
+step "E2E 테스트 (실제)"
+npm run test:e2e:testnet && npm run test:e2e:rlusd-testnet || fail "E2E 테스트 실패"
+pass "E2E 테스트 (실제)"
+
+echo -e "\n${GREEN}✓ 모든 검사 통과!"
