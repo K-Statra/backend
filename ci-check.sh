@@ -11,7 +11,7 @@ fail() { echo -e "${RED}✗ $1${NC}"; exit 1; }
 step() { echo -e "\n${YELLOW}▶ $1${NC}"; }
 
 step "Prettier"
-npx prettier --check "src/**/*.ts" "test/**/*.ts" || fail "Prettier 실패 — npm run format 으로 수정하세요"
+npm run format && npx prettier --check "src/**/*.ts" "test/**/*.ts" || fail "Prettier 실패 — npm run format 으로 수정하세요"
 pass "Prettier"
 
 step "ESLint"
