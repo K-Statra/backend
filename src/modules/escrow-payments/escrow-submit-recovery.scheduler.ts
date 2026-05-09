@@ -110,6 +110,7 @@ export class EscrowSubmitRecoveryScheduler {
       return "cancelled";
     }
 
+    // XRPL 서버에 접속하여 sequence, txHash 를 가져옴
     const xrplResult = await this.xrplService.findEscrowByCondition(
       buyerAddress,
       escrow.condition,
@@ -118,7 +119,15 @@ export class EscrowSubmitRecoveryScheduler {
     if (xrplResult) {
       // XRPL에 에스크로 존재 → DB만 업데이트하면 복구 완료
       const result = await this.escrowPaymentModel.findOneAndUpdate(
-        { _id: paymentId, "escrows._id": new Types.ObjectId(escrowId) },
+        {
+          _id: paymentId,
+          escrows: {
+            $elemMatch: {
+              _id: new Types.ObjectId(escrowId),
+              status: "SUBMITTING",
+            },
+          },
+        },
         {
           $set: {
             "escrows.$.status": "ESCROWED",
@@ -129,7 +138,9 @@ export class EscrowSubmitRecoveryScheduler {
         },
         { new: true },
       );
-      const allEscrowed = result!.escrows.every(
+      if (!result) return "recovered";
+
+      const allEscrowed = result.escrows.every(
         (e) =>
           e.status === "ESCROWED" ||
           e.status === "RELEASED" ||

@@ -177,8 +177,7 @@ export class EscrowCreateProcessor {
     const preFlighted = await this.escrowPaymentModel.findOneAndUpdate(
       {
         _id: paymentId,
-        "escrows._id": escrow._id,
-        "escrows.status": "PENDING_ESCROW",
+        escrows: { $elemMatch: { _id: escrow._id, status: "PENDING_ESCROW" } },
       },
       {
         $set: {
@@ -196,36 +195,36 @@ export class EscrowCreateProcessor {
       );
     }
 
-    this.logger.log(
-      `Submitting EscrowCreate: buyer=${buyerUser.wallet.address} seller=${sellerUser.wallet.address} amount=${escrow.amountXrp} XRP`,
-    );
-
+    const currency = payment.currency ?? "XRP";
     let txHash: string;
     let sequence: number;
     try {
+      this.logger.log(
+        `Submitting EscrowCreate: buyer=${buyerUser.wallet.address} seller=${sellerUser.wallet.address} amount=${escrow.amountXrp} ${currency}`,
+      );
       ({ txHash, sequence } = await this.xrplService.createEscrow(
         buyerWallet,
         sellerUser.wallet.address,
         escrow.amountXrp,
         condition,
-        payment.currency ?? "XRP",
+        currency,
       ));
     } catch (err) {
       // Case A: XRPL 제출 실패 — 에스크로 미생성 확정, SUBMITTING → PENDING_ESCROW 즉시 복구
       await this.escrowPaymentModel.findOneAndUpdate(
         {
           _id: paymentId,
-          "escrows._id": escrow._id,
-          "escrows.status": "SUBMITTING",
+          escrows: { $elemMatch: { _id: escrow._id, status: "SUBMITTING" } },
         },
         { $set: { "escrows.$.status": "PENDING_ESCROW" } },
       );
       throw err;
     }
 
-    // XRPL 제출 성공 — txHash/sequence를 먼저 로그에 기록해 저장 실패 시에도 복구 단서 보존
-    this.logger.log(`EscrowCreate success: txHash=${txHash} seq=${sequence}`);
-
+    this.logger.log(
+      `Submitting EscrowCreate: buyer=${buyerUser.wallet.address} ` +
+        `seller=${sellerUser.wallet.address} amount=${escrow.amountXrp} ${currency}`,
+    );
     // Case B: post-flight DB 저장 실패 시 최대 3회 재시도 (메모리의 txHash/sequence 활용)
     // 재시도 소진 시 SUBMITTING 유지 → 스케줄러가 XRPL 조회로 복구
     let result: EscrowPaymentDocument | null = null;
