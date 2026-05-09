@@ -1,15 +1,12 @@
-import {
-  Controller,
-  DefaultValuePipe,
-  Get,
-  ParseIntPipe,
-  Query,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
+import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { MyBusinessService } from "./my-business.service";
 import { SessionGuard } from "../../common/guards/session.guard";
+import {
+  CurrentUser,
+  type SessionUser,
+} from "src/common/decorators/current-user.decorator";
+import { GetPartnersQueryDto } from "./dto/getPartnersQuery.dto";
 
 @ApiTags("My Business")
 @Controller("my-business")
@@ -21,8 +18,8 @@ export class MyBusinessController {
   @ApiOperation({ summary: "내 프로필 조회 (개인정보, 지갑 주소)" })
   @ApiResponse({ status: 200, description: "프로필 반환 성공" })
   @ApiResponse({ status: 401, description: "인증되지 않은 사용자" })
-  getProfile(@Req() req: any) {
-    return this.myBusinessService.getProfile(req.session.userId);
+  getProfile(@CurrentUser() user: SessionUser) {
+    return this.myBusinessService.getProfile(user.userId);
   }
 
   @Get("partners")
@@ -48,10 +45,10 @@ export class MyBusinessController {
   })
   @ApiResponse({ status: 401, description: "인증되지 않은 사용자" })
   getPartners(
-    @Req() req: any,
-    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query("limit", new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @CurrentUser() user: SessionUser,
+    @Query() query: GetPartnersQueryDto,
   ) {
-    return this.myBusinessService.getPartners(req.session.userId, page, limit);
+    const { page, limit } = query;
+    return this.myBusinessService.getPartners(user.userId, page, limit);
   }
 }
