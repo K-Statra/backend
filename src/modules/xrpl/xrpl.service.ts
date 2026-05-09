@@ -49,6 +49,8 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(XrplService.name);
   private readonly wsUrl: string;
   private readonly destAddress: string;
+  private readonly iouIssuer: string;
+  private readonly iouCurrencyCode: string;
   private readonly encryptionKey: Buffer; // AES-256용 32바이트 키
   private client: Client;
   private connectPromise?: Promise<void>;
@@ -56,6 +58,13 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly config: ConfigService) {
     this.wsUrl = this.config.get<string>("xrpl.wsUrl")!;
     this.destAddress = this.config.get<string>("xrpl.destAddress")!;
+    const issuerAddress = this.config.get<string>("xrpl.issuerAddress");
+    if (!issuerAddress) {
+      throw new Error("XRPL_ISSUER_ADDRESS is not configured");
+    }
+    this.iouIssuer = issuerAddress;
+    this.iouCurrencyCode =
+      this.config.get<string>("xrpl.issuedCurrencyCode") || "RLUSD";
 
     const keyStr = this.config.get<string>("security.encryptionKey");
     if (!keyStr || !/^[0-9a-fA-F]{64}$/.test(keyStr)) {
@@ -206,8 +215,9 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
   async createEscrow(
     buyerWallet: XrplWallet,
     sellerAddress: string,
-    amountXrp: number,
+    amount: number,
     condition: string,
+    currency: "XRP" | "RLUSD" = "XRP",
   ): Promise<{ txHash: string; sequence: number }> {
     await this.connect();
     const wallet = Wallet.fromSeed(buyerWallet.seed);
@@ -220,7 +230,7 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
     const tx: EscrowCreate = {
       TransactionType: "EscrowCreate",
       Account: wallet.address,
-      Amount: xrpToDrops(amountXrp),
+      Amount: this.buildEscrowAmount(currency, amount),
       Destination: sellerAddress,
       Condition: condition,
       CancelAfter: cancelAfter,
@@ -478,5 +488,177 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(
       `Balance check OK: ${balanceDrops} drops available, ${requiredDrops} drops required`,
     );
+  }
+
+  /**
+   * issuer 계정에 AllowTrustLineLocking 플래그 설정 (asfAllowTrustLineLocking = 17)
+   * XLS-85 TokenEscrow: issuer가 이 플래그를 보유해야 IOU EscrowCreate 허용
+   * 미설정 시 EscrowCreate 제출 시 tecNO_PERMISSION 반환
+   */
+  async enableTrustLineLocking(issuerWallet: XrplWallet): Promise<void> {
+    await this.connect();
+    const wallet = Wallet.fromSeed(issuerWallet.seed);
+    const tx = {
+      TransactionType: "AccountSet" as const,
+      Account: issuerWallet.address,
+      SetFlag: 17, // asfAllowTrustLineLocking
+    };
+    const prepared = await this.client.autofill(tx);
+    const { tx_blob } = wallet.sign(prepared);
+    const result = await this.client.submitAndWait(tx_blob);
+
+    const meta = result.result.meta as any;
+    if (meta?.TransactionResult !== "tesSUCCESS") {
+      throw new XrplTransactionFailedException(
+        "AccountSet:AllowTrustLineLocking",
+        meta?.TransactionResult ?? "unknown",
+      );
+    }
+
+    this.logger.log(
+      `AllowTrustLineLocking enabled for ${issuerWallet.address}`,
+    );
+  }
+
+  /**
+   * RLUSD trust line이 없으면 TrustSet 트랜잭션으로 생성
+   * 결제 생성(initiatePayment) pre-flight에서 buyer/seller 양측 호출
+   */
+  async ensureRlusdTrustLine(
+    address: string,
+    encryptedSeed: string,
+  ): Promise<void> {
+    await this.connect();
+
+    const resp = await this.client.request({
+      command: "account_lines",
+      account: address,
+      peer: this.iouIssuer,
+    } as any);
+
+    const lines = (resp.result as any).lines as {
+      currency: string;
+      account: string;
+    }[];
+    const hasLine = lines.some(
+      (l) =>
+        l.currency === this.iouCurrencyCode && l.account === this.iouIssuer,
+    );
+    if (hasLine) return;
+
+    const seed = this.decrypt(encryptedSeed);
+    const wallet = Wallet.fromSeed(seed);
+    const tx = {
+      TransactionType: "TrustSet" as const,
+      Account: address,
+      LimitAmount: {
+        currency: this.iouCurrencyCode,
+        issuer: this.iouIssuer,
+        value: "1000000000",
+      },
+    };
+    const prepared = await this.client.autofill(tx);
+    const { tx_blob } = wallet.sign(prepared);
+    const result = await this.client.submitAndWait(tx_blob);
+
+    const meta = result.result.meta as any;
+    if (meta?.TransactionResult !== "tesSUCCESS") {
+      throw new XrplTransactionFailedException(
+        "TrustSet",
+        meta?.TransactionResult ?? "unknown",
+      );
+    }
+
+    this.logger.log(
+      `IOU trust line created for ${address} (${this.iouCurrencyCode})`,
+    );
+  }
+
+  /**
+   * buyer의 IOU 잔고 검증
+   * trust line의 balance가 총 에스크로 금액 이상인지 확인
+   */
+  async validateRlusdFunds(
+    buyerAddress: string,
+    escrows: { amountXrp: number }[],
+  ): Promise<void> {
+    await this.connect();
+
+    const resp = await this.client.request({
+      command: "account_lines",
+      account: buyerAddress,
+      peer: this.iouIssuer,
+    } as any);
+
+    const lines = (resp.result as any).lines as {
+      currency: string;
+      account: string;
+      balance: string;
+    }[];
+    const line = lines.find(
+      (l) =>
+        l.currency === this.iouCurrencyCode && l.account === this.iouIssuer,
+    );
+
+    const balance = parseFloat(line?.balance ?? "0");
+    const required = escrows.reduce((sum, e) => sum + e.amountXrp, 0);
+
+    if (balance < required) {
+      throw new InsufficientXrpBalanceException(balance, required);
+    }
+
+    this.logger.log(
+      `IOU balance check OK: ${balance} available, ${required} required (${this.iouCurrencyCode})`,
+    );
+  }
+
+  /**
+   * IOU 결제 전송 — 테스트 issuer가 buyer에게 토큰을 충전할 때 사용
+   */
+  async sendIssuedCurrencyPayment(
+    senderWallet: XrplWallet,
+    destAddress: string,
+    amount: string,
+  ): Promise<string> {
+    await this.connect();
+    const wallet = Wallet.fromSeed(senderWallet.seed);
+
+    const tx = {
+      TransactionType: "Payment" as const,
+      Account: senderWallet.address,
+      Destination: destAddress,
+      Amount: {
+        currency: this.iouCurrencyCode,
+        issuer: this.iouIssuer,
+        value: amount,
+      },
+    };
+    const prepared = await this.client.autofill(tx);
+    const { tx_blob } = wallet.sign(prepared);
+    const result = await this.client.submitAndWait(tx_blob);
+
+    const meta = result.result.meta as any;
+    if (meta?.TransactionResult !== "tesSUCCESS") {
+      throw new XrplTransactionFailedException(
+        "Payment",
+        meta?.TransactionResult ?? "unknown",
+      );
+    }
+
+    return result.result.hash;
+  }
+
+  private buildEscrowAmount(
+    currency: "XRP" | "RLUSD",
+    amount: number,
+  ): string | { value: string; currency: string; issuer: string } {
+    if (currency === "XRP") {
+      return xrpToDrops(amount);
+    }
+    return {
+      value: amount.toFixed(6),
+      currency: this.iouCurrencyCode,
+      issuer: this.iouIssuer,
+    };
   }
 }
