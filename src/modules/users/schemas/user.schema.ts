@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 import {
   WalletInfo,
   WalletInfoSchema,
@@ -47,6 +47,20 @@ export class User {
     default: "PENDING_ACTIVATION",
   })
   status: string;
+
+  @Prop({
+    type: [
+      {
+        partnerId: { type: Types.ObjectId },
+        partnerType: { type: String, enum: ["seller", "buyer"] },
+      },
+    ],
+    default: [],
+  })
+  savedPartners: Array<{
+    partnerId: Types.ObjectId;
+    partnerType: "seller" | "buyer";
+  }>;
 
   // discriminator key — managed by Mongoose, declared for TypeScript
   type: "buyer" | "seller";

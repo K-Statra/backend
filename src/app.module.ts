@@ -9,6 +9,7 @@ import { PartnersModule } from "./modules/partners/partners.module";
 import { BuyersModule } from "./modules/buyers/buyers.module";
 import { ConsultationsModule } from "./modules/consultations/consultations.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { MyBusinessModule } from "./modules/my-business/my-business.module";
 import { EscrowPaymentsModule } from "./modules/escrow-payments/escrow-payments.module";
 
 @Module({
@@ -41,6 +42,7 @@ import { EscrowPaymentsModule } from "./modules/escrow-payments/escrow-payments.
     BuyersModule,
     ConsultationsModule,
     AuthModule,
+    MyBusinessModule,
     EscrowPaymentsModule,
   ],
 })
