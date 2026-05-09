@@ -15,6 +15,7 @@ import {
   ApiBody,
   ApiCookieAuth,
 } from "@nestjs/swagger";
+import { EscrowPaymentsCrudService } from "./escrow-payments-crud.service";
 import { EscrowPaymentsService } from "./escrow-payments.service";
 import { CreateEscrowPaymentDto } from "./dto/create-escrow-payment.dto";
 import { QueryEscrowPaymentDto } from "./dto/query-escrow-payment.dto";
@@ -30,7 +31,10 @@ import { ParseMongoIdPipe } from "../../common/pipes/parse-mongo-id.pipe";
 @UseGuards(SessionGuard)
 @Controller("escrow-payments")
 export class EscrowPaymentsController {
-  constructor(private readonly service: EscrowPaymentsService) {}
+  constructor(
+    private readonly crudService: EscrowPaymentsCrudService,
+    private readonly service: EscrowPaymentsService,
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -48,7 +52,7 @@ export class EscrowPaymentsController {
     @Query() query: QueryEscrowPaymentDto,
     @CurrentUser() user: SessionUser,
   ) {
-    return this.service.findAll(user.userId, query);
+    return this.crudService.findAll(user.userId, query);
   }
 
   @Post()
@@ -65,7 +69,7 @@ export class EscrowPaymentsController {
     @Body() dto: CreateEscrowPaymentDto,
     @CurrentUser() user: SessionUser,
   ) {
-    return this.service.create(dto, user.userId);
+    return this.crudService.create(dto, user.userId);
   }
 
   @Get(":id")
@@ -81,7 +85,7 @@ export class EscrowPaymentsController {
     @Param("id", ParseMongoIdPipe) id: string,
     @CurrentUser() user: SessionUser,
   ) {
-    return this.service.findById(id, user.userId);
+    return this.crudService.findById(id, user.userId);
   }
 
   @Post(":id/approve")

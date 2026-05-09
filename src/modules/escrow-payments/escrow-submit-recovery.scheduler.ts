@@ -1,13 +1,14 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import {
   EscrowPayment,
   EscrowPaymentDocument,
 } from "./schemas/escrow-payment.schema";
 import { User, UserDocument } from "../users/schemas/user.schema";
 import { EscrowPaymentsService } from "./escrow-payments.service";
+import { XrplService } from "../xrpl/xrpl.service";
 
 // 이 시간보다 오래된 SUBMITTING만 처리 — 정상 진행 중인 요청과 구분
 const SUBMITTING_TIMEOUT_MS = 5 * 60 * 1000;
@@ -21,6 +22,7 @@ export class EscrowSubmitRecoveryScheduler {
     private readonly escrowPaymentModel: Model<EscrowPaymentDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    private readonly xrplService: XrplService,
     private readonly escrowPaymentsService: EscrowPaymentsService,
   ) {}
 
@@ -64,12 +66,11 @@ export class EscrowSubmitRecoveryScheduler {
         const paymentId = payment._id.toString();
         const escrowId = escrow._id.toString();
         try {
-          const outcome =
-            await this.escrowPaymentsService.recoverSubmittingEscrow(
-              paymentId,
-              escrowId,
-              buyerUser.wallet.address,
-            );
+          const outcome = await this.recoverSubmittingEscrow(
+            paymentId,
+            escrowId,
+            buyerUser.wallet.address,
+          );
           if (outcome === "recovered") {
             this.logger.log(
               `Recovered SUBMITTING escrow: paymentId=${paymentId} escrowId=${escrowId}`,
@@ -87,5 +88,80 @@ export class EscrowSubmitRecoveryScheduler {
         }
       }
     }
+  }
+
+  /**
+   * SUBMITTING 에스크로 복구 — XRPL 조회 결과에 따라 ESCROWED 복구 또는 결제 전체 취소
+   */
+  async recoverSubmittingEscrow(
+    paymentId: string,
+    escrowId: string,
+    buyerAddress: string,
+  ): Promise<"recovered" | "cancelled"> {
+    const escrow = await this.escrowPaymentsService.getEscrowStatus(
+      paymentId,
+      escrowId,
+    );
+    if (escrow.status !== "SUBMITTING") return "recovered"; // 이미 다른 경로로 처리됨
+
+    if (!escrow.condition) {
+      // condition 미저장 = pre-flight 전에 프로세스 종료 → XRPL 제출 안 됨
+      await this.cancelSubmittingEscrowAndRollback(paymentId, escrowId);
+      return "cancelled";
+    }
+
+    const xrplResult = await this.xrplService.findEscrowByCondition(
+      buyerAddress,
+      escrow.condition,
+    );
+
+    if (xrplResult) {
+      // XRPL에 에스크로 존재 → DB만 업데이트하면 복구 완료
+      const result = await this.escrowPaymentModel.findOneAndUpdate(
+        { _id: paymentId, "escrows._id": new Types.ObjectId(escrowId) },
+        {
+          $set: {
+            "escrows.$.status": "ESCROWED",
+            "escrows.$.xrplSequence": xrplResult.sequence,
+            "escrows.$.txHashCreate": xrplResult.txHash,
+            "escrows.$.escrowedAt": new Date(),
+          },
+        },
+        { new: true },
+      );
+      const allEscrowed = result!.escrows.every(
+        (e) =>
+          e.status === "ESCROWED" ||
+          e.status === "RELEASED" ||
+          e.status === "CANCELLED",
+      );
+      if (allEscrowed) {
+        await this.escrowPaymentModel.findByIdAndUpdate(paymentId, {
+          $set: { status: "ACTIVE" },
+        });
+      }
+      return "recovered";
+    }
+
+    // XRPL에 에스크로 없음 → 제출 실패 확정 → 결제 취소
+    await this.cancelSubmittingEscrowAndRollback(paymentId, escrowId);
+    return "cancelled";
+  }
+
+  private async cancelSubmittingEscrowAndRollback(
+    paymentId: string,
+    escrowId: string,
+  ): Promise<void> {
+    // XRPL에 없음이 확정된 SUBMITTING 에스크로를 CANCELLED로 직접 전환
+    // (rollbackAllEscrows는 SUBMITTING → CANCELLING으로 처리하므로 별도 처리)
+    await this.escrowPaymentModel.findOneAndUpdate(
+      {
+        _id: paymentId,
+        "escrows._id": new Types.ObjectId(escrowId),
+        "escrows.status": "SUBMITTING",
+      },
+      { $set: { "escrows.$.status": "CANCELLED" } },
+    );
+    await this.escrowPaymentsService.rollbackAllEscrows(paymentId);
   }
 }
