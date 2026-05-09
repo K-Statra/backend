@@ -146,7 +146,11 @@ describe("EscrowCreateProcessor › createXrplEscrow", () => {
 
     expect(ctx.escrowPaymentModel.findOneAndUpdate).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ "escrows.status": "PENDING_ESCROW" }),
+      expect.objectContaining({
+        escrows: {
+          $elemMatch: expect.objectContaining({ status: "PENDING_ESCROW" }),
+        },
+      }),
       expect.objectContaining({
         $set: expect.objectContaining({
           "escrows.$.status": "SUBMITTING",
@@ -285,7 +289,11 @@ describe("EscrowCreateProcessor › createXrplEscrow", () => {
     // findOneAndUpdate 호출: 1) pre-flight, 2) revert(SUBMITTING→PENDING_ESCROW)
     expect(ctx.escrowPaymentModel.findOneAndUpdate).toHaveBeenCalledTimes(2);
     expect(ctx.escrowPaymentModel.findOneAndUpdate).toHaveBeenLastCalledWith(
-      expect.objectContaining({ "escrows.status": "SUBMITTING" }),
+      expect.objectContaining({
+        escrows: {
+          $elemMatch: expect.objectContaining({ status: "SUBMITTING" }),
+        },
+      }),
       { $set: { "escrows.$.status": "PENDING_ESCROW" } },
     );
   });

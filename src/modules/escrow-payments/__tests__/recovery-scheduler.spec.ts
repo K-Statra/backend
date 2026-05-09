@@ -267,7 +267,11 @@ describe("EscrowSubmitRecoveryScheduler › recoverSubmittingEscrow", () => {
       CONDITION,
     );
     expect(escrowPaymentModel.findOneAndUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ "escrows._id": expect.any(Types.ObjectId) }),
+      expect.objectContaining({
+        escrows: {
+          $elemMatch: expect.objectContaining({ status: "SUBMITTING" }),
+        },
+      }),
       expect.objectContaining({
         $set: expect.objectContaining({
           "escrows.$.status": "ESCROWED",

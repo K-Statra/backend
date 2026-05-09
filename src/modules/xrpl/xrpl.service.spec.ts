@@ -4,6 +4,7 @@ import * as xrpl from "xrpl";
 import { XrplService } from "./xrpl.service";
 import {
   InsufficientXrpBalanceException,
+  InsufficientRlusdBalanceException,
   XrplTransactionFailedException,
 } from "../../common/exceptions";
 
@@ -317,7 +318,7 @@ describe("XrplService", () => {
       ).resolves.toBeUndefined();
     });
 
-    it("잔고 부족 → InsufficientXrpBalanceException", async () => {
+    it("잔고 부족 → InsufficientRlusdBalanceException", async () => {
       mockClient.request.mockResolvedValue(
         makeAccountLines([
           { currency: TEST_CURRENCY, account: TEST_ISSUER, balance: "200" },
@@ -326,15 +327,15 @@ describe("XrplService", () => {
 
       await expect(
         service.validateRlusdFunds(BUYER_ADDRESS, [{ amountXrp: 500 }]),
-      ).rejects.toThrow(InsufficientXrpBalanceException);
+      ).rejects.toThrow(InsufficientRlusdBalanceException);
     });
 
-    it("trust line 없으면 잔고 0으로 간주 → InsufficientXrpBalanceException", async () => {
+    it("trust line 없으면 잔고 0으로 간주 → InsufficientRlusdBalanceException", async () => {
       mockClient.request.mockResolvedValue(makeAccountLines([]));
 
       await expect(
         service.validateRlusdFunds(BUYER_ADDRESS, [{ amountXrp: 1 }]),
-      ).rejects.toThrow(InsufficientXrpBalanceException);
+      ).rejects.toThrow(InsufficientRlusdBalanceException);
     });
 
     it("다른 issuer의 잔고는 집계 안 함", async () => {
@@ -346,7 +347,7 @@ describe("XrplService", () => {
 
       await expect(
         service.validateRlusdFunds(BUYER_ADDRESS, [{ amountXrp: 1 }]),
-      ).rejects.toThrow(InsufficientXrpBalanceException);
+      ).rejects.toThrow(InsufficientRlusdBalanceException);
     });
 
     it("잔고와 required가 정확히 같으면 통과", async () => {
