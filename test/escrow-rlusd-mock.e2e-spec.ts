@@ -27,7 +27,7 @@ import { OutboxService } from "../src/modules/outbox/outbox.service";
 import { OutboxWatcherService } from "../src/modules/outbox/outbox-watcher.service";
 import { User } from "../src/modules/users/schemas/user.schema";
 import { HttpExceptionFilter } from "../src/common/filters/http-exception.filter";
-import { InsufficientXrpBalanceException } from "../src/common/exceptions";
+import { InsufficientRlusdBalanceException } from "../src/common/exceptions";
 
 const BUYER_ADDRESS = "rBuyerRlusdTestAddr";
 const SELLER_ADDRESS = "rSellerRlusdTestAddr";
@@ -371,7 +371,7 @@ describe("RLUSD 에스크로 결제 (mock e2e)", () => {
 
     it("RLUSD 잔고 부족 → 400", async () => {
       mockXrplService.validateRlusdFunds.mockRejectedValue(
-        new InsufficientXrpBalanceException(200, 1000),
+        new InsufficientRlusdBalanceException(200, 1000),
       );
 
       const createRes = await request(app.getHttpServer())

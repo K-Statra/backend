@@ -18,6 +18,7 @@ import {
 import * as crypto from "crypto";
 import {
   InsufficientXrpBalanceException,
+  InsufficientRlusdBalanceException,
   InvalidCipherTextException,
   XrplConnectionException,
   XrplTransactionFailedException,
@@ -600,11 +601,13 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
         l.currency === this.iouCurrencyCode && l.account === this.iouIssuer,
     );
 
-    const balance = parseFloat(line?.balance ?? "0");
-    const required = escrows.reduce((sum, e) => sum + e.amountXrp, 0);
+    const balance = parseFloat(parseFloat(line?.balance ?? "0").toFixed(6));
+    const required = parseFloat(
+      escrows.reduce((sum, e) => sum + e.amountXrp, 0).toFixed(6),
+    );
 
     if (balance < required) {
-      throw new InsufficientXrpBalanceException(balance, required);
+      throw new InsufficientRlusdBalanceException(balance, required);
     }
 
     this.logger.log(
@@ -656,7 +659,7 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
       return xrpToDrops(amount);
     }
     return {
-      value: amount.toFixed(6),
+      value: new BigNumber(amount).toFixed(),
       currency: this.iouCurrencyCode,
       issuer: this.iouIssuer,
     };
