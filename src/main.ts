@@ -14,7 +14,9 @@ async function bootstrap() {
     logger: ["error", "warn", "log"],
   });
 
-  if (process.env.NODE_ENV === "production") {
+  // 배포 환경(test/production)에서는 nginx 등 reverse proxy 뒤에서 실행
+  const isLocal = process.env.NODE_ENV === "development";
+  if (!isLocal) {
     app.getHttpAdapter().getInstance().set("trust proxy", 1);
   }
 
@@ -53,8 +55,10 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        // 배포 환경(test/production): 크로스 도메인 허용 — HTTPS reverse proxy 필수
+        // 로컬(development): lax + non-secure로 개발 편의성 유지
+        secure: !isLocal,
+        sameSite: isLocal ? "lax" : "none",
         maxAge: sessionTtl * 1000,
       },
     }),
