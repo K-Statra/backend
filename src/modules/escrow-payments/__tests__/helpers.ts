@@ -1,7 +1,9 @@
 import { Test } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
 import { Types } from "mongoose";
+import { EscrowPaymentsCrudService } from "../escrow-payments-crud.service";
 import { EscrowPaymentsService } from "../escrow-payments.service";
+import { EscrowCreateProcessor } from "../escrow-create.processor";
 import { EscrowPayment } from "../schemas/escrow-payment.schema";
 import { User } from "../../users/schemas/user.schema";
 import { XrplService } from "../../xrpl/xrpl.service";
@@ -168,6 +170,56 @@ export function makeOutboxServiceMock() {
 }
 
 // ── NestJS 테스팅 모듈 ────────────────────────────────────────────────────────
+
+export async function makeCrudServiceTestingModule() {
+  const escrowPaymentModel = makeEscrowPaymentModelMock();
+
+  const module = await Test.createTestingModule({
+    providers: [
+      EscrowPaymentsCrudService,
+      {
+        provide: getModelToken(EscrowPayment.name),
+        useValue: escrowPaymentModel,
+      },
+    ],
+  }).compile();
+
+  return {
+    service: module.get<EscrowPaymentsCrudService>(EscrowPaymentsCrudService),
+    escrowPaymentModel,
+  };
+}
+
+export async function makeProcessorTestingModule() {
+  const escrowPaymentModel = makeEscrowPaymentModelMock();
+  const userModel = makeUserModelMock();
+  const xrplService = makeXrplServiceMock();
+  const escrowPaymentsService = {
+    getEscrowStatus: jest.fn(),
+    rollbackAllEscrows: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const module = await Test.createTestingModule({
+    providers: [
+      EscrowCreateProcessor,
+      {
+        provide: getModelToken(EscrowPayment.name),
+        useValue: escrowPaymentModel,
+      },
+      { provide: getModelToken(User.name), useValue: userModel },
+      { provide: XrplService, useValue: xrplService },
+      { provide: EscrowPaymentsService, useValue: escrowPaymentsService },
+    ],
+  }).compile();
+
+  return {
+    processor: module.get<EscrowCreateProcessor>(EscrowCreateProcessor),
+    escrowPaymentModel,
+    userModel,
+    xrplService,
+    escrowPaymentsService,
+  };
+}
 
 export async function makeServiceTestingModule() {
   const escrowPaymentModel = makeEscrowPaymentModelMock();

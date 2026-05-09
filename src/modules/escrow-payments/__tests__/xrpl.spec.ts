@@ -12,7 +12,7 @@ import {
   makeBuyerUser,
   makeSellerUser,
   makeQueryChain,
-  makeServiceTestingModule,
+  makeProcessorTestingModule,
 } from "./helpers";
 import {
   EscrowPaymentNotFoundException,
@@ -21,8 +21,8 @@ import {
   WalletNotAvailableException,
 } from "../../../common/exceptions";
 
-describe("EscrowPaymentsService › createXrplEscrow", () => {
-  let ctx: Awaited<ReturnType<typeof makeServiceTestingModule>>;
+describe("EscrowCreateProcessor › createXrplEscrow", () => {
+  let ctx: Awaited<ReturnType<typeof makeProcessorTestingModule>>;
 
   // post-flight findOneAndUpdate 결과로 사용할 ESCROWED 상태 payment 픽스처
   function makeEscrowedResult(escrowOverrides: object = {}) {
@@ -64,7 +64,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
   }
 
   beforeEach(async () => {
-    ctx = await makeServiceTestingModule();
+    ctx = await makeProcessorTestingModule();
   });
 
   // ── 유효성 검사 ──────────────────────────────────────────────────────────────
@@ -74,7 +74,10 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
     await expect(
-      ctx.service.createXrplEscrow(PAYMENT_ID.toString(), ESCROW_ID.toString()),
+      ctx.processor.createXrplEscrow(
+        PAYMENT_ID.toString(),
+        ESCROW_ID.toString(),
+      ),
     ).rejects.toThrow(PaymentNotActiveException);
   });
 
@@ -86,7 +89,10 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
     await expect(
-      ctx.service.createXrplEscrow(PAYMENT_ID.toString(), ESCROW_ID.toString()),
+      ctx.processor.createXrplEscrow(
+        PAYMENT_ID.toString(),
+        ESCROW_ID.toString(),
+      ),
     ).rejects.toThrow(InvalidEscrowItemStatusException);
   });
 
@@ -94,7 +100,10 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(null));
 
     await expect(
-      ctx.service.createXrplEscrow(PAYMENT_ID.toString(), ESCROW_ID.toString()),
+      ctx.processor.createXrplEscrow(
+        PAYMENT_ID.toString(),
+        ESCROW_ID.toString(),
+      ),
     ).rejects.toThrow(EscrowPaymentNotFoundException);
   });
 
@@ -103,7 +112,10 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     ctx.userModel.findById.mockReturnValue(makeQueryChain({ wallet: null }));
 
     await expect(
-      ctx.service.createXrplEscrow(PAYMENT_ID.toString(), ESCROW_ID.toString()),
+      ctx.processor.createXrplEscrow(
+        PAYMENT_ID.toString(),
+        ESCROW_ID.toString(),
+      ),
     ).rejects.toThrow(WalletNotAvailableException);
   });
 
@@ -114,7 +126,10 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
       .mockReturnValueOnce(makeQueryChain({ wallet: null }));
 
     await expect(
-      ctx.service.createXrplEscrow(PAYMENT_ID.toString(), ESCROW_ID.toString()),
+      ctx.processor.createXrplEscrow(
+        PAYMENT_ID.toString(),
+        ESCROW_ID.toString(),
+      ),
     ).rejects.toThrow(WalletNotAvailableException);
   });
 
@@ -124,7 +139,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     setupProcessingPayment();
     setupWallets();
 
-    await ctx.service.createXrplEscrow(
+    await ctx.processor.createXrplEscrow(
       PAYMENT_ID.toString(),
       ESCROW_ID.toString(),
     );
@@ -147,7 +162,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     setupProcessingPayment();
     setupWallets();
 
-    await ctx.service.createXrplEscrow(
+    await ctx.processor.createXrplEscrow(
       PAYMENT_ID.toString(),
       ESCROW_ID.toString(),
     );
@@ -158,6 +173,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
       "rSellerAddress456",
       300,
       CONDITION,
+      "XRP",
     );
   });
 
@@ -165,7 +181,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     setupProcessingPayment();
     setupWallets();
 
-    await ctx.service.createXrplEscrow(
+    await ctx.processor.createXrplEscrow(
       PAYMENT_ID.toString(),
       ESCROW_ID.toString(),
     );
@@ -178,6 +194,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
       expect.any(String),
       expect.any(Number),
       expect.any(String),
+      "XRP",
     );
   });
 
@@ -185,7 +202,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     setupProcessingPayment();
     setupWallets();
 
-    await ctx.service.createXrplEscrow(
+    await ctx.processor.createXrplEscrow(
       PAYMENT_ID.toString(),
       ESCROW_ID.toString(),
     );
@@ -209,7 +226,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     setupProcessingPayment();
     setupWallets();
 
-    const result = await ctx.service.createXrplEscrow(
+    const result = await ctx.processor.createXrplEscrow(
       PAYMENT_ID.toString(),
       ESCROW_ID.toString(),
     );
@@ -232,10 +249,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     });
     const partialResult = makePayment({
       status: "PROCESSING",
-      escrows: [
-        makeEscrowItem({ status: "ESCROWED" }),
-        extraEscrow, // 여전히 PENDING_ESCROW
-      ],
+      escrows: [makeEscrowItem({ status: "ESCROWED" }), extraEscrow],
     });
 
     ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
@@ -244,7 +258,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
       .mockResolvedValueOnce(partialResult);
     setupWallets();
 
-    await ctx.service.createXrplEscrow(
+    await ctx.processor.createXrplEscrow(
       PAYMENT_ID.toString(),
       ESCROW_ID.toString(),
     );
@@ -262,7 +276,10 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     );
 
     await expect(
-      ctx.service.createXrplEscrow(PAYMENT_ID.toString(), ESCROW_ID.toString()),
+      ctx.processor.createXrplEscrow(
+        PAYMENT_ID.toString(),
+        ESCROW_ID.toString(),
+      ),
     ).rejects.toThrow("XRPL network error");
 
     // findOneAndUpdate 호출: 1) pre-flight, 2) revert(SUBMITTING→PENDING_ESCROW)
@@ -279,7 +296,10 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     ctx.xrplService.createEscrow.mockRejectedValue(new Error("XRPL error"));
 
     await expect(
-      ctx.service.createXrplEscrow(PAYMENT_ID.toString(), ESCROW_ID.toString()),
+      ctx.processor.createXrplEscrow(
+        PAYMENT_ID.toString(),
+        ESCROW_ID.toString(),
+      ),
     ).rejects.toThrow();
 
     // pre-flight(1) + revert(1) = 2회, post-flight는 없음
@@ -302,7 +322,7 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
       .mockResolvedValueOnce(escrowedResult); // post-flight 2회 성공
     setupWallets();
 
-    const result = await ctx.service.createXrplEscrow(
+    const result = await ctx.processor.createXrplEscrow(
       PAYMENT_ID.toString(),
       ESCROW_ID.toString(),
     );
@@ -326,157 +346,13 @@ describe("EscrowPaymentsService › createXrplEscrow", () => {
     setupWallets();
 
     await expect(
-      ctx.service.createXrplEscrow(PAYMENT_ID.toString(), ESCROW_ID.toString()),
+      ctx.processor.createXrplEscrow(
+        PAYMENT_ID.toString(),
+        ESCROW_ID.toString(),
+      ),
     ).rejects.toThrow("DB write error");
 
     // pre-flight(1) + post-flight 3회 = 총 4회
     expect(ctx.escrowPaymentModel.findOneAndUpdate).toHaveBeenCalledTimes(4);
   }, 10_000);
-});
-
-// ── recoverSubmittingEscrow ───────────────────────────────────────────────────
-
-describe("EscrowPaymentsService › recoverSubmittingEscrow", () => {
-  let ctx: Awaited<ReturnType<typeof makeServiceTestingModule>>;
-
-  const BUYER_ADDRESS = "rBuyerAddress123";
-
-  beforeEach(async () => {
-    ctx = await makeServiceTestingModule();
-  });
-
-  it("XRPL에 에스크로 있음 → DB 업데이트 후 recovered 반환", async () => {
-    const submittingPayment = makePayment({
-      escrows: [makeEscrowItem({ status: "SUBMITTING", condition: CONDITION })],
-    });
-    ctx.escrowPaymentModel.findById.mockReturnValue(
-      makeQueryChain(submittingPayment),
-    );
-    ctx.xrplService.findEscrowByCondition.mockResolvedValue({
-      txHash: TX_HASH_CREATE,
-      sequence: XRPL_SEQUENCE,
-    });
-    const escrowedResult = makePayment({
-      escrows: [makeEscrowItem({ status: "ESCROWED" })],
-    });
-    ctx.escrowPaymentModel.findOneAndUpdate.mockResolvedValue(escrowedResult);
-
-    const result = await ctx.service.recoverSubmittingEscrow(
-      PAYMENT_ID.toString(),
-      ESCROW_ID.toString(),
-      BUYER_ADDRESS,
-    );
-
-    expect(result).toBe("recovered");
-    expect(ctx.xrplService.findEscrowByCondition).toHaveBeenCalledWith(
-      BUYER_ADDRESS,
-      CONDITION,
-    );
-    expect(ctx.escrowPaymentModel.findOneAndUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ "escrows._id": expect.any(Types.ObjectId) }),
-      expect.objectContaining({
-        $set: expect.objectContaining({
-          "escrows.$.status": "ESCROWED",
-          "escrows.$.xrplSequence": XRPL_SEQUENCE,
-          "escrows.$.txHashCreate": TX_HASH_CREATE,
-        }),
-      }),
-      expect.objectContaining({ new: true }),
-    );
-  });
-
-  it("XRPL에 에스크로 없음 → 결제 취소 후 cancelled 반환", async () => {
-    const submittingPayment = makePayment({
-      status: "PROCESSING",
-      escrows: [makeEscrowItem({ status: "SUBMITTING", condition: CONDITION })],
-    });
-    ctx.escrowPaymentModel.findById
-      .mockReturnValueOnce(makeQueryChain(submittingPayment)) // getEscrowStatus
-      .mockReturnValueOnce(makeQueryChain(submittingPayment)); // rollbackAllEscrows
-    ctx.xrplService.findEscrowByCondition.mockResolvedValue(null);
-    ctx.escrowPaymentModel.findOneAndUpdate.mockResolvedValue(
-      submittingPayment,
-    );
-
-    const result = await ctx.service.recoverSubmittingEscrow(
-      PAYMENT_ID.toString(),
-      ESCROW_ID.toString(),
-      BUYER_ADDRESS,
-    );
-
-    expect(result).toBe("cancelled");
-    // SUBMITTING → CANCELLED 명시 전환
-    expect(ctx.escrowPaymentModel.findOneAndUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ "escrows.status": "SUBMITTING" }),
-      { $set: { "escrows.$.status": "CANCELLED" } },
-    );
-  });
-
-  it("condition 미저장 (pre-flight 전 크래시) → XRPL 조회 없이 즉시 취소", async () => {
-    const payment = makePayment({
-      status: "PROCESSING",
-      escrows: [makeEscrowItem({ status: "SUBMITTING", condition: undefined })],
-    });
-    ctx.escrowPaymentModel.findById
-      .mockReturnValueOnce(makeQueryChain(payment))
-      .mockReturnValueOnce(makeQueryChain(payment));
-    ctx.escrowPaymentModel.findOneAndUpdate.mockResolvedValue(payment);
-
-    const result = await ctx.service.recoverSubmittingEscrow(
-      PAYMENT_ID.toString(),
-      ESCROW_ID.toString(),
-      BUYER_ADDRESS,
-    );
-
-    expect(result).toBe("cancelled");
-    expect(ctx.xrplService.findEscrowByCondition).not.toHaveBeenCalled();
-  });
-
-  it("이미 SUBMITTING 아닌 상태 → 즉시 recovered 반환 (중복 복구 방지)", async () => {
-    const payment = makePayment({
-      escrows: [makeEscrowItem({ status: "ESCROWED" })],
-    });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
-
-    const result = await ctx.service.recoverSubmittingEscrow(
-      PAYMENT_ID.toString(),
-      ESCROW_ID.toString(),
-      BUYER_ADDRESS,
-    );
-
-    expect(result).toBe("recovered");
-    expect(ctx.xrplService.findEscrowByCondition).not.toHaveBeenCalled();
-    expect(ctx.escrowPaymentModel.findOneAndUpdate).not.toHaveBeenCalled();
-  });
-
-  it("복구 후 모든 escrow ESCROWED → payment ACTIVE 전환", async () => {
-    const submittingPayment = makePayment({
-      escrows: [makeEscrowItem({ status: "SUBMITTING", condition: CONDITION })],
-    });
-    ctx.escrowPaymentModel.findById.mockReturnValue(
-      makeQueryChain(submittingPayment),
-    );
-    ctx.xrplService.findEscrowByCondition.mockResolvedValue({
-      txHash: TX_HASH_CREATE,
-      sequence: XRPL_SEQUENCE,
-    });
-    const allEscrowedResult = makePayment({
-      status: "PROCESSING",
-      escrows: [makeEscrowItem({ status: "ESCROWED" })],
-    });
-    ctx.escrowPaymentModel.findOneAndUpdate.mockResolvedValue(
-      allEscrowedResult,
-    );
-
-    await ctx.service.recoverSubmittingEscrow(
-      PAYMENT_ID.toString(),
-      ESCROW_ID.toString(),
-      BUYER_ADDRESS,
-    );
-
-    expect(ctx.escrowPaymentModel.findByIdAndUpdate).toHaveBeenCalledWith(
-      PAYMENT_ID.toString(),
-      { $set: { status: "ACTIVE" } },
-    );
-  });
 });

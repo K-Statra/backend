@@ -5,6 +5,7 @@ import {
   PAYMENT_ID,
   makePayment,
   makeQueryChain,
+  makeCrudServiceTestingModule,
   makeServiceTestingModule,
 } from "./helpers";
 import {
@@ -13,11 +14,11 @@ import {
   UnauthorizedPaymentActionException,
 } from "../../../common/exceptions";
 
-describe("EscrowPaymentsService › findAll", () => {
-  let ctx: Awaited<ReturnType<typeof makeServiceTestingModule>>;
+describe("EscrowPaymentsCrudService › findAll", () => {
+  let ctx: Awaited<ReturnType<typeof makeCrudServiceTestingModule>>;
 
   beforeEach(async () => {
-    ctx = await makeServiceTestingModule();
+    ctx = await makeCrudServiceTestingModule();
   });
 
   it("buyerId OR sellerId 조건으로 조회", async () => {
@@ -100,11 +101,11 @@ describe("EscrowPaymentsService › findAll", () => {
   });
 });
 
-describe("EscrowPaymentsService › findById", () => {
-  let ctx: Awaited<ReturnType<typeof makeServiceTestingModule>>;
+describe("EscrowPaymentsCrudService › findById", () => {
+  let ctx: Awaited<ReturnType<typeof makeCrudServiceTestingModule>>;
 
   beforeEach(async () => {
-    ctx = await makeServiceTestingModule();
+    ctx = await makeCrudServiceTestingModule();
   });
 
   it("존재하는 ID → 결제 내역 반환", async () => {
