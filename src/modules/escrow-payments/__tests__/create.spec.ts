@@ -1,8 +1,8 @@
-import { BUYER_ID, SELLER_ID, makeServiceTestingModule } from "./helpers";
+import { BUYER_ID, SELLER_ID, makeCrudServiceTestingModule } from "./helpers";
 import { UnauthorizedPaymentActionException } from "../../../common/exceptions";
 
-describe("EscrowPaymentsService › create", () => {
-  let ctx: Awaited<ReturnType<typeof makeServiceTestingModule>>;
+describe("EscrowPaymentsCrudService › create", () => {
+  let ctx: Awaited<ReturnType<typeof makeCrudServiceTestingModule>>;
 
   const dto = {
     buyerId: BUYER_ID.toString(),
@@ -25,7 +25,7 @@ describe("EscrowPaymentsService › create", () => {
   };
 
   beforeEach(async () => {
-    ctx = await makeServiceTestingModule();
+    ctx = await makeCrudServiceTestingModule();
   });
 
   it("totalAmountXrp를 escrow 항목 합산으로 계산", async () => {

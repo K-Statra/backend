@@ -70,6 +70,8 @@ export class EscrowItem {
 
 export const EscrowItemSchema = SchemaFactory.createForClass(EscrowItem);
 
+export type EscrowCurrency = "XRP" | "RLUSD";
+
 @Schema({ timestamps: true })
 export class EscrowPayment {
   @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
@@ -79,6 +81,9 @@ export class EscrowPayment {
   sellerId: Types.ObjectId;
 
   @Prop({ required: true, min: 0 }) totalAmountXrp: number;
+
+  @Prop({ type: String, enum: ["XRP", "RLUSD"], default: "XRP" })
+  currency: EscrowCurrency;
 
   @Prop({
     type: String,

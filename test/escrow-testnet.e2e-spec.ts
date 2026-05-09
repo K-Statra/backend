@@ -27,6 +27,7 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { Model, Types } from "mongoose";
 import { EscrowPaymentsModule } from "../src/modules/escrow-payments/escrow-payments.module";
 import { EscrowPaymentsService } from "../src/modules/escrow-payments/escrow-payments.service";
+import { EscrowPaymentsCrudService } from "../src/modules/escrow-payments/escrow-payments-crud.service";
 import { XrplService } from "../src/modules/xrpl/xrpl.service";
 import { User } from "../src/modules/users/schemas/user.schema";
 
@@ -52,7 +53,7 @@ async function waitForEscrowStatus(
 }
 
 async function waitForPaymentStatus(
-  service: EscrowPaymentsService,
+  service: EscrowPaymentsCrudService,
   paymentId: string,
   userId: string,
   expected: string,
@@ -74,6 +75,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
   let mongoServer: MongoMemoryReplSet;
   let xrplService: XrplService;
   let escrowPaymentsService: EscrowPaymentsService;
+  let crudService: EscrowPaymentsCrudService;
   let userModel: Model<User>;
   let buyerWalletAddress: string;
 
@@ -91,7 +93,11 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
           isGlobal: true,
           load: [
             () => ({
-              xrpl: { wsUrl: TESTNET_WS, destAddress: "" },
+              xrpl: {
+                wsUrl: TESTNET_WS,
+                destAddress: "",
+                issuerAddress: "dummy",
+              },
               security: { encryptionKey: TEST_ENCRYPTION_KEY },
               REDIS_HOST: process.env.REDIS_HOST || "localhost",
               REDIS_PORT: Number(process.env.REDIS_PORT) || 6379,
@@ -117,6 +123,9 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
     xrplService = module.get<XrplService>(XrplService);
     escrowPaymentsService = module.get<EscrowPaymentsService>(
       EscrowPaymentsService,
+    );
+    crudService = module.get<EscrowPaymentsCrudService>(
+      EscrowPaymentsCrudService,
     );
     userModel = module.get<Model<User>>(getModelToken(User.name));
 
@@ -179,7 +188,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
 
   it("초기금 에스크로 생성 → 이벤트 2개 양방향 승인 완료 시 자동 EscrowFinish", async () => {
     // ── 1. 결제 내역 생성 ─────────────────────────────────────────────────
-    const payment = await escrowPaymentsService.create(
+    const payment = await crudService.create(
       {
         buyerId: buyerObjectId.toString(),
         sellerId: sellerObjectId.toString(),
@@ -253,7 +262,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
       60_000,
     );
     const activePayment = await waitForPaymentStatus(
-      escrowPaymentsService,
+      crudService,
       paymentId,
       buyerObjectId.toString(),
       "ACTIVE",

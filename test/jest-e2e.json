@@ -3,7 +3,7 @@
   "rootDir": "..",
   "testEnvironment": "node",
   "testRegex": "test/.*\\.e2e-spec\\.ts$",
-  "testPathIgnorePatterns": ["test/xrpl-testnet\\.e2e-spec\\.ts", "test/escrow-testnet\\.e2e-spec\\.ts"],
+  "testPathIgnorePatterns": ["test/xrpl-testnet\\.e2e-spec\\.ts", "test/escrow-testnet\\.e2e-spec\\.ts", "test/escrow-rlusd-testnet\\.e2e-spec\\.ts"],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },

@@ -5,11 +5,15 @@ import { EscrowSubmitRecoveryScheduler } from "../escrow-submit-recovery.schedul
 import { EscrowPayment } from "../schemas/escrow-payment.schema";
 import { User } from "../../users/schemas/user.schema";
 import { EscrowPaymentsService } from "../escrow-payments.service";
+import { XrplService } from "../../xrpl/xrpl.service";
 import {
   BUYER_ID,
   SELLER_ID,
   ESCROW_ID,
   PAYMENT_ID,
+  CONDITION,
+  TX_HASH_CREATE,
+  XRPL_SEQUENCE,
   makePayment,
   makeEscrowItem,
   makeBuyerUser,
@@ -18,13 +22,11 @@ import {
   makeUserModelMock,
 } from "./helpers";
 
-describe("EscrowSubmitRecoveryScheduler", () => {
+describe("EscrowSubmitRecoveryScheduler › recoverStuckSubmittingEscrows (스케줄링 로직)", () => {
   let scheduler: EscrowSubmitRecoveryScheduler;
   let escrowPaymentModel: ReturnType<typeof makeEscrowPaymentModelMock>;
   let userModel: ReturnType<typeof makeUserModelMock>;
-  let escrowPaymentsService: jest.Mocked<
-    Pick<EscrowPaymentsService, "recoverSubmittingEscrow">
-  >;
+  let recoverSpy: jest.SpyInstance;
 
   const OLD_DATE = new Date(Date.now() - 10 * 60 * 1000); // 10분 전
 
@@ -46,9 +48,6 @@ describe("EscrowSubmitRecoveryScheduler", () => {
   beforeEach(async () => {
     escrowPaymentModel = makeEscrowPaymentModelMock();
     userModel = makeUserModelMock();
-    escrowPaymentsService = {
-      recoverSubmittingEscrow: jest.fn().mockResolvedValue("recovered"),
-    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -59,8 +58,17 @@ describe("EscrowSubmitRecoveryScheduler", () => {
         },
         { provide: getModelToken(User.name), useValue: userModel },
         {
+          provide: XrplService,
+          useValue: {
+            findEscrowByCondition: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
           provide: EscrowPaymentsService,
-          useValue: escrowPaymentsService,
+          useValue: {
+            getEscrowStatus: jest.fn(),
+            rollbackAllEscrows: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
@@ -68,6 +76,13 @@ describe("EscrowSubmitRecoveryScheduler", () => {
     scheduler = module.get<EscrowSubmitRecoveryScheduler>(
       EscrowSubmitRecoveryScheduler,
     );
+    recoverSpy = jest
+      .spyOn(scheduler, "recoverSubmittingEscrow")
+      .mockResolvedValue("recovered");
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("SUBMITTING 없으면 → recoverSubmittingEscrow 미호출", async () => {
@@ -75,9 +90,7 @@ describe("EscrowSubmitRecoveryScheduler", () => {
 
     await scheduler.recoverStuckSubmittingEscrows();
 
-    expect(
-      escrowPaymentsService.recoverSubmittingEscrow,
-    ).not.toHaveBeenCalled();
+    expect(recoverSpy).not.toHaveBeenCalled();
   });
 
   it("5분 이상된 SUBMITTING 에스크로 → recoverSubmittingEscrow 호출", async () => {
@@ -87,7 +100,7 @@ describe("EscrowSubmitRecoveryScheduler", () => {
 
     await scheduler.recoverStuckSubmittingEscrows();
 
-    expect(escrowPaymentsService.recoverSubmittingEscrow).toHaveBeenCalledWith(
+    expect(recoverSpy).toHaveBeenCalledWith(
       PAYMENT_ID.toString(),
       ESCROW_ID.toString(),
       "rBuyerAddress123",
@@ -102,9 +115,7 @@ describe("EscrowSubmitRecoveryScheduler", () => {
 
     await scheduler.recoverStuckSubmittingEscrows();
 
-    expect(
-      escrowPaymentsService.recoverSubmittingEscrow,
-    ).not.toHaveBeenCalled();
+    expect(recoverSpy).not.toHaveBeenCalled();
   });
 
   it("buyer 지갑 없으면 → skip, 다른 payment는 계속 처리", async () => {
@@ -121,18 +132,14 @@ describe("EscrowSubmitRecoveryScheduler", () => {
 
     await scheduler.recoverStuckSubmittingEscrows();
 
-    expect(escrowPaymentsService.recoverSubmittingEscrow).toHaveBeenCalledTimes(
-      1,
-    );
+    expect(recoverSpy).toHaveBeenCalledTimes(1);
   });
 
   it("recovered → 에러 없이 정상 완료", async () => {
     const payment = makeStuckPayment();
     escrowPaymentModel.find.mockReturnValue(makeQueryChain([payment]));
     userModel.findById.mockReturnValue(makeQueryChain(makeBuyerUser()));
-    escrowPaymentsService.recoverSubmittingEscrow.mockResolvedValue(
-      "recovered",
-    );
+    recoverSpy.mockResolvedValue("recovered");
 
     await expect(
       scheduler.recoverStuckSubmittingEscrows(),
@@ -143,9 +150,7 @@ describe("EscrowSubmitRecoveryScheduler", () => {
     const payment = makeStuckPayment();
     escrowPaymentModel.find.mockReturnValue(makeQueryChain([payment]));
     userModel.findById.mockReturnValue(makeQueryChain(makeBuyerUser()));
-    escrowPaymentsService.recoverSubmittingEscrow.mockResolvedValue(
-      "cancelled",
-    );
+    recoverSpy.mockResolvedValue("cancelled");
 
     await expect(
       scheduler.recoverStuckSubmittingEscrows(),
@@ -167,7 +172,7 @@ describe("EscrowSubmitRecoveryScheduler", () => {
     escrowPaymentModel.find.mockReturnValue(makeQueryChain([payment]));
     userModel.findById.mockReturnValue(makeQueryChain(makeBuyerUser()));
 
-    escrowPaymentsService.recoverSubmittingEscrow
+    recoverSpy
       .mockRejectedValueOnce(new Error("XRPL connection error"))
       .mockResolvedValueOnce("recovered");
 
@@ -175,9 +180,7 @@ describe("EscrowSubmitRecoveryScheduler", () => {
       scheduler.recoverStuckSubmittingEscrows(),
     ).resolves.toBeUndefined();
 
-    expect(escrowPaymentsService.recoverSubmittingEscrow).toHaveBeenCalledTimes(
-      2,
-    );
+    expect(recoverSpy).toHaveBeenCalledTimes(2);
   });
 
   it("$elemMatch로 status=SUBMITTING AND submittingAt<cutoff 조건 조회", async () => {
@@ -193,5 +196,176 @@ describe("EscrowSubmitRecoveryScheduler", () => {
         },
       },
     });
+  });
+});
+
+// ── recoverSubmittingEscrow 로직 테스트 ─────────────────────────────────────
+
+describe("EscrowSubmitRecoveryScheduler › recoverSubmittingEscrow", () => {
+  let scheduler: EscrowSubmitRecoveryScheduler;
+  let escrowPaymentModel: ReturnType<typeof makeEscrowPaymentModelMock>;
+  let userModel: ReturnType<typeof makeUserModelMock>;
+  let xrplService: { findEscrowByCondition: jest.Mock };
+  let escrowPaymentsService: {
+    getEscrowStatus: jest.Mock;
+    rollbackAllEscrows: jest.Mock;
+  };
+
+  const BUYER_ADDRESS = "rBuyerAddress123";
+
+  beforeEach(async () => {
+    escrowPaymentModel = makeEscrowPaymentModelMock();
+    userModel = makeUserModelMock();
+    xrplService = { findEscrowByCondition: jest.fn().mockResolvedValue(null) };
+    escrowPaymentsService = {
+      getEscrowStatus: jest.fn(),
+      rollbackAllEscrows: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        EscrowSubmitRecoveryScheduler,
+        {
+          provide: getModelToken(EscrowPayment.name),
+          useValue: escrowPaymentModel,
+        },
+        { provide: getModelToken(User.name), useValue: userModel },
+        { provide: XrplService, useValue: xrplService },
+        { provide: EscrowPaymentsService, useValue: escrowPaymentsService },
+      ],
+    }).compile();
+
+    scheduler = module.get<EscrowSubmitRecoveryScheduler>(
+      EscrowSubmitRecoveryScheduler,
+    );
+  });
+
+  it("XRPL에 에스크로 있음 → DB 업데이트 후 recovered 반환", async () => {
+    const submittingEscrow = makeEscrowItem({
+      status: "SUBMITTING",
+      condition: CONDITION,
+    });
+    escrowPaymentsService.getEscrowStatus.mockResolvedValue(submittingEscrow);
+    xrplService.findEscrowByCondition.mockResolvedValue({
+      txHash: TX_HASH_CREATE,
+      sequence: XRPL_SEQUENCE,
+    });
+    const escrowedResult = makePayment({
+      escrows: [makeEscrowItem({ status: "ESCROWED" })],
+    });
+    escrowPaymentModel.findOneAndUpdate.mockResolvedValue(escrowedResult);
+
+    const result = await scheduler.recoverSubmittingEscrow(
+      PAYMENT_ID.toString(),
+      ESCROW_ID.toString(),
+      BUYER_ADDRESS,
+    );
+
+    expect(result).toBe("recovered");
+    expect(xrplService.findEscrowByCondition).toHaveBeenCalledWith(
+      BUYER_ADDRESS,
+      CONDITION,
+    );
+    expect(escrowPaymentModel.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        escrows: {
+          $elemMatch: expect.objectContaining({ status: "SUBMITTING" }),
+        },
+      }),
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          "escrows.$.status": "ESCROWED",
+          "escrows.$.xrplSequence": XRPL_SEQUENCE,
+          "escrows.$.txHashCreate": TX_HASH_CREATE,
+        }),
+      }),
+      expect.objectContaining({ new: true }),
+    );
+  });
+
+  it("XRPL에 에스크로 없음 → 결제 취소 후 cancelled 반환", async () => {
+    const submittingEscrow = makeEscrowItem({
+      status: "SUBMITTING",
+      condition: CONDITION,
+    });
+    escrowPaymentsService.getEscrowStatus.mockResolvedValue(submittingEscrow);
+    xrplService.findEscrowByCondition.mockResolvedValue(null);
+    escrowPaymentModel.findOneAndUpdate.mockResolvedValue(makePayment());
+
+    const result = await scheduler.recoverSubmittingEscrow(
+      PAYMENT_ID.toString(),
+      ESCROW_ID.toString(),
+      BUYER_ADDRESS,
+    );
+
+    expect(result).toBe("cancelled");
+    expect(escrowPaymentModel.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ "escrows.status": "SUBMITTING" }),
+      { $set: { "escrows.$.status": "CANCELLED" } },
+    );
+    expect(escrowPaymentsService.rollbackAllEscrows).toHaveBeenCalledWith(
+      PAYMENT_ID.toString(),
+    );
+  });
+
+  it("condition 미저장 (pre-flight 전 크래시) → XRPL 조회 없이 즉시 취소", async () => {
+    const submittingEscrow = makeEscrowItem({
+      status: "SUBMITTING",
+      condition: undefined,
+    });
+    escrowPaymentsService.getEscrowStatus.mockResolvedValue(submittingEscrow);
+    escrowPaymentModel.findOneAndUpdate.mockResolvedValue(makePayment());
+
+    const result = await scheduler.recoverSubmittingEscrow(
+      PAYMENT_ID.toString(),
+      ESCROW_ID.toString(),
+      BUYER_ADDRESS,
+    );
+
+    expect(result).toBe("cancelled");
+    expect(xrplService.findEscrowByCondition).not.toHaveBeenCalled();
+  });
+
+  it("이미 SUBMITTING 아닌 상태 → 즉시 recovered 반환 (중복 복구 방지)", async () => {
+    const escrowedItem = makeEscrowItem({ status: "ESCROWED" });
+    escrowPaymentsService.getEscrowStatus.mockResolvedValue(escrowedItem);
+
+    const result = await scheduler.recoverSubmittingEscrow(
+      PAYMENT_ID.toString(),
+      ESCROW_ID.toString(),
+      BUYER_ADDRESS,
+    );
+
+    expect(result).toBe("recovered");
+    expect(xrplService.findEscrowByCondition).not.toHaveBeenCalled();
+    expect(escrowPaymentModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("복구 후 모든 escrow ESCROWED → payment ACTIVE 전환", async () => {
+    const submittingEscrow = makeEscrowItem({
+      status: "SUBMITTING",
+      condition: CONDITION,
+    });
+    escrowPaymentsService.getEscrowStatus.mockResolvedValue(submittingEscrow);
+    xrplService.findEscrowByCondition.mockResolvedValue({
+      txHash: TX_HASH_CREATE,
+      sequence: XRPL_SEQUENCE,
+    });
+    const allEscrowedResult = makePayment({
+      status: "PROCESSING",
+      escrows: [makeEscrowItem({ status: "ESCROWED" })],
+    });
+    escrowPaymentModel.findOneAndUpdate.mockResolvedValue(allEscrowedResult);
+
+    await scheduler.recoverSubmittingEscrow(
+      PAYMENT_ID.toString(),
+      ESCROW_ID.toString(),
+      BUYER_ADDRESS,
+    );
+
+    expect(escrowPaymentModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      PAYMENT_ID.toString(),
+      { $set: { status: "ACTIVE" } },
+    );
   });
 });

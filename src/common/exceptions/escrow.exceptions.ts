@@ -13,6 +13,14 @@ export class InsufficientXrpBalanceException extends BadRequestException {
   }
 }
 
+export class InsufficientRlusdBalanceException extends BadRequestException {
+  constructor(available: number, required: number) {
+    super(
+      `Insufficient RLUSD balance: available ${available.toFixed(6)}, required ${required.toFixed(6)}`,
+    );
+  }
+}
+
 export class EscrowPaymentNotFoundException extends NotFoundException {
   constructor() {
     super("EscrowPayment not found");

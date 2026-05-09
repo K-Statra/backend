@@ -1,21 +1,37 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ConfigService } from "@nestjs/config";
+import * as xrpl from "xrpl";
 import { XrplService } from "./xrpl.service";
-import { InsufficientXrpBalanceException } from "../../common/exceptions";
+import {
+  InsufficientXrpBalanceException,
+  InsufficientRlusdBalanceException,
+  XrplTransactionFailedException,
+} from "../../common/exceptions";
 
 // ── 공통 픽스처 ────────────────────────────────────────────────────────────────
 
 const BUYER_ADDRESS = "rBuyerAddress123";
+const SELLER_ADDRESS = "rSellerAddress456";
+const TEST_ISSUER = "rIssuerAddress789";
 const ENCRYPTION_KEY = "a".repeat(64); // 유효한 64자리 hex (테스트용)
+const TEST_CURRENCY = "TISD";
 
 function makeConfigService(overrides: Record<string, string> = {}) {
   const defaults: Record<string, string> = {
     "xrpl.wsUrl": "wss://s.altnet.rippletest.net:51233",
     "xrpl.destAddress": "rDestAddress",
+    "xrpl.issuerAddress": TEST_ISSUER,
+    "xrpl.issuedCurrencyCode": TEST_CURRENCY,
     "security.encryptionKey": ENCRYPTION_KEY,
     ...overrides,
   };
   return { get: (key: string) => defaults[key] };
+}
+
+function makeAccountLines(
+  lines: { currency: string; account: string; balance?: string }[],
+) {
+  return { result: { lines } };
 }
 
 // account_info + server_info 응답 픽스처
@@ -49,6 +65,8 @@ describe("XrplService", () => {
   let service: XrplService;
   let mockClient: {
     request: jest.Mock;
+    autofill: jest.Mock;
+    submitAndWait: jest.Mock;
     isConnected: jest.Mock;
     connect: jest.Mock;
   };
@@ -56,6 +74,10 @@ describe("XrplService", () => {
   beforeEach(async () => {
     mockClient = {
       request: jest.fn(),
+      autofill: jest.fn().mockResolvedValue({ TransactionType: "mock" }),
+      submitAndWait: jest.fn().mockResolvedValue({
+        result: { hash: "ABCD1234", meta: { TransactionResult: "tesSUCCESS" } },
+      }),
       isConnected: jest.fn().mockReturnValue(true),
       connect: jest.fn().mockResolvedValue(undefined),
     };
@@ -193,6 +215,212 @@ describe("XrplService", () => {
       await expect(
         service.validateEscrowFunds(BUYER_ADDRESS, [{ amountXrp: 300 }]),
       ).rejects.toThrow(InsufficientXrpBalanceException);
+    });
+  });
+
+  // ── ensureRlusdTrustLine ──────────────────────────────────────────────────
+
+  describe("ensureRlusdTrustLine", () => {
+    // decrypt는 실제 AES 키가 맞아야 동작하므로 spy로 대체
+    // Wallet.fromSeed + sign도 네트워크 불필요하지만 서명 검증 없이 tx_blob만 필요하므로 mock
+    let walletSignSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest
+        .spyOn(service as any, "decrypt")
+        .mockReturnValue("sEdSomeFakeSeedForTest");
+
+      walletSignSpy = jest.spyOn(xrpl.Wallet, "fromSeed").mockReturnValue({
+        sign: jest
+          .fn()
+          .mockReturnValue({ tx_blob: "MOCKTXBLOB", hash: "MOCKHASH" }),
+      } as any);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("trust line이 이미 있으면 TrustSet 제출 안 함", async () => {
+      mockClient.request.mockResolvedValue(
+        makeAccountLines([
+          { currency: TEST_CURRENCY, account: TEST_ISSUER, balance: "1000" },
+        ]),
+      );
+
+      await service.ensureRlusdTrustLine(BUYER_ADDRESS, "encrypted-seed");
+
+      expect(mockClient.submitAndWait).not.toHaveBeenCalled();
+    });
+
+    it("trust line 없으면 TrustSet 제출", async () => {
+      mockClient.request.mockResolvedValue(makeAccountLines([]));
+
+      await service.ensureRlusdTrustLine(BUYER_ADDRESS, "encrypted-seed");
+
+      expect(mockClient.autofill).toHaveBeenCalledWith(
+        expect.objectContaining({
+          TransactionType: "TrustSet",
+          Account: BUYER_ADDRESS,
+          LimitAmount: expect.objectContaining({
+            currency: TEST_CURRENCY,
+            issuer: TEST_ISSUER,
+          }),
+        }),
+      );
+      expect(mockClient.submitAndWait).toHaveBeenCalledWith("MOCKTXBLOB");
+    });
+
+    it("다른 issuer의 동일 currency가 있어도 TrustSet 제출", async () => {
+      mockClient.request.mockResolvedValue(
+        makeAccountLines([
+          { currency: TEST_CURRENCY, account: "rOtherIssuer", balance: "500" },
+        ]),
+      );
+
+      await service.ensureRlusdTrustLine(BUYER_ADDRESS, "encrypted-seed");
+
+      expect(mockClient.submitAndWait).toHaveBeenCalled();
+    });
+
+    it("TrustSet 실패(tesSUCCESS 아님) → XrplTransactionFailedException", async () => {
+      mockClient.request.mockResolvedValue(makeAccountLines([]));
+      mockClient.submitAndWait.mockResolvedValue({
+        result: {
+          hash: "FAIL",
+          meta: { TransactionResult: "tecINSUFFICIENT_RESERVE" },
+        },
+      });
+
+      await expect(
+        service.ensureRlusdTrustLine(BUYER_ADDRESS, "encrypted-seed"),
+      ).rejects.toThrow(XrplTransactionFailedException);
+
+      expect(walletSignSpy).toHaveBeenCalled();
+    });
+  });
+
+  // ── validateRlusdFunds ────────────────────────────────────────────────────
+
+  describe("validateRlusdFunds", () => {
+    it("잔고 충분 → 예외 없이 통과", async () => {
+      mockClient.request.mockResolvedValue(
+        makeAccountLines([
+          { currency: TEST_CURRENCY, account: TEST_ISSUER, balance: "1000" },
+        ]),
+      );
+
+      await expect(
+        service.validateRlusdFunds(BUYER_ADDRESS, [
+          { amountXrp: 500 },
+          { amountXrp: 300 },
+        ]),
+      ).resolves.toBeUndefined();
+    });
+
+    it("잔고 부족 → InsufficientRlusdBalanceException", async () => {
+      mockClient.request.mockResolvedValue(
+        makeAccountLines([
+          { currency: TEST_CURRENCY, account: TEST_ISSUER, balance: "200" },
+        ]),
+      );
+
+      await expect(
+        service.validateRlusdFunds(BUYER_ADDRESS, [{ amountXrp: 500 }]),
+      ).rejects.toThrow(InsufficientRlusdBalanceException);
+    });
+
+    it("trust line 없으면 잔고 0으로 간주 → InsufficientRlusdBalanceException", async () => {
+      mockClient.request.mockResolvedValue(makeAccountLines([]));
+
+      await expect(
+        service.validateRlusdFunds(BUYER_ADDRESS, [{ amountXrp: 1 }]),
+      ).rejects.toThrow(InsufficientRlusdBalanceException);
+    });
+
+    it("다른 issuer의 잔고는 집계 안 함", async () => {
+      mockClient.request.mockResolvedValue(
+        makeAccountLines([
+          { currency: TEST_CURRENCY, account: "rOtherIssuer", balance: "9999" },
+        ]),
+      );
+
+      await expect(
+        service.validateRlusdFunds(BUYER_ADDRESS, [{ amountXrp: 1 }]),
+      ).rejects.toThrow(InsufficientRlusdBalanceException);
+    });
+
+    it("잔고와 required가 정확히 같으면 통과", async () => {
+      mockClient.request.mockResolvedValue(
+        makeAccountLines([
+          { currency: TEST_CURRENCY, account: TEST_ISSUER, balance: "300" },
+        ]),
+      );
+
+      await expect(
+        service.validateRlusdFunds(BUYER_ADDRESS, [
+          { amountXrp: 100 },
+          { amountXrp: 200 },
+        ]),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  // ── sendIssuedCurrencyPayment ─────────────────────────────────────────────
+
+  describe("sendIssuedCurrencyPayment", () => {
+    const senderWallet = {
+      address: SELLER_ADDRESS,
+      seed: "sEdSomeFakeSeedForTest",
+      publicKey: "",
+      privateKey: "",
+    };
+
+    beforeEach(() => {
+      jest.spyOn(xrpl.Wallet, "fromSeed").mockReturnValue({
+        sign: jest
+          .fn()
+          .mockReturnValue({ tx_blob: "MOCKTXBLOB", hash: "MOCKHASH" }),
+      } as any);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("성공 → txHash 반환", async () => {
+      const txHash = await service.sendIssuedCurrencyPayment(
+        senderWallet,
+        BUYER_ADDRESS,
+        "500",
+      );
+
+      expect(txHash).toBe("ABCD1234");
+      expect(mockClient.autofill).toHaveBeenCalledWith(
+        expect.objectContaining({
+          TransactionType: "Payment",
+          Account: SELLER_ADDRESS,
+          Destination: BUYER_ADDRESS,
+          Amount: expect.objectContaining({
+            currency: TEST_CURRENCY,
+            issuer: TEST_ISSUER,
+            value: "500",
+          }),
+        }),
+      );
+    });
+
+    it("Payment 실패 → XrplTransactionFailedException", async () => {
+      mockClient.submitAndWait.mockResolvedValue({
+        result: {
+          hash: "FAIL",
+          meta: { TransactionResult: "tecPATH_DRY" },
+        },
+      });
+
+      await expect(
+        service.sendIssuedCurrencyPayment(senderWallet, BUYER_ADDRESS, "500"),
+      ).rejects.toThrow(XrplTransactionFailedException);
     });
   });
 });

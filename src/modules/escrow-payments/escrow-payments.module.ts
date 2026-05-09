@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { BullModule } from "@nestjs/bull";
 import { EscrowPaymentsController } from "./escrow-payments.controller";
+import { EscrowPaymentsCrudService } from "./escrow-payments-crud.service";
 import { EscrowPaymentsService } from "./escrow-payments.service";
 import {
   EscrowPayment,
@@ -27,6 +28,7 @@ import { OutboxModule } from "../outbox/outbox.module";
   ],
   controllers: [EscrowPaymentsController],
   providers: [
+    EscrowPaymentsCrudService,
     EscrowPaymentsService,
     EscrowCreateProcessor,
     EscrowCancelScheduler,

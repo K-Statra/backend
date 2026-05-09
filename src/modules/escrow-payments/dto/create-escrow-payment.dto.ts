@@ -3,6 +3,7 @@ import { Type } from "class-transformer";
 import {
   IsArray,
   ArrayMinSize,
+  IsEnum,
   IsInt,
   IsMongoId,
   IsNumber,
@@ -61,6 +62,16 @@ export class CreateEscrowPaymentDto {
   @IsString()
   @IsOptional()
   memo?: string;
+
+  @ApiProperty({
+    description: "결제 통화 (XRP 또는 RLUSD)",
+    enum: ["XRP", "RLUSD"],
+    default: "XRP",
+    required: false,
+  })
+  @IsEnum(["XRP", "RLUSD"])
+  @IsOptional()
+  currency?: "XRP" | "RLUSD";
 
   @ApiProperty({
     description: "에스크로 항목 목록 (초기금/중도금/잔금 등)",
