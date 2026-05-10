@@ -25,6 +25,7 @@ import {
   type SessionUser,
 } from "../../common/decorators/current-user.decorator";
 import { ParseMongoIdPipe } from "../../common/pipes/parse-mongo-id.pipe";
+import { ParseXrplAddressPipe } from "../../common/pipes/parse-xrpl-address.pipe";
 
 @ApiTags("Escrow Payments")
 @ApiCookieAuth()
@@ -35,6 +36,21 @@ export class EscrowPaymentsController {
     private readonly crudService: EscrowPaymentsCrudService,
     private readonly service: EscrowPaymentsService,
   ) {}
+
+  @Get("users/wallet/:address")
+  @ApiOperation({
+    summary: "지갑 주소로 유저 조회",
+    description: "XRPL 지갑 주소로 사용자 정보를 조회합니다.",
+  })
+  @ApiParam({ name: "address", description: "XRPL 지갑 주소" })
+  @ApiResponse({ status: 200, description: "조회 성공" })
+  @ApiResponse({ status: 400, description: "유효하지 않은 XRPL 지갑 주소" })
+  @ApiResponse({ status: 404, description: "해당 지갑 주소를 가진 유저 없음" })
+  findUserByWalletAddress(
+    @Param("address", ParseXrplAddressPipe) address: string,
+  ) {
+    return this.crudService.findUserByWalletAddress(address);
+  }
 
   @Get()
   @ApiOperation({
