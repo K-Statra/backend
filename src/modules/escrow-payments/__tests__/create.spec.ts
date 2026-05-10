@@ -74,7 +74,7 @@ describe("EscrowPaymentsCrudService › create", () => {
     await ctx.service.create(dto, BUYER_ID.toString());
 
     expect(ctx.userModel.findOne).toHaveBeenCalledWith(
-      { "wallet.address": SELLER_WALLET_ADDRESS },
+      { "wallet.address": SELLER_WALLET_ADDRESS, type: "seller" },
       { _id: 1 },
     );
 

@@ -32,7 +32,10 @@ export class EscrowPaymentsCrudService {
     }
 
     const seller = await this.userModel
-      .findOne({ "wallet.address": dto.sellerWalletAddress }, { _id: 1 })
+      .findOne(
+        { "wallet.address": dto.sellerWalletAddress, type: "seller" },
+        { _id: 1 },
+      )
       .lean();
     if (!seller)
       throw new SellerWalletNotFoundException(dto.sellerWalletAddress);

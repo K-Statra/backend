@@ -53,7 +53,7 @@ export class CreateEscrowPaymentDto {
     example: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
   })
   @IsString()
-  @Matches(/^r[1-9A-HJ-NP-Za-km-z]{24,33}$/, {
+  @Matches(/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/, {
     message: "sellerWalletAddress must be a valid XRPL address",
   })
   sellerWalletAddress: string;
