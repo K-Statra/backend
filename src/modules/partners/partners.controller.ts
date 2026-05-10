@@ -10,7 +10,7 @@ import { PartnersService } from "./partners.service";
 import {
   OptionalCurrentUser,
   type SessionUser,
-} from "src/common/decorators/current-user.decorator";
+} from "../../common/decorators/current-user.decorator";
 
 @ApiTags("Partners")
 @Controller("partners")

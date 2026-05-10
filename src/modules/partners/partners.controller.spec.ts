@@ -32,13 +32,14 @@ describe("PartnersController", () => {
       };
       mockPartnersService.search.mockResolvedValue(result);
 
-      expect(await controller.search("acme", 10)).toEqual(result);
+      expect(await controller.search(null, "acme", 10)).toEqual(result);
     });
 
     it("모든 파라미터를 서비스에 전달", async () => {
       mockPartnersService.search.mockResolvedValue({ data: [] });
 
       await controller.search(
+        null,
         "acme",
         5,
         "Automotive",
@@ -62,7 +63,7 @@ describe("PartnersController", () => {
     it("파라미터 없이 호출 시 undefined 전달", async () => {
       mockPartnersService.search.mockResolvedValue({ data: [] });
 
-      await controller.search(undefined as any, 10);
+      await controller.search(null, undefined as any, 10);
 
       expect(mockPartnersService.search).toHaveBeenCalledWith(
         expect.objectContaining({ q: undefined, limit: 10 }),
