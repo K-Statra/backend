@@ -99,36 +99,38 @@ describe("MyBusinessService", () => {
     const PARTNER_ID = new Types.ObjectId().toString();
 
     it("파트너 저장 성공", async () => {
-      userModel.exists.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(null),
-      });
       sellerModel.exists.mockResolvedValue({ _id: PARTNER_ID });
-      userModel.updateOne.mockResolvedValue({ modifiedCount: 1 });
+      userModel.updateOne.mockResolvedValue({
+        matchedCount: 1,
+        modifiedCount: 1,
+      });
 
       const result = await service.savePartner(USER_ID, PARTNER_ID, "seller");
 
       expect(userModel.updateOne).toHaveBeenCalledWith(
-        { _id: USER_ID },
+        expect.objectContaining({
+          _id: USER_ID,
+          "savedPartners.partnerId": expect.any(Object),
+        }),
         expect.objectContaining({ $push: expect.any(Object) }),
       );
       expect(result).toEqual({ message: "파트너가 저장되었습니다." });
     });
 
     it("이미 저장된 파트너 → ConflictException", async () => {
-      userModel.exists.mockReturnValue({
-        lean: jest.fn().mockResolvedValue({ _id: USER_ID }),
+      sellerModel.exists.mockResolvedValue({ _id: PARTNER_ID });
+      userModel.updateOne.mockResolvedValue({
+        matchedCount: 0,
+        modifiedCount: 0,
       });
+      userModel.exists.mockResolvedValue({ _id: USER_ID });
 
       await expect(
         service.savePartner(USER_ID, PARTNER_ID, "seller"),
       ).rejects.toThrow(ConflictException);
-      expect(userModel.updateOne).not.toHaveBeenCalled();
     });
 
     it("존재하지 않는 파트너 ID → NotFoundException", async () => {
-      userModel.exists.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(null),
-      });
       sellerModel.exists.mockResolvedValue(null);
 
       await expect(
@@ -138,11 +140,11 @@ describe("MyBusinessService", () => {
     });
 
     it("buyer 파트너 저장 시 buyerModel.exists 호출", async () => {
-      userModel.exists.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(null),
-      });
       buyerModel.exists.mockResolvedValue({ _id: PARTNER_ID });
-      userModel.updateOne.mockResolvedValue({ modifiedCount: 1 });
+      userModel.updateOne.mockResolvedValue({
+        matchedCount: 1,
+        modifiedCount: 1,
+      });
 
       await service.savePartner(USER_ID, PARTNER_ID, "buyer");
 
