@@ -7,6 +7,10 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { PartnersService } from "./partners.service";
+import {
+  OptionalCurrentUser,
+  type SessionUser,
+} from "src/common/decorators/current-user.decorator";
 
 @ApiTags("Partners")
 @Controller("partners")
@@ -53,6 +57,7 @@ export class PartnersController {
     },
   })
   search(
+    @OptionalCurrentUser() user: SessionUser | null,
     @Query("q") q: string,
     @Query("limit", new DefaultValuePipe(10), ParseIntPipe) limit?: number,
     @Query("industry") industry?: string,
@@ -69,6 +74,7 @@ export class PartnersController {
       partnership,
       size,
       buyerId,
+      userId: user?.userId,
     });
   }
 }
