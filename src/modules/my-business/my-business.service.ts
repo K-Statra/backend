@@ -4,6 +4,11 @@ import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../users/schemas/user.schema";
 import { Seller, SellerDocument } from "../sellers/schemas/seller.schema";
 import { Buyer, BuyerDocument } from "../buyers/schemas/buyer.schema";
+import {
+  PartnerAlreadySavedException,
+  PartnerNotFoundException,
+  SavedPartnerNotFoundException,
+} from "../../common/exceptions";
 
 @Injectable()
 export class MyBusinessService {
@@ -63,6 +68,45 @@ export class MyBusinessService {
 
     if (!user) throw new NotFoundException("사용자를 찾을 수 없습니다.");
     return user;
+  }
+
+  async savePartner(
+    userId: string,
+    partnerId: string,
+    partnerType: "seller" | "buyer",
+  ) {
+    const partnerObjectId = new Types.ObjectId(partnerId);
+
+    const alreadySaved = await this.userModel
+      .exists({ _id: userId, "savedPartners.partnerId": partnerObjectId })
+      .lean();
+    if (alreadySaved) throw new PartnerAlreadySavedException();
+
+    const model: Model<any> =
+      partnerType === "seller" ? this.sellerModel : this.buyerModel;
+    const exists = await model.exists({ _id: partnerObjectId });
+    if (!exists) throw new PartnerNotFoundException();
+
+    await this.userModel.updateOne(
+      { _id: userId },
+      { $push: { savedPartners: { partnerId: partnerObjectId, partnerType } } },
+    );
+    return { message: "파트너가 저장되었습니다." };
+  }
+
+  async removePartner(userId: string, partnerId: string) {
+    if (!Types.ObjectId.isValid(partnerId))
+      throw new SavedPartnerNotFoundException();
+
+    const result = await this.userModel.updateOne(
+      { _id: userId },
+      {
+        $pull: { savedPartners: { partnerId: new Types.ObjectId(partnerId) } },
+      },
+    );
+    if (result.modifiedCount === 0) throw new SavedPartnerNotFoundException();
+
+    return { message: "파트너가 삭제되었습니다." };
   }
 
   async getPartners(userId: string, page: number, limit: number) {
