@@ -39,6 +39,9 @@ describe("EscrowPayments (e2e)", () => {
   const sellerObjectId = new Types.ObjectId();
   const nonParticipantId = new Types.ObjectId();
 
+  const BUYER_WALLET_ADDR = "rBuyerE2ETestAddress12345";
+  const SELLER_WALLET_ADDR = "rSe11erE2ETestAddress5678";
+
   // XrplService 전체를 모의 객체로 대체 (실제 XRPL 네트워크 호출 없음)
   const mockXrplService = {
     generateCryptoCondition: jest.fn(),
@@ -170,7 +173,7 @@ describe("EscrowPayments (e2e)", () => {
         industries: [],
         status: "ACTIVE",
         wallet: {
-          address: "rBuyerE2ETestAddr1234",
+          address: BUYER_WALLET_ADDR,
           seed: "enc:buyer_seed_plain",
           publicKey: "buyer_pub_key",
         },
@@ -187,7 +190,7 @@ describe("EscrowPayments (e2e)", () => {
         industries: [],
         status: "ACTIVE",
         wallet: {
-          address: "rSellerE2ETestAddr5678",
+          address: SELLER_WALLET_ADDR,
           seed: "enc:seller_seed_plain",
           publicKey: "seller_pub_key",
         },
@@ -258,7 +261,7 @@ describe("EscrowPayments (e2e)", () => {
   // 기본 생성 payload 헬퍼
   const baseCreatePayload = (overrides: object = {}) => ({
     buyerId: buyerObjectId.toString(),
-    sellerId: sellerObjectId.toString(),
+    sellerWalletAddress: SELLER_WALLET_ADDR,
     memo: "테스트 메모",
     escrows: [
       {
@@ -665,8 +668,8 @@ describe("EscrowPayments (e2e)", () => {
 
       expect(mockXrplService.createEscrow).toHaveBeenCalledTimes(1);
       expect(mockXrplService.createEscrow).toHaveBeenCalledWith(
-        expect.objectContaining({ address: "rBuyerE2ETestAddr1234" }),
-        "rSellerE2ETestAddr5678",
+        expect.objectContaining({ address: BUYER_WALLET_ADDR }),
+        SELLER_WALLET_ADDR,
         300,
         "A02580204ABCDEF",
         "XRP",
@@ -716,7 +719,7 @@ describe("EscrowPayments (e2e)", () => {
 
       expect(mockXrplService.validateEscrowFunds).toHaveBeenCalledTimes(1);
       expect(mockXrplService.validateEscrowFunds).toHaveBeenCalledWith(
-        "rBuyerE2ETestAddr1234",
+        BUYER_WALLET_ADDR,
         expect.arrayContaining([expect.objectContaining({ amountXrp: 300 })]),
       );
     });
@@ -791,8 +794,8 @@ describe("EscrowPayments (e2e)", () => {
 
       expect(mockXrplService.finishEscrow).toHaveBeenCalledTimes(1);
       expect(mockXrplService.finishEscrow).toHaveBeenCalledWith(
-        expect.objectContaining({ address: "rBuyerE2ETestAddr1234" }),
-        "rBuyerE2ETestAddr1234",
+        expect.objectContaining({ address: BUYER_WALLET_ADDR }),
+        BUYER_WALLET_ADDR,
         99999,
         "A02580204ABCDEF",
         expect.any(String),

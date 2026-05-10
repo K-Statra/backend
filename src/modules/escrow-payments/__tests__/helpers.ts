@@ -139,6 +139,7 @@ export function makeEscrowPaymentModelMock() {
 export function makeUserModelMock() {
   const ModelMock: any = jest.fn();
   ModelMock.findById = jest.fn().mockReturnValue(makeQueryChain(null));
+  ModelMock.findOne = jest.fn().mockReturnValue(makeQueryChain(null));
   return ModelMock;
 }
 
@@ -173,6 +174,7 @@ export function makeOutboxServiceMock() {
 
 export async function makeCrudServiceTestingModule() {
   const escrowPaymentModel = makeEscrowPaymentModelMock();
+  const userModel = makeUserModelMock();
 
   const module = await Test.createTestingModule({
     providers: [
@@ -181,12 +183,14 @@ export async function makeCrudServiceTestingModule() {
         provide: getModelToken(EscrowPayment.name),
         useValue: escrowPaymentModel,
       },
+      { provide: getModelToken(User.name), useValue: userModel },
     ],
   }).compile();
 
   return {
     service: module.get<EscrowPaymentsCrudService>(EscrowPaymentsCrudService),
     escrowPaymentModel,
+    userModel,
   };
 }
 

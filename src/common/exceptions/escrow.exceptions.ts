@@ -102,3 +102,9 @@ export class PaymentInitiationFailedException extends InternalServerErrorExcepti
     super("Failed to initiate payment. Please try again.");
   }
 }
+
+export class SellerWalletNotFoundException extends NotFoundException {
+  constructor(walletAddress: string) {
+    super(`Seller with wallet address "${walletAddress}" not found`);
+  }
+}

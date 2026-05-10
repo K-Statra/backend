@@ -29,8 +29,8 @@ import { User } from "../src/modules/users/schemas/user.schema";
 import { HttpExceptionFilter } from "../src/common/filters/http-exception.filter";
 import { InsufficientRlusdBalanceException } from "../src/common/exceptions";
 
-const BUYER_ADDRESS = "rBuyerRlusdTestAddr";
-const SELLER_ADDRESS = "rSellerRlusdTestAddr";
+const BUYER_ADDRESS = "rBuyerR1usdTestAddress12345";
+const SELLER_ADDRESS = "rSe11erR1usdTestAddress5678";
 
 describe("RLUSD 에스크로 결제 (mock e2e)", () => {
   let app: INestApplication;
@@ -229,7 +229,7 @@ describe("RLUSD 에스크로 결제 (mock e2e)", () => {
 
   const rlusdCreatePayload = (overrides: object = {}) => ({
     buyerId: buyerObjectId.toString(),
-    sellerId: sellerObjectId.toString(),
+    sellerWalletAddress: SELLER_ADDRESS,
     memo: "RLUSD 테스트 결제",
     currency: "RLUSD",
     escrows: [
@@ -289,7 +289,7 @@ describe("RLUSD 에스크로 결제 (mock e2e)", () => {
         .set(asBuyer())
         .send({
           buyerId: buyerObjectId.toString(),
-          sellerId: sellerObjectId.toString(),
+          sellerWalletAddress: SELLER_ADDRESS,
           escrows: [
             {
               label: "초기금",

@@ -105,6 +105,7 @@ describe("RLUSD 에스크로 결제 테스트넷 통합 테스트", () => {
 
   const buyerObjectId = new Types.ObjectId();
   const sellerObjectId = new Types.ObjectId();
+  let sellerWalletAddress: string;
 
   beforeAll(async () => {
     mongoServer = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
@@ -158,6 +159,7 @@ describe("RLUSD 에스크로 결제 테스트넷 통합 테스트", () => {
     // seller: Trust Line reserve(2 XRP) + 수수료 필요
     const buyerWallet = xrplService.generateWallet();
     const sellerWallet = xrplService.generateWallet();
+    sellerWalletAddress = sellerWallet.address;
 
     const issuerWallet = {
       address: issuerXrplWallet.address,
@@ -246,7 +248,7 @@ describe("RLUSD 에스크로 결제 테스트넷 통합 테스트", () => {
     const payment = await crudService.create(
       {
         buyerId: buyerObjectId.toString(),
-        sellerId: sellerObjectId.toString(),
+        sellerWalletAddress: sellerWalletAddress,
         memo: "테스트넷 TST 토큰 에스크로",
         currency: "RLUSD", // 서비스 분기 기준: RLUSD 코드 경로 사용
         escrows: [

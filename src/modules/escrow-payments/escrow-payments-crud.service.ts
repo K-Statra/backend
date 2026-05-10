@@ -3,12 +3,14 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import {
   EscrowPaymentNotFoundException,
+  SellerWalletNotFoundException,
   UnauthorizedPaymentActionException,
 } from "../../common/exceptions";
 import {
   EscrowPayment,
   EscrowPaymentDocument,
 } from "./schemas/escrow-payment.schema";
+import { User, UserDocument } from "../users/schemas/user.schema";
 import { CreateEscrowPaymentDto } from "./dto/create-escrow-payment.dto";
 import { QueryEscrowPaymentDto } from "./dto/query-escrow-payment.dto";
 
@@ -17,21 +19,33 @@ export class EscrowPaymentsCrudService {
   constructor(
     @InjectModel(EscrowPayment.name)
     private readonly escrowPaymentModel: Model<EscrowPaymentDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
   ) {}
 
   async create(
     dto: CreateEscrowPaymentDto,
     userId: string,
   ): Promise<EscrowPaymentDocument> {
-    if (userId !== dto.buyerId && userId !== dto.sellerId) {
+    if (userId !== dto.buyerId) {
       throw new UnauthorizedPaymentActionException();
     }
 
+    const seller = await this.userModel
+      .findOne(
+        { "wallet.address": dto.sellerWalletAddress, type: "seller" },
+        { _id: 1 },
+      )
+      .lean();
+    if (!seller)
+      throw new SellerWalletNotFoundException(dto.sellerWalletAddress);
+
+    const sellerId = seller._id.toString();
     const totalAmountXrp = dto.escrows.reduce((sum, e) => sum + e.amountXrp, 0);
 
     const doc = new this.escrowPaymentModel({
       buyerId: new Types.ObjectId(dto.buyerId),
-      sellerId: new Types.ObjectId(dto.sellerId),
+      sellerId: new Types.ObjectId(sellerId),
       totalAmountXrp,
       currency: dto.currency ?? "XRP",
       memo: dto.memo ?? "",

@@ -78,6 +78,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
   let crudService: EscrowPaymentsCrudService;
   let userModel: Model<User>;
   let buyerWalletAddress: string;
+  let sellerWalletAddress: string;
 
   const buyerObjectId = new Types.ObjectId();
   const sellerObjectId = new Types.ObjectId();
@@ -133,6 +134,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
     const buyerWallet = xrplService.generateWallet();
     const sellerWallet = xrplService.generateWallet();
     buyerWalletAddress = buyerWallet.address;
+    sellerWalletAddress = sellerWallet.address;
 
     await Promise.all([
       xrplService.fundAccount(buyerWallet),
@@ -191,7 +193,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
     const payment = await crudService.create(
       {
         buyerId: buyerObjectId.toString(),
-        sellerId: sellerObjectId.toString(),
+        sellerWalletAddress: sellerWalletAddress,
         memo: "테스트넷 초기금 에스크로",
         escrows: [
           {
