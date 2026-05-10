@@ -258,10 +258,9 @@ describe("EscrowPayments (e2e)", () => {
     );
   }
 
-  // 기본 생성 payload 헬퍼
+  // 기본 생성 payload 헬퍼 (buyer가 생성 — counterpartyWalletAddress = seller 주소)
   const baseCreatePayload = (overrides: object = {}) => ({
-    buyerId: buyerObjectId.toString(),
-    sellerWalletAddress: SELLER_WALLET_ADDR,
+    counterpartyWalletAddress: SELLER_WALLET_ADDR,
     memo: "테스트 메모",
     escrows: [
       {
@@ -392,11 +391,13 @@ describe("EscrowPayments (e2e)", () => {
       expect(second.amountXrp).toBe(700);
     });
 
-    it("buyerId가 유효하지 않은 MongoId → 400", async () => {
+    it("counterpartyWalletAddress가 유효하지 않은 XRPL 주소 → 400", async () => {
       await request(app.getHttpServer())
         .post("/escrow-payments")
         .set(asBuyer())
-        .send(baseCreatePayload({ buyerId: "invalid-id" }))
+        .send(
+          baseCreatePayload({ counterpartyWalletAddress: "invalid-address" }),
+        )
         .expect(400);
     });
 
@@ -577,6 +578,63 @@ describe("EscrowPayments (e2e)", () => {
 
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
+        .set(asSeller())
+        .expect(400);
+    });
+
+    it("seller가 생성한 결제 → buyer 승인 → APPROVED", async () => {
+      const createRes = await request(app.getHttpServer())
+        .post("/escrow-payments")
+        .set(asSeller())
+        .send({
+          counterpartyWalletAddress: BUYER_WALLET_ADDR,
+          memo: "seller 생성 테스트",
+          escrows: [
+            {
+              label: "초기금",
+              amountXrp: 300,
+              order: 0,
+              requiredEventTypes: ["SHIPMENT_CONFIRMED"],
+            },
+          ],
+        })
+        .expect(201);
+
+      const sellerCreatedId = createRes.body._id;
+      expect(createRes.body.sellerApproved).toBe(true);
+      expect(createRes.body.sellerApprovedAt).toBeDefined();
+      expect(createRes.body.buyerApproved).toBe(false);
+
+      const approveRes = await request(app.getHttpServer())
+        .post(`/escrow-payments/${sellerCreatedId}/approve`)
+        .set(asBuyer())
+        .expect(201);
+
+      expect(approveRes.body.status).toBe("APPROVED");
+      expect(approveRes.body.buyerApproved).toBe(true);
+      expect(approveRes.body.sellerApproved).toBe(true);
+    });
+
+    it("seller가 생성한 결제 → seller 중복 승인 → 400", async () => {
+      const createRes = await request(app.getHttpServer())
+        .post("/escrow-payments")
+        .set(asSeller())
+        .send({
+          counterpartyWalletAddress: BUYER_WALLET_ADDR,
+          memo: "seller 중복 승인 테스트",
+          escrows: [
+            {
+              label: "초기금",
+              amountXrp: 100,
+              order: 0,
+              requiredEventTypes: ["SHIPMENT_CONFIRMED"],
+            },
+          ],
+        })
+        .expect(201);
+
+      await request(app.getHttpServer())
+        .post(`/escrow-payments/${createRes.body._id}/approve`)
         .set(asSeller())
         .expect(400);
     });

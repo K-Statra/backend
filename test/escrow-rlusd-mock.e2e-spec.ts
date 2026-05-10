@@ -228,8 +228,7 @@ describe("RLUSD 에스크로 결제 (mock e2e)", () => {
   }
 
   const rlusdCreatePayload = (overrides: object = {}) => ({
-    buyerId: buyerObjectId.toString(),
-    sellerWalletAddress: SELLER_ADDRESS,
+    counterpartyWalletAddress: SELLER_ADDRESS,
     memo: "RLUSD 테스트 결제",
     currency: "RLUSD",
     escrows: [
@@ -286,8 +285,7 @@ describe("RLUSD 에스크로 결제 (mock e2e)", () => {
         .post("/escrow-payments")
         .set(asBuyer())
         .send({
-          buyerId: buyerObjectId.toString(),
-          sellerWalletAddress: SELLER_ADDRESS,
+          counterpartyWalletAddress: SELLER_ADDRESS,
           escrows: [
             {
               label: "초기금",

@@ -192,8 +192,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
     // ── 1. 결제 내역 생성 ─────────────────────────────────────────────────
     const payment = await crudService.create(
       {
-        buyerId: buyerObjectId.toString(),
-        sellerWalletAddress: sellerWalletAddress,
+        counterpartyWalletAddress: sellerWalletAddress,
         memo: "테스트넷 초기금 에스크로",
         escrows: [
           {

@@ -247,8 +247,7 @@ describe("RLUSD 에스크로 결제 테스트넷 통합 테스트", () => {
     // ── 1. 결제 생성 ─────────────────────────────────────────────────────
     const payment = await crudService.create(
       {
-        buyerId: buyerObjectId.toString(),
-        sellerWalletAddress: sellerWalletAddress,
+        counterpartyWalletAddress: sellerWalletAddress,
         memo: "테스트넷 TST 토큰 에스크로",
         currency: "RLUSD", // 서비스 분기 기준: RLUSD 코드 경로 사용
         escrows: [
