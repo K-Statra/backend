@@ -4,8 +4,8 @@
  * 실제 XRPL testnet + MongoMemoryReplSet + 실제 Redis(Bull Queue) + OutboxWatcherService(Change Streams)
  * 로 전체 에스크로 결제 플로우를 검증합니다:
  *
- *   1. 결제 내역 생성
- *   2. 양측(buyer / seller) 승인 → APPROVED
+ *   1. 결제 내역 생성 (buyer 자동 승인)
+ *   2. seller 승인 → APPROVED
  *   3. 결제 개시 → PROCESSING + Outbox 이벤트 MongoDB 기록 (트랜잭션)
  *   4. OutboxWatcherService(Change Streams) → Bull Queue → EscrowCreateProcessor → XRPL EscrowCreate → ESCROWED → ACTIVE
  *   5. 이벤트1 buyer 승인 → ESCROWED 유지 (seller 미승인)
@@ -211,6 +211,8 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
     const escrowItemId = payment.escrows[0]._id.toString();
 
     expect(payment.status).toBe("DRAFT");
+    expect(payment.buyerApproved).toBe(true);
+    expect(payment.buyerApprovedAt).toBeDefined();
     expect(payment.totalAmountXrp).toBe(10);
     expect(payment.escrows).toHaveLength(1);
     expect(payment.escrows[0].amountXrp).toBe(10);
@@ -221,11 +223,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
       ),
     ).toBe(true);
 
-    // ── 2. 결제 양측 승인 → APPROVED (XRPL 미실행) ───────────────────────
-    await escrowPaymentsService.approvePayment(
-      paymentId,
-      buyerObjectId.toString(),
-    );
+    // ── 2. 결제 승인 → APPROVED (buyer는 생성 시 자동 승인, seller만 호출)
     const afterBothApprove = await escrowPaymentsService.approvePayment(
       paymentId,
       sellerObjectId.toString(),

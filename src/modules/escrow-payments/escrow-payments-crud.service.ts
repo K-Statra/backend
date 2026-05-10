@@ -43,10 +43,13 @@ export class EscrowPaymentsCrudService {
     const sellerId = seller._id.toString();
     const totalAmountXrp = dto.escrows.reduce((sum, e) => sum + e.amountXrp, 0);
 
+    const now = new Date();
     const doc = new this.escrowPaymentModel({
       buyerId: new Types.ObjectId(dto.buyerId),
       sellerId: new Types.ObjectId(sellerId),
       totalAmountXrp,
+      buyerApproved: true,
+      buyerApprovedAt: now,
       currency: dto.currency ?? "XRP",
       memo: dto.memo ?? "",
       escrows: dto.escrows.map((e) => ({

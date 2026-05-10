@@ -61,6 +61,14 @@ describe("EscrowPaymentsCrudService › create", () => {
     expect(constructorArg.escrows[1].approvals).toHaveLength(2);
   });
 
+  it("생성자(buyer)의 buyerApproved를 true로 자동 설정", async () => {
+    await ctx.service.create(dto, BUYER_ID.toString());
+
+    const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
+    expect(constructorArg.buyerApproved).toBe(true);
+    expect(constructorArg.buyerApprovedAt).toBeInstanceOf(Date);
+  });
+
   it("save() 호출", async () => {
     const instance = { save: jest.fn().mockResolvedValue({}) };
     ctx.escrowPaymentModel.mockReturnValue(instance);

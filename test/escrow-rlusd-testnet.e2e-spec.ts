@@ -8,8 +8,8 @@
  *   issuer 지갑 → buyer/seller에게 trust line 설정 → issuer가 buyer에게 토큰 전송
  *
  * 플로우:
- *   1. 결제 생성 (currency: RLUSD)
- *   2. 양측 승인 → APPROVED
+ *   1. 결제 생성 (currency: RLUSD, buyer 자동 승인)
+ *   2. seller 승인 → APPROVED
  *   3. 결제 개시 → trust line 자동 확인 + 잔고 검증 → PROCESSING + Outbox
  *   4. OutboxWatcher → EscrowCreateProcessor → XLS-85 EscrowCreate → ESCROWED → ACTIVE
  *   5. 이벤트 2개 양방향 승인 → EscrowFinish → RELEASED / COMPLETED
@@ -267,13 +267,11 @@ describe("RLUSD 에스크로 결제 테스트넷 통합 테스트", () => {
     const escrowItemId = payment.escrows[0]._id.toString();
 
     expect(payment.status).toBe("DRAFT");
+    expect(payment.buyerApproved).toBe(true);
+    expect(payment.buyerApprovedAt).toBeDefined();
     expect(payment.currency).toBe("RLUSD");
 
-    // ── 2. 양측 승인 → APPROVED ──────────────────────────────────────────
-    await escrowPaymentsService.approvePayment(
-      paymentId,
-      buyerObjectId.toString(),
-    );
+    // ── 2. seller 승인 → APPROVED (buyer는 생성 시 자동 승인) ─────────────
     const afterApprove = await escrowPaymentsService.approvePayment(
       paymentId,
       sellerObjectId.toString(),

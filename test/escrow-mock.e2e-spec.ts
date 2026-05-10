@@ -297,9 +297,7 @@ describe("EscrowPayments (e2e)", () => {
     const paymentId: string = createRes.body._id;
     const escrowItemId: string = createRes.body.escrows[0]._id;
 
-    await request(app.getHttpServer())
-      .post(`/escrow-payments/${paymentId}/approve`)
-      .set(asBuyer());
+    // buyer는 생성 시 자동 승인되므로 seller만 승인하면 APPROVED
     await request(app.getHttpServer())
       .post(`/escrow-payments/${paymentId}/approve`)
       .set(asSeller());
@@ -351,7 +349,8 @@ describe("EscrowPayments (e2e)", () => {
       expect(res.body._id).toBeDefined();
       expect(res.body.status).toBe("DRAFT");
       expect(res.body.totalAmountXrp).toBe(500);
-      expect(res.body.buyerApproved).toBe(false);
+      expect(res.body.buyerApproved).toBe(true);
+      expect(res.body.buyerApprovedAt).toBeDefined();
       expect(res.body.sellerApproved).toBe(false);
     });
 
@@ -539,38 +538,31 @@ describe("EscrowPayments (e2e)", () => {
       paymentId = res.body._id;
     });
 
-    it("buyer 승인 → PENDING_APPROVAL, buyerApproved=true", async () => {
-      const res = await request(app.getHttpServer())
+    it("buyer 승인 시도 → 400 (생성 시 자동 승인됨)", async () => {
+      await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
         .set(asBuyer())
-        .expect(201);
-
-      expect(res.body.status).toBe("PENDING_APPROVAL");
-      expect(res.body.buyerApproved).toBe(true);
-      expect(res.body.sellerApproved).toBe(false);
+        .expect(400);
     });
 
-    it("seller 단독 승인 → PENDING_APPROVAL", async () => {
+    it("seller 승인 → APPROVED (buyer는 생성 시 자동 승인됨)", async () => {
       const res = await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
         .set(asSeller())
         .expect(201);
 
-      expect(res.body.status).toBe("PENDING_APPROVAL");
+      expect(res.body.status).toBe("APPROVED");
+      expect(res.body.buyerApproved).toBe(true);
       expect(res.body.sellerApproved).toBe(true);
     });
 
-    it("buyer + seller 모두 승인 → APPROVED (XRPL 미실행)", async () => {
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer());
-
+    it("seller 승인만으로 APPROVED 전환 (XRPL 미실행)", async () => {
       const res = await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
         .set(asSeller())
         .expect(201);
 
-      // 양측 승인 → APPROVED, 아직 XRPL 에스크로 미실행
+      // buyer 자동 승인 + seller 승인 → APPROVED, 아직 XRPL 에스크로 미실행
       expect(res.body.status).toBe("APPROVED");
       expect(res.body.buyerApproved).toBe(true);
       expect(res.body.sellerApproved).toBe(true);
@@ -580,12 +572,12 @@ describe("EscrowPayments (e2e)", () => {
     it("동일 역할 중복 승인 → 400", async () => {
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer())
+        .set(asSeller())
         .expect(201);
 
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer())
+        .set(asSeller())
         .expect(400);
     });
 
@@ -599,15 +591,12 @@ describe("EscrowPayments (e2e)", () => {
     it("APPROVED 상태에서 승인 시도 → 400", async () => {
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer());
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${paymentId}/approve`)
         .set(asSeller());
-      // 이제 APPROVED — 추가 승인 불가
+      // seller 승인으로 APPROVED 전환 — 추가 승인 불가
 
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer())
+        .set(asSeller())
         .expect(400);
     });
   });
@@ -637,9 +626,7 @@ describe("EscrowPayments (e2e)", () => {
       paymentId = createRes.body._id;
       escrowItemId = createRes.body.escrows[0]._id;
 
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer());
+      // buyer는 생성 시 자동 승인되므로 seller만 승인하면 APPROVED
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
         .set(asSeller());
@@ -847,10 +834,7 @@ describe("EscrowPayments (e2e)", () => {
       const freshId = freshRes.body._id;
       const freshEscrowId = freshRes.body.escrows[0]._id;
 
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${freshId}/approve`)
-        .set(asBuyer());
-      // seller 미승인 → PENDING_APPROVAL, 에스크로 항목 PENDING_ESCROW 유지
+      // seller 미승인 → 에스크로 항목 PENDING_ESCROW 유지
 
       await request(app.getHttpServer())
         .post(
@@ -879,9 +863,7 @@ describe("EscrowPayments (e2e)", () => {
       const twoPaymentId = twoEventRes.body._id;
       const twoEscrowId = twoEventRes.body.escrows[0]._id;
 
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${twoPaymentId}/approve`)
-        .set(asBuyer());
+      // buyer는 생성 시 자동 승인되므로 seller만 승인하면 APPROVED
       await request(app.getHttpServer())
         .post(`/escrow-payments/${twoPaymentId}/approve`)
         .set(asSeller());
@@ -1036,9 +1018,6 @@ describe("EscrowPayments (e2e)", () => {
     });
 
     it("ESCROWED 항목 취소 시도 → 400", async () => {
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer());
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
         .set(asSeller());
