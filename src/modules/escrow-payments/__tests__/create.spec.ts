@@ -1,12 +1,22 @@
-import { BUYER_ID, SELLER_ID, makeCrudServiceTestingModule } from "./helpers";
-import { UnauthorizedPaymentActionException } from "../../../common/exceptions";
+import {
+  BUYER_ID,
+  SELLER_ID,
+  makeCrudServiceTestingModule,
+  makeQueryChain,
+} from "./helpers";
+import {
+  SellerWalletNotFoundException,
+  UnauthorizedPaymentActionException,
+} from "../../../common/exceptions";
+
+const SELLER_WALLET_ADDRESS = "rSellerAddress456";
 
 describe("EscrowPaymentsCrudService › create", () => {
   let ctx: Awaited<ReturnType<typeof makeCrudServiceTestingModule>>;
 
   const dto = {
     buyerId: BUYER_ID.toString(),
-    sellerId: SELLER_ID.toString(),
+    sellerWalletAddress: SELLER_WALLET_ADDRESS,
     memo: "수출 대금",
     escrows: [
       {
@@ -26,6 +36,8 @@ describe("EscrowPaymentsCrudService › create", () => {
 
   beforeEach(async () => {
     ctx = await makeCrudServiceTestingModule();
+    // 기본값: 지갑 주소로 seller 조회 성공
+    ctx.userModel.findOne.mockReturnValue(makeQueryChain({ _id: SELLER_ID }));
   });
 
   it("totalAmountXrp를 escrow 항목 합산으로 계산", async () => {
@@ -58,7 +70,27 @@ describe("EscrowPaymentsCrudService › create", () => {
     expect(instance.save).toHaveBeenCalled();
   });
 
-  it("참여자가 아닌 제3자 → UnauthorizedPaymentActionException", async () => {
+  it("wallet.address로 seller 조회 후 sellerId를 document에 주입", async () => {
+    await ctx.service.create(dto, BUYER_ID.toString());
+
+    expect(ctx.userModel.findOne).toHaveBeenCalledWith(
+      { "wallet.address": SELLER_WALLET_ADDRESS },
+      { _id: 1 },
+    );
+
+    const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
+    expect(constructorArg.sellerId.toString()).toBe(SELLER_ID.toString());
+  });
+
+  it("존재하지 않는 지갑 주소 → SellerWalletNotFoundException", async () => {
+    ctx.userModel.findOne.mockReturnValue(makeQueryChain(null));
+
+    await expect(ctx.service.create(dto, BUYER_ID.toString())).rejects.toThrow(
+      SellerWalletNotFoundException,
+    );
+  });
+
+  it("buyer가 아닌 제3자 → UnauthorizedPaymentActionException", async () => {
     await expect(
       ctx.service.create(dto, "000000000000000000000000"),
     ).rejects.toThrow(UnauthorizedPaymentActionException);
