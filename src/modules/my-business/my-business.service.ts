@@ -75,22 +75,27 @@ export class MyBusinessService {
     partnerId: string,
     partnerType: "seller" | "buyer",
   ) {
-    const partnerObjectId = new Types.ObjectId(partnerId);
+    if (!Types.ObjectId.isValid(partnerId))
+      throw new SavedPartnerNotFoundException();
 
-    const alreadySaved = await this.userModel
-      .exists({ _id: userId, "savedPartners.partnerId": partnerObjectId })
-      .lean();
-    if (alreadySaved) throw new PartnerAlreadySavedException();
+    const partnerObjectId = new Types.ObjectId(partnerId);
 
     const model: Model<any> =
       partnerType === "seller" ? this.sellerModel : this.buyerModel;
     const exists = await model.exists({ _id: partnerObjectId });
     if (!exists) throw new PartnerNotFoundException();
 
-    await this.userModel.updateOne(
-      { _id: userId },
+    const result = await this.userModel.updateOne(
+      { _id: userId, "savedPartners.partnerId": { $ne: partnerObjectId } },
       { $push: { savedPartners: { partnerId: partnerObjectId, partnerType } } },
     );
+
+    if (result.matchedCount === 0) {
+      const userExists = await this.userModel.exists({ _id: userId });
+      if (!userExists)
+        throw new NotFoundException("사용자를 찾을 수 없습니다.");
+      throw new PartnerAlreadySavedException();
+    }
     return { message: "파트너가 저장되었습니다." };
   }
 
