@@ -1,9 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
+import { Types } from "mongoose";
 import { PartnersService } from "./partners.service";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 import { Seller } from "../sellers/schemas/seller.schema";
 import { Buyer } from "../buyers/schemas/buyer.schema";
+import { User } from "../users/schemas/user.schema";
+
+const USER_ID = new Types.ObjectId().toString();
 
 // Mongoose query는 exec() 없이 await 가능한 thenable → then/catch 추가
 function buildQueryMock(resolvedValue: any) {
@@ -33,6 +37,12 @@ const makeBuyerModel = () => ({
   countDocuments: jest.fn().mockResolvedValue(0),
 });
 
+const makeUserModel = () => ({
+  findById: jest.fn().mockReturnValue({
+    lean: jest.fn().mockResolvedValue(null),
+  }),
+});
+
 const makeEmbeddingsService = () => ({
   embed: jest.fn().mockResolvedValue([]),
 });
@@ -41,11 +51,13 @@ describe("PartnersService", () => {
   let service: PartnersService;
   let sellerModel: ReturnType<typeof makeSellerModel>;
   let buyerModel: ReturnType<typeof makeBuyerModel>;
+  let userModel: ReturnType<typeof makeUserModel>;
   let embeddingsService: ReturnType<typeof makeEmbeddingsService>;
 
   beforeEach(async () => {
     sellerModel = makeSellerModel();
     buyerModel = makeBuyerModel();
+    userModel = makeUserModel();
     embeddingsService = makeEmbeddingsService();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -53,6 +65,7 @@ describe("PartnersService", () => {
         PartnersService,
         { provide: getModelToken(Seller.name), useValue: sellerModel },
         { provide: getModelToken(Buyer.name), useValue: buyerModel },
+        { provide: getModelToken(User.name), useValue: userModel },
         { provide: EmbeddingsService, useValue: embeddingsService },
       ],
     }).compile();
@@ -237,6 +250,86 @@ describe("PartnersService", () => {
 
       // 자동차 컨텍스트 없는 결과는 0.6 감점
       expect(result.data[0].score).toBeLessThan(0.5);
+    });
+  });
+
+  // ── savedPartners 제외 필터 ───────────────────────────────────────────────────
+
+  describe("savedPartners 제외 (로그인 사용자)", () => {
+    it("show-all 모드: savedPartners ID가 $nin 필터로 전달됨", async () => {
+      const savedId = new Types.ObjectId();
+      userModel.findById.mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          savedPartners: [{ partnerId: savedId, partnerType: "seller" }],
+        }),
+      });
+      sellerModel.find.mockReturnValue(buildQueryMock([]));
+
+      await service.search({ q: "", userId: USER_ID });
+
+      const [filterArg] = sellerModel.find.mock.calls[0];
+      expect(filterArg._id.$nin[0].toString()).toBe(savedId.toString());
+    });
+
+    it("browse 모드(필터만): savedPartners ID가 $nin 필터로 전달됨", async () => {
+      const savedId = new Types.ObjectId();
+      userModel.findById.mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          savedPartners: [{ partnerId: savedId, partnerType: "seller" }],
+        }),
+      });
+      sellerModel.find.mockReturnValue(
+        buildQueryMock([{ _id: new Types.ObjectId(), name: "다른 기업" }]),
+      );
+
+      await service.search({
+        q: "",
+        industry: "IT / AI / SaaS",
+        userId: USER_ID,
+      });
+
+      const [filterArg] = sellerModel.find.mock.calls[0];
+      expect(filterArg._id.$nin[0].toString()).toBe(savedId.toString());
+    });
+
+    it("텍스트 검색 모드: savedPartners ID가 $nin 필터로 전달됨", async () => {
+      const savedId = new Types.ObjectId();
+      userModel.findById.mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          savedPartners: [{ partnerId: savedId, partnerType: "seller" }],
+        }),
+      });
+      jest.spyOn(service as any, "generateHyDEAndKeywords").mockResolvedValue({
+        profile: "test",
+        keywords: "화장품",
+      });
+      embeddingsService.embed.mockResolvedValue([]);
+      sellerModel.find.mockReturnValue(buildQueryMock([]));
+
+      await service.search({ q: "화장품 제조사", userId: USER_ID });
+
+      const [filterArg] = sellerModel.find.mock.calls[0];
+      expect(filterArg._id.$nin[0].toString()).toBe(savedId.toString());
+    });
+
+    it("비로그인(userId 없음): userModel.findById 호출 안 함", async () => {
+      sellerModel.find.mockReturnValue(buildQueryMock([]));
+
+      await service.search({ q: "" });
+
+      expect(userModel.findById).not.toHaveBeenCalled();
+    });
+
+    it("savedPartners 없는 로그인 사용자: $nin 필터 적용 안 됨", async () => {
+      userModel.findById.mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ savedPartners: [] }),
+      });
+      sellerModel.find.mockReturnValue(buildQueryMock([]));
+
+      await service.search({ q: "", userId: USER_ID });
+
+      const [filterArg] = sellerModel.find.mock.calls[0];
+      expect(filterArg._id).toBeUndefined();
     });
   });
 });

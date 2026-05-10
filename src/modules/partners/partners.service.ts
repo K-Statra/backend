@@ -1,9 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import axios from "axios";
 import { Seller, SellerDocument } from "../sellers/schemas/seller.schema";
 import { Buyer, BuyerDocument } from "../buyers/schemas/buyer.schema";
+import { User, UserDocument } from "../users/schemas/user.schema";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 
 const INDUSTRY_MAPPING: Record<string, string[]> = {
@@ -53,6 +54,7 @@ export interface SearchOptions {
   partnership?: string;
   size?: string;
   buyerId?: string;
+  userId?: string;
 }
 
 export interface SearchResult {
@@ -104,6 +106,8 @@ export class PartnersService {
     private readonly sellerModel: Model<SellerDocument>,
     @InjectModel(Buyer.name)
     private readonly buyerModel: Model<BuyerDocument>,
+    @InjectModel(User.name)
+    private readonly userModel: Model<UserDocument>,
     private readonly embeddingsService: EmbeddingsService,
   ) {}
 
@@ -189,6 +193,17 @@ export class PartnersService {
       detectedIntent === "buyer" ? this.buyerModel : this.sellerModel;
     const isBuyerSearch = detectedIntent === "buyer";
 
+    // Exclude already-saved partners for logged-in users
+    const excludeObjectIds: Types.ObjectId[] = [];
+    if (opts.userId) {
+      const user = await this.userModel
+        .findById(opts.userId, { savedPartners: 1 })
+        .lean();
+      if (user?.savedPartners?.length) {
+        excludeObjectIds.push(...user.savedPartners.map((p) => p.partnerId));
+      }
+    }
+
     // --- 1. DB search (AI-Enhanced Parallel Hybrid) ---
     let vectorResults: any[] = [];
     let textResults: any[] = [];
@@ -208,7 +223,7 @@ export class PartnersService {
         `[Step 2.AI Analysis] took ${Math.round(performance.now() - aiStartTime)}ms. Keywords: "${aiKeywords}"`,
       );
 
-      // Define search tasks using AI output
+      // 텍스트 기반 검색
       const textSearchTask = (async () => {
         const textStartTime = performance.now();
         const filter: Record<string, any> = { $text: { $search: aiKeywords } };
@@ -243,6 +258,8 @@ export class PartnersService {
           if (isBuyerSearch) filter.country = country;
           else filter["location.country"] = country;
         }
+        if (excludeObjectIds.length > 0)
+          filter._id = { $nin: excludeObjectIds };
 
         const projection = isBuyerSearch
           ? {
@@ -325,6 +342,8 @@ export class PartnersService {
           if (isBuyerSearch) matchStage.country = country;
           else matchStage["location.country"] = country;
         }
+        if (excludeObjectIds.length > 0)
+          matchStage._id = { $nin: excludeObjectIds };
         if (Object.keys(matchStage).length > 0)
           pipeline.push({ $match: matchStage });
 
@@ -449,6 +468,7 @@ export class PartnersService {
         if (partnership) filter.tags = partnership;
         if (size) filter.sizeBucket = size;
       }
+      if (excludeObjectIds.length > 0) filter._id = { $nin: excludeObjectIds };
 
       const projection = isBuyerSearch
         ? {
@@ -494,7 +514,12 @@ export class PartnersService {
         : SEARCH_PROJECTION;
 
       const raw = await activeModel
-        .find({}, projection as any)
+        .find(
+          excludeObjectIds.length > 0
+            ? { _id: { $nin: excludeObjectIds } }
+            : {},
+          projection as any,
+        )
         .limit(Number(limit))
         .lean();
       dbResults = raw.map((r) => {

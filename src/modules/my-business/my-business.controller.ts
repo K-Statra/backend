@@ -1,4 +1,13 @@
-import { Controller, Get, Query, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { MyBusinessService } from "./my-business.service";
 import { SessionGuard } from "../../common/guards/session.guard";
@@ -7,6 +16,7 @@ import {
   type SessionUser,
 } from "src/common/decorators/current-user.decorator";
 import { GetPartnersQueryDto } from "./dto/getPartnersQuery.dto";
+import { SavePartnerDto } from "./dto/save-partner.dto";
 
 @ApiTags("My Business")
 @Controller("my-business")
@@ -50,5 +60,29 @@ export class MyBusinessController {
   ) {
     const { page, limit } = query;
     return this.myBusinessService.getPartners(user.userId, page, limit);
+  }
+
+  @Post("partners")
+  @ApiOperation({ summary: "파트너 저장" })
+  @ApiResponse({ status: 201, description: "파트너 저장 성공" })
+  @ApiResponse({ status: 409, description: "이미 저장된 파트너" })
+  @ApiResponse({ status: 404, description: "파트너를 찾을 수 없음" })
+  savePartner(@CurrentUser() user: SessionUser, @Body() dto: SavePartnerDto) {
+    return this.myBusinessService.savePartner(
+      user.userId,
+      dto.partnerId,
+      dto.partnerType,
+    );
+  }
+
+  @Delete("partners/:partnerId")
+  @ApiOperation({ summary: "저장된 파트너 삭제" })
+  @ApiResponse({ status: 200, description: "파트너 삭제 성공" })
+  @ApiResponse({ status: 404, description: "저장된 파트너를 찾을 수 없음" })
+  removePartner(
+    @CurrentUser() user: SessionUser,
+    @Param("partnerId") partnerId: string,
+  ) {
+    return this.myBusinessService.removePartner(user.userId, partnerId);
   }
 }

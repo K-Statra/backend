@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
-import { NotFoundException } from "@nestjs/common";
+import { ConflictException, NotFoundException } from "@nestjs/common";
 import { Types } from "mongoose";
 import { MyBusinessService } from "./my-business.service";
 import { User } from "../users/schemas/user.schema";
@@ -13,16 +13,20 @@ const USER_ID = new Types.ObjectId().toString();
 
 const makeUserModel = (overrides = {}) => ({
   findById: jest.fn(),
+  exists: jest.fn(),
+  updateOne: jest.fn(),
   ...overrides,
 });
 
 const makeSellerModel = (overrides = {}) => ({
   find: jest.fn(),
+  exists: jest.fn(),
   ...overrides,
 });
 
 const makeBuyerModel = (overrides = {}) => ({
   find: jest.fn(),
+  exists: jest.fn(),
   ...overrides,
 });
 
@@ -86,6 +90,99 @@ describe("MyBusinessService", () => {
       await expect(service.getProfile(USER_ID)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // ── savePartner ───────────────────────────────────────────────────────────────
+
+  describe("savePartner", () => {
+    const PARTNER_ID = new Types.ObjectId().toString();
+
+    it("파트너 저장 성공", async () => {
+      sellerModel.exists.mockResolvedValue({ _id: PARTNER_ID });
+      userModel.updateOne.mockResolvedValue({
+        matchedCount: 1,
+        modifiedCount: 1,
+      });
+
+      const result = await service.savePartner(USER_ID, PARTNER_ID, "seller");
+
+      expect(userModel.updateOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          _id: USER_ID,
+          "savedPartners.partnerId": expect.any(Object),
+        }),
+        expect.objectContaining({ $push: expect.any(Object) }),
+      );
+      expect(result).toEqual({ message: "파트너가 저장되었습니다." });
+    });
+
+    it("이미 저장된 파트너 → ConflictException", async () => {
+      sellerModel.exists.mockResolvedValue({ _id: PARTNER_ID });
+      userModel.updateOne.mockResolvedValue({
+        matchedCount: 0,
+        modifiedCount: 0,
+      });
+      userModel.exists.mockResolvedValue({ _id: USER_ID });
+
+      await expect(
+        service.savePartner(USER_ID, PARTNER_ID, "seller"),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it("존재하지 않는 파트너 ID → NotFoundException", async () => {
+      sellerModel.exists.mockResolvedValue(null);
+
+      await expect(
+        service.savePartner(USER_ID, PARTNER_ID, "seller"),
+      ).rejects.toThrow(NotFoundException);
+      expect(userModel.updateOne).not.toHaveBeenCalled();
+    });
+
+    it("buyer 파트너 저장 시 buyerModel.exists 호출", async () => {
+      buyerModel.exists.mockResolvedValue({ _id: PARTNER_ID });
+      userModel.updateOne.mockResolvedValue({
+        matchedCount: 1,
+        modifiedCount: 1,
+      });
+
+      await service.savePartner(USER_ID, PARTNER_ID, "buyer");
+
+      expect(buyerModel.exists).toHaveBeenCalled();
+      expect(sellerModel.exists).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── removePartner ─────────────────────────────────────────────────────────────
+
+  describe("removePartner", () => {
+    const PARTNER_ID = new Types.ObjectId().toString();
+
+    it("파트너 삭제 성공", async () => {
+      userModel.updateOne.mockResolvedValue({ modifiedCount: 1 });
+
+      const result = await service.removePartner(USER_ID, PARTNER_ID);
+
+      expect(userModel.updateOne).toHaveBeenCalledWith(
+        { _id: USER_ID },
+        expect.objectContaining({ $pull: expect.any(Object) }),
+      );
+      expect(result).toEqual({ message: "파트너가 삭제되었습니다." });
+    });
+
+    it("저장되지 않은 파트너 삭제 → NotFoundException", async () => {
+      userModel.updateOne.mockResolvedValue({ modifiedCount: 0 });
+
+      await expect(service.removePartner(USER_ID, PARTNER_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("유효하지 않은 ObjectId → NotFoundException", async () => {
+      await expect(
+        service.removePartner(USER_ID, "not-a-valid-id"),
+      ).rejects.toThrow(NotFoundException);
+      expect(userModel.updateOne).not.toHaveBeenCalled();
     });
   });
 
