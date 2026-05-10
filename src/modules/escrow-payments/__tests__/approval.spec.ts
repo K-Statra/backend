@@ -35,74 +35,73 @@ describe("EscrowPaymentsService › approvePayment", () => {
     ctx = await makeServiceTestingModule();
   });
 
-  it("buyer 최초 승인 → PENDING_APPROVAL, buyerApproved=true", async () => {
-    const payment = makePayment({ status: "DRAFT" });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+  // ── buyer가 생성한 결제 (buyerApproved=true 자동 설정) ──────────────────────
 
-    await ctx.service.approvePayment(
-      PAYMENT_ID.toString(),
-      BUYER_ID.toString(),
-    );
+  describe("buyer가 생성한 결제", () => {
+    it("seller 승인 → APPROVED, sellerApproved=true", async () => {
+      const payment = makePayment({
+        status: "DRAFT",
+        buyerApproved: true,
+        buyerApprovedAt: new Date(),
+      });
+      ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
-    expect(payment.buyerApproved).toBe(true);
-    expect(payment.buyerApprovedAt).toBeInstanceOf(Date);
-    expect(payment.status).toBe("PENDING_APPROVAL");
-    expect(payment.save).toHaveBeenCalled();
-  });
+      await ctx.service.approvePayment(
+        PAYMENT_ID.toString(),
+        SELLER_ID.toString(),
+      );
 
-  it("seller 최초 승인 → PENDING_APPROVAL, sellerApproved=true", async () => {
-    const payment = makePayment({ status: "DRAFT" });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
-
-    await ctx.service.approvePayment(
-      PAYMENT_ID.toString(),
-      SELLER_ID.toString(),
-    );
-
-    expect(payment.sellerApproved).toBe(true);
-    expect(payment.status).toBe("PENDING_APPROVAL");
-  });
-
-  it("양측 모두 승인 → APPROVED", async () => {
-    const payment = makePayment({
-      status: "PENDING_APPROVAL",
-      buyerApproved: true,
-      buyerApprovedAt: new Date(),
+      expect(payment.sellerApproved).toBe(true);
+      expect(payment.sellerApprovedAt).toBeInstanceOf(Date);
+      expect(payment.status).toBe("APPROVED");
+      expect(payment.save).toHaveBeenCalled();
     });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
-    await ctx.service.approvePayment(
-      PAYMENT_ID.toString(),
-      SELLER_ID.toString(),
-    );
+    it("buyer 중복 승인 → AlreadyApprovedPaymentException, save 미호출", async () => {
+      const payment = makePayment({ status: "DRAFT", buyerApproved: true });
+      ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
-    expect(payment.status).toBe("APPROVED");
-  });
-
-  it("buyer 중복 승인 → AlreadyApprovedPaymentException, save 미호출", async () => {
-    const payment = makePayment({
-      status: "PENDING_APPROVAL",
-      buyerApproved: true,
+      await expect(
+        ctx.service.approvePayment(PAYMENT_ID.toString(), BUYER_ID.toString()),
+      ).rejects.toThrow(AlreadyApprovedPaymentException);
+      expect(payment.save).not.toHaveBeenCalled();
     });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
-
-    await expect(
-      ctx.service.approvePayment(PAYMENT_ID.toString(), BUYER_ID.toString()),
-    ).rejects.toThrow(AlreadyApprovedPaymentException);
-    expect(payment.save).not.toHaveBeenCalled();
   });
 
-  it("seller 중복 승인 → AlreadyApprovedPaymentException", async () => {
-    const payment = makePayment({
-      status: "PENDING_APPROVAL",
-      sellerApproved: true,
+  // ── seller가 생성한 결제 (sellerApproved=true 자동 설정) ────────────────────
+
+  describe("seller가 생성한 결제", () => {
+    it("buyer 승인 → APPROVED, buyerApproved=true", async () => {
+      const payment = makePayment({
+        status: "DRAFT",
+        sellerApproved: true,
+        sellerApprovedAt: new Date(),
+      });
+      ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+
+      await ctx.service.approvePayment(
+        PAYMENT_ID.toString(),
+        BUYER_ID.toString(),
+      );
+
+      expect(payment.buyerApproved).toBe(true);
+      expect(payment.buyerApprovedAt).toBeInstanceOf(Date);
+      expect(payment.status).toBe("APPROVED");
+      expect(payment.save).toHaveBeenCalled();
     });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
-    await expect(
-      ctx.service.approvePayment(PAYMENT_ID.toString(), SELLER_ID.toString()),
-    ).rejects.toThrow(AlreadyApprovedPaymentException);
+    it("seller 중복 승인 → AlreadyApprovedPaymentException, save 미호출", async () => {
+      const payment = makePayment({ status: "DRAFT", sellerApproved: true });
+      ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+
+      await expect(
+        ctx.service.approvePayment(PAYMENT_ID.toString(), SELLER_ID.toString()),
+      ).rejects.toThrow(AlreadyApprovedPaymentException);
+      expect(payment.save).not.toHaveBeenCalled();
+    });
   });
+
+  // ── 공통 ────────────────────────────────────────────────────────────────────
 
   it("ACTIVE 상태에서 승인 시도 → InvalidPaymentStatusException", async () => {
     const payment = makePayment({ status: "ACTIVE" });
