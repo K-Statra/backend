@@ -395,7 +395,9 @@ describe("EscrowPayments (e2e)", () => {
       await request(app.getHttpServer())
         .post("/escrow-payments")
         .set(asBuyer())
-        .send(baseCreatePayload({ counterpartyWalletAddress: "invalid-address" }))
+        .send(
+          baseCreatePayload({ counterpartyWalletAddress: "invalid-address" }),
+        )
         .expect(400);
     });
 
