@@ -39,7 +39,9 @@ export class EscrowPaymentsService {
   ) {}
 
   /**
-   * 결제 승인 메서드 (buyer가 생성한 결제 내역을 seller가 승인하는 절차)
+   * 결제 승인 메서드 — 결제 생성자(buyer/seller)의 상대방이 호출해 APPROVED로 전환
+   * buyer 생성 시: seller가 호출 → APPROVED
+   * seller 생성 시: buyer가 호출 → APPROVED
    */
   async approvePayment(
     paymentId: string,

@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import {
+  BuyerWalletNotFoundException,
   EscrowPaymentNotFoundException,
   SellerWalletNotFoundException,
   UnauthorizedPaymentActionException,
@@ -27,29 +28,59 @@ export class EscrowPaymentsCrudService {
     dto: CreateEscrowPaymentDto,
     userId: string,
   ): Promise<EscrowPaymentDocument> {
-    if (userId !== dto.buyerId) {
+    const creator = await this.userModel.findById(userId, { type: 1 }).lean();
+    if (!creator) throw new UnauthorizedPaymentActionException();
+
+    const now = new Date();
+    let buyerId: string;
+    let sellerId: string;
+    let buyerApproved = false;
+    let buyerApprovedAt: Date | undefined;
+    let sellerApproved = false;
+    let sellerApprovedAt: Date | undefined;
+
+    if (creator.type === "buyer") {
+      const seller = await this.userModel
+        .findOne(
+          { "wallet.address": dto.counterpartyWalletAddress, type: "seller" },
+          { _id: 1 },
+        )
+        .lean();
+      if (!seller)
+        throw new SellerWalletNotFoundException(dto.counterpartyWalletAddress);
+
+      buyerId = userId;
+      sellerId = seller._id.toString();
+      buyerApproved = true;
+      buyerApprovedAt = now;
+    } else if (creator.type === "seller") {
+      const buyer = await this.userModel
+        .findOne(
+          { "wallet.address": dto.counterpartyWalletAddress, type: "buyer" },
+          { _id: 1 },
+        )
+        .lean();
+      if (!buyer)
+        throw new BuyerWalletNotFoundException(dto.counterpartyWalletAddress);
+
+      buyerId = buyer._id.toString();
+      sellerId = userId;
+      sellerApproved = true;
+      sellerApprovedAt = now;
+    } else {
       throw new UnauthorizedPaymentActionException();
     }
 
-    const seller = await this.userModel
-      .findOne(
-        { "wallet.address": dto.sellerWalletAddress, type: "seller" },
-        { _id: 1 },
-      )
-      .lean();
-    if (!seller)
-      throw new SellerWalletNotFoundException(dto.sellerWalletAddress);
-
-    const sellerId = seller._id.toString();
     const totalAmountXrp = dto.escrows.reduce((sum, e) => sum + e.amountXrp, 0);
 
-    const now = new Date();
     const doc = new this.escrowPaymentModel({
-      buyerId: new Types.ObjectId(dto.buyerId),
+      buyerId: new Types.ObjectId(buyerId),
       sellerId: new Types.ObjectId(sellerId),
       totalAmountXrp,
-      buyerApproved: true,
-      buyerApprovedAt: now,
+      buyerApproved,
+      buyerApprovedAt,
+      sellerApproved,
+      sellerApprovedAt,
       currency: dto.currency ?? "XRP",
       memo: dto.memo ?? "",
       escrows: dto.escrows.map((e) => ({

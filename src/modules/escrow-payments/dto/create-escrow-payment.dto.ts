@@ -5,7 +5,6 @@ import {
   ArrayMinSize,
   IsEnum,
   IsInt,
-  IsMongoId,
   IsNumber,
   IsOptional,
   IsPositive,
@@ -42,21 +41,15 @@ export class EscrowItemDto {
 
 export class CreateEscrowPaymentDto {
   @ApiProperty({
-    description: "구매자 User ID (MongoDB ObjectId)",
-    example: "665f1a2b3c4d5e6f7a8b9c0d",
-  })
-  @IsMongoId()
-  buyerId: string;
-
-  @ApiProperty({
-    description: "판매자 XRPL 지갑 주소",
+    description:
+      "상대방(거래 상대) XRPL 지갑 주소. buyer가 생성하면 seller 주소, seller가 생성하면 buyer 주소.",
     example: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
   })
   @IsString()
   @Matches(/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/, {
-    message: "sellerWalletAddress must be a valid XRPL address",
+    message: "counterpartyWalletAddress must be a valid XRPL address",
   })
-  sellerWalletAddress: string;
+  counterpartyWalletAddress: string;
 
   @ApiProperty({
     description: "결제 메모",

@@ -108,3 +108,9 @@ export class SellerWalletNotFoundException extends NotFoundException {
     super(`Seller with wallet address "${walletAddress}" not found`);
   }
 }
+
+export class BuyerWalletNotFoundException extends NotFoundException {
+  constructor(walletAddress: string) {
+    super(`Buyer with wallet address "${walletAddress}" not found`);
+  }
+}
