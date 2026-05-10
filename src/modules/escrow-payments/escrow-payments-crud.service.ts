@@ -122,4 +122,12 @@ export class EscrowPaymentsCrudService {
 
     return doc;
   }
+
+  async findUserByWalletAddress(walletAddress: string): Promise<UserDocument> {
+    const user = await this.userModel
+      .findOne({ "wallet.address": walletAddress })
+      .lean();
+    if (!user) throw new SellerWalletNotFoundException(walletAddress);
+    return user;
+  }
 }
