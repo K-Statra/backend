@@ -1020,9 +1020,6 @@ describe("EscrowPayments (e2e)", () => {
     it("ESCROWED 항목 취소 시도 → 400", async () => {
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer());
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${paymentId}/approve`)
         .set(asSeller());
       // POST /pay → PROCESSING → 비동기 EscrowCreate → ESCROWED
       await request(app.getHttpServer())
