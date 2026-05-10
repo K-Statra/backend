@@ -254,9 +254,7 @@ describe("RLUSD 에스크로 결제 (mock e2e)", () => {
     const paymentId: string = createRes.body._id;
     const escrowItemId: string = createRes.body.escrows[0]._id;
 
-    await request(app.getHttpServer())
-      .post(`/escrow-payments/${paymentId}/approve`)
-      .set(asBuyer());
+    // buyer는 생성 시 자동 승인되므로 seller만 승인하면 APPROVED
     await request(app.getHttpServer())
       .post(`/escrow-payments/${paymentId}/approve`)
       .set(asSeller());
@@ -324,9 +322,7 @@ describe("RLUSD 에스크로 결제 (mock e2e)", () => {
         .expect(201);
       const paymentId = createRes.body._id;
 
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer());
+      // buyer는 생성 시 자동 승인되므로 seller만 승인하면 APPROVED
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
         .set(asSeller());
@@ -354,9 +350,7 @@ describe("RLUSD 에스크로 결제 (mock e2e)", () => {
         .expect(201);
       const paymentId = createRes.body._id;
 
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer());
+      // buyer는 생성 시 자동 승인되므로 seller만 승인하면 APPROVED
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
         .set(asSeller());
@@ -381,9 +375,7 @@ describe("RLUSD 에스크로 결제 (mock e2e)", () => {
         .expect(201);
       const paymentId = createRes.body._id;
 
-      await request(app.getHttpServer())
-        .post(`/escrow-payments/${paymentId}/approve`)
-        .set(asBuyer());
+      // buyer는 생성 시 자동 승인되므로 seller만 승인하면 APPROVED
       await request(app.getHttpServer())
         .post(`/escrow-payments/${paymentId}/approve`)
         .set(asSeller());
