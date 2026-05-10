@@ -13,7 +13,7 @@ import {
 const SELLER_WALLET_ADDRESS = "rSellerAddress456";
 const BUYER_WALLET_ADDRESS = "rBuyerAddress123";
 
-const escrows = [
+const makeEscrows = () => [
   {
     label: "초기금",
     amountXrp: 300,
@@ -34,11 +34,11 @@ describe("EscrowPaymentsCrudService › create", () => {
   // ── buyer가 생성 ──────────────────────────────────────────────────────────
 
   describe("buyer가 생성", () => {
-    const dto = {
+    const makeDto = () => ({
       counterpartyWalletAddress: SELLER_WALLET_ADDRESS,
       memo: "수출 대금",
-      escrows,
-    };
+      escrows: makeEscrows(),
+    });
 
     beforeEach(async () => {
       ctx = await makeCrudServiceTestingModule();
@@ -47,14 +47,14 @@ describe("EscrowPaymentsCrudService › create", () => {
     });
 
     it("totalAmountXrp를 escrow 항목 합산으로 계산", async () => {
-      await ctx.service.create(dto, BUYER_ID.toString());
+      await ctx.service.create(makeDto(), BUYER_ID.toString());
 
       const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
       expect(constructorArg.totalAmountXrp).toBe(1000);
     });
 
     it("각 escrow 항목의 approvals를 requiredEventTypes로 초기화", async () => {
-      await ctx.service.create(dto, BUYER_ID.toString());
+      await ctx.service.create(makeDto(), BUYER_ID.toString());
 
       const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
       expect(constructorArg.escrows[0].approvals).toEqual([
@@ -68,7 +68,7 @@ describe("EscrowPaymentsCrudService › create", () => {
     });
 
     it("생성자(buyer)의 buyerApproved를 true로 자동 설정", async () => {
-      await ctx.service.create(dto, BUYER_ID.toString());
+      await ctx.service.create(makeDto(), BUYER_ID.toString());
 
       const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
       expect(constructorArg.buyerApproved).toBe(true);
@@ -80,13 +80,13 @@ describe("EscrowPaymentsCrudService › create", () => {
       const instance = { save: jest.fn().mockResolvedValue({}) };
       ctx.escrowPaymentModel.mockReturnValue(instance);
 
-      await ctx.service.create(dto, BUYER_ID.toString());
+      await ctx.service.create(makeDto(), BUYER_ID.toString());
 
       expect(instance.save).toHaveBeenCalled();
     });
 
     it("counterpartyWalletAddress로 seller 조회 후 sellerId를 document에 주입", async () => {
-      await ctx.service.create(dto, BUYER_ID.toString());
+      await ctx.service.create(makeDto(), BUYER_ID.toString());
 
       expect(ctx.userModel.findOne).toHaveBeenCalledWith(
         { "wallet.address": SELLER_WALLET_ADDRESS, type: "seller" },
@@ -101,7 +101,7 @@ describe("EscrowPaymentsCrudService › create", () => {
       ctx.userModel.findOne.mockReturnValue(makeQueryChain(null));
 
       await expect(
-        ctx.service.create(dto, BUYER_ID.toString()),
+        ctx.service.create(makeDto(), BUYER_ID.toString()),
       ).rejects.toThrow(SellerWalletNotFoundException);
     });
   });
@@ -109,11 +109,11 @@ describe("EscrowPaymentsCrudService › create", () => {
   // ── seller가 생성 ──────────────────────────────────────────────────────────
 
   describe("seller가 생성", () => {
-    const dto = {
+    const makeDto = () => ({
       counterpartyWalletAddress: BUYER_WALLET_ADDRESS,
       memo: "수출 대금",
-      escrows,
-    };
+      escrows: makeEscrows(),
+    });
 
     beforeEach(async () => {
       ctx = await makeCrudServiceTestingModule();
@@ -124,7 +124,7 @@ describe("EscrowPaymentsCrudService › create", () => {
     });
 
     it("생성자(seller)의 sellerApproved를 true로 자동 설정", async () => {
-      await ctx.service.create(dto, SELLER_ID.toString());
+      await ctx.service.create(makeDto(), SELLER_ID.toString());
 
       const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
       expect(constructorArg.sellerApproved).toBe(true);
@@ -133,7 +133,7 @@ describe("EscrowPaymentsCrudService › create", () => {
     });
 
     it("counterpartyWalletAddress로 buyer 조회 후 buyerId를 document에 주입", async () => {
-      await ctx.service.create(dto, SELLER_ID.toString());
+      await ctx.service.create(makeDto(), SELLER_ID.toString());
 
       expect(ctx.userModel.findOne).toHaveBeenCalledWith(
         { "wallet.address": BUYER_WALLET_ADDRESS, type: "buyer" },
@@ -148,7 +148,7 @@ describe("EscrowPaymentsCrudService › create", () => {
       ctx.userModel.findOne.mockReturnValue(makeQueryChain(null));
 
       await expect(
-        ctx.service.create(dto, SELLER_ID.toString()),
+        ctx.service.create(makeDto(), SELLER_ID.toString()),
       ).rejects.toThrow(BuyerWalletNotFoundException);
     });
   });
@@ -161,7 +161,10 @@ describe("EscrowPaymentsCrudService › create", () => {
 
     await expect(
       ctx.service.create(
-        { counterpartyWalletAddress: SELLER_WALLET_ADDRESS, escrows },
+        {
+          counterpartyWalletAddress: SELLER_WALLET_ADDRESS,
+          escrows: makeEscrows(),
+        },
         "000000000000000000000000",
       ),
     ).rejects.toThrow(UnauthorizedPaymentActionException);
