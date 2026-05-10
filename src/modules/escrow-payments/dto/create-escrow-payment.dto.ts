@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  Matches,
   Min,
   ValidateNested,
 } from "class-validator";
@@ -48,11 +49,14 @@ export class CreateEscrowPaymentDto {
   buyerId: string;
 
   @ApiProperty({
-    description: "판매자 User ID (MongoDB ObjectId)",
-    example: "665f1a2b3c4d5e6f7a8b9c0e",
+    description: "판매자 XRPL 지갑 주소",
+    example: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
   })
-  @IsMongoId()
-  sellerId: string;
+  @IsString()
+  @Matches(/^r[1-9A-HJ-NP-Za-km-z]{24,33}$/, {
+    message: "sellerWalletAddress must be a valid XRPL address",
+  })
+  sellerWalletAddress: string;
 
   @ApiProperty({
     description: "결제 메모",
