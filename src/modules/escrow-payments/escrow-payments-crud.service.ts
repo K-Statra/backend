@@ -28,12 +28,16 @@ export class EscrowPaymentsCrudService {
     dto: CreateEscrowPaymentDto,
     userId: string,
   ): Promise<EscrowPaymentDocument> {
-    const creator = await this.userModel.findById(userId, { type: 1 }).lean();
+    const creator = await this.userModel
+      .findById(userId, { type: 1, name: 1 })
+      .lean();
     if (!creator) throw new UnauthorizedPaymentActionException();
 
     const now = new Date();
     let buyerId: string;
+    let buyerName: string;
     let sellerId: string;
+    let sellerName: string;
     let buyerApproved = false;
     let buyerApprovedAt: Date | undefined;
     let sellerApproved = false;
@@ -43,28 +47,32 @@ export class EscrowPaymentsCrudService {
       const seller = await this.userModel
         .findOne(
           { "wallet.address": dto.counterpartyWalletAddress, type: "seller" },
-          { _id: 1 },
+          { _id: 1, name: 1 },
         )
         .lean();
       if (!seller)
         throw new SellerWalletNotFoundException(dto.counterpartyWalletAddress);
 
       buyerId = userId;
+      buyerName = creator.name;
       sellerId = seller._id.toString();
+      sellerName = seller.name;
       buyerApproved = true;
       buyerApprovedAt = now;
     } else if (creator.type === "seller") {
       const buyer = await this.userModel
         .findOne(
           { "wallet.address": dto.counterpartyWalletAddress, type: "buyer" },
-          { _id: 1 },
+          { _id: 1, name: 1 },
         )
         .lean();
       if (!buyer)
         throw new BuyerWalletNotFoundException(dto.counterpartyWalletAddress);
 
       buyerId = buyer._id.toString();
+      buyerName = buyer.name;
       sellerId = userId;
+      sellerName = creator.name;
       sellerApproved = true;
       sellerApprovedAt = now;
     } else {
@@ -75,7 +83,9 @@ export class EscrowPaymentsCrudService {
 
     const doc = new this.escrowPaymentModel({
       buyerId: new Types.ObjectId(buyerId),
+      buyerName,
       sellerId: new Types.ObjectId(sellerId),
+      sellerName,
       totalAmountXrp,
       buyerApproved,
       buyerApprovedAt,
@@ -103,7 +113,7 @@ export class EscrowPaymentsCrudService {
     userId: string,
     dto: QueryEscrowPaymentDto,
   ): Promise<{
-    data: EscrowPaymentDocument[];
+    data: any[];
     total: number;
     page: number;
     limit: number;
@@ -136,8 +146,17 @@ export class EscrowPaymentsCrudService {
       this.escrowPaymentModel.countDocuments(filter),
     ]);
 
+    const mappedData = data.map((item: any) => {
+      const isBuyer = item.buyerId.toString() === userId;
+      const partnerName = isBuyer ? item.sellerName : item.buyerName;
+      return {
+        ...item,
+        partnerName,
+      };
+    });
+
     return {
-      data: data as unknown as EscrowPaymentDocument[],
+      data: mappedData,
       total,
       page,
       limit,
