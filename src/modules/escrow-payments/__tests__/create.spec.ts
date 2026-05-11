@@ -42,8 +42,12 @@ describe("EscrowPaymentsCrudService › create", () => {
 
     beforeEach(async () => {
       ctx = await makeCrudServiceTestingModule();
-      ctx.userModel.findById.mockReturnValue(makeQueryChain({ type: "buyer" }));
-      ctx.userModel.findOne.mockReturnValue(makeQueryChain({ _id: SELLER_ID }));
+      ctx.userModel.findById.mockReturnValue(
+        makeQueryChain({ type: "buyer", name: "Buyer Corp" }),
+      );
+      ctx.userModel.findOne.mockReturnValue(
+        makeQueryChain({ _id: SELLER_ID, name: "Seller Corp" }),
+      );
     });
 
     it("totalAmountXrp를 escrow 항목 합산으로 계산", async () => {
@@ -90,7 +94,7 @@ describe("EscrowPaymentsCrudService › create", () => {
 
       expect(ctx.userModel.findOne).toHaveBeenCalledWith(
         { "wallet.address": SELLER_WALLET_ADDRESS, type: "seller" },
-        { _id: 1 },
+        { _id: 1, name: 1 },
       );
 
       const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
@@ -118,9 +122,11 @@ describe("EscrowPaymentsCrudService › create", () => {
     beforeEach(async () => {
       ctx = await makeCrudServiceTestingModule();
       ctx.userModel.findById.mockReturnValue(
-        makeQueryChain({ type: "seller" }),
+        makeQueryChain({ type: "seller", name: "Seller Corp" }),
       );
-      ctx.userModel.findOne.mockReturnValue(makeQueryChain({ _id: BUYER_ID }));
+      ctx.userModel.findOne.mockReturnValue(
+        makeQueryChain({ _id: BUYER_ID, name: "Buyer Corp" }),
+      );
     });
 
     it("생성자(seller)의 sellerApproved를 true로 자동 설정", async () => {
@@ -137,7 +143,7 @@ describe("EscrowPaymentsCrudService › create", () => {
 
       expect(ctx.userModel.findOne).toHaveBeenCalledWith(
         { "wallet.address": BUYER_WALLET_ADDRESS, type: "buyer" },
-        { _id: 1 },
+        { _id: 1, name: 1 },
       );
 
       const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
