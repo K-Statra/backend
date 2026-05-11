@@ -79,7 +79,9 @@ export function makePayment(overrides: object = {}) {
   const doc: any = {
     _id: PAYMENT_ID,
     buyerId: BUYER_ID,
+    buyerName: "Default Buyer Corp",
     sellerId: SELLER_ID,
+    sellerName: "Default Seller Corp",
     totalAmountXrp: 300,
     status: "DRAFT",
     memo: "",

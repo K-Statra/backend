@@ -15,6 +15,18 @@ import { User, UserDocument } from "../users/schemas/user.schema";
 import { CreateEscrowPaymentDto } from "./dto/create-escrow-payment.dto";
 import { QueryEscrowPaymentDto } from "./dto/query-escrow-payment.dto";
 
+export interface EscrowPaymentWithPartner extends Omit<
+  EscrowPayment,
+  "buyerId" | "sellerId"
+> {
+  _id: Types.ObjectId;
+  buyerId: Types.ObjectId;
+  sellerId: Types.ObjectId;
+  partnerName: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 @Injectable()
 export class EscrowPaymentsCrudService {
   constructor(
@@ -113,7 +125,7 @@ export class EscrowPaymentsCrudService {
     userId: string,
     dto: QueryEscrowPaymentDto,
   ): Promise<{
-    data: any[];
+    data: EscrowPaymentWithPartner[];
     total: number;
     page: number;
     limit: number;
