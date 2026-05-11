@@ -56,7 +56,10 @@ describe("EscrowPaymentsService › initiatePayment", () => {
   });
 
   it("APPROVED 아닌 상태 → PaymentNotApprovedForPayException", async () => {
-    const payment = makePayment({ status: "DRAFT", buyerId: BUYER_ID });
+    const payment = makePayment({
+      status: "PENDING_APPROVAL",
+      buyerId: BUYER_ID,
+    });
     ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
     await expect(

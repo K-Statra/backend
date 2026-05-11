@@ -7,7 +7,6 @@ export class QueryEscrowPaymentDto {
   @ApiPropertyOptional({
     description: "상태 필터",
     enum: [
-      "DRAFT",
       "PENDING_APPROVAL",
       "APPROVED",
       "PROCESSING",
@@ -18,7 +17,6 @@ export class QueryEscrowPaymentDto {
   })
   @IsOptional()
   @IsEnum([
-    "DRAFT",
     "PENDING_APPROVAL",
     "APPROVED",
     "PROCESSING",

@@ -103,6 +103,7 @@ export class EscrowPaymentsCrudService {
       buyerApprovedAt,
       sellerApproved,
       sellerApprovedAt,
+      status: "PENDING_APPROVAL",
       currency: dto.currency ?? "XRP",
       memo: dto.memo ?? "",
       escrows: dto.escrows.map((e) => ({
@@ -141,7 +142,7 @@ export class EscrowPaymentsCrudService {
       filter.status = status;
     } else if (group === "ongoing") {
       filter.status = {
-        $in: ["DRAFT", "PENDING_APPROVAL", "APPROVED", "PROCESSING", "ACTIVE"],
+        $in: ["PENDING_APPROVAL", "APPROVED", "PROCESSING", "ACTIVE"],
       };
     } else if (group === "done") {
       filter.status = { $in: ["COMPLETED", "CANCELLED"] };

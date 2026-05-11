@@ -83,7 +83,7 @@ export function makePayment(overrides: object = {}) {
     sellerId: SELLER_ID,
     sellerName: "Default Seller Corp",
     totalAmountXrp: 300,
-    status: "DRAFT",
+    status: "PENDING_APPROVAL",
     memo: "",
     buyerApproved: false,
     buyerApprovedAt: undefined,

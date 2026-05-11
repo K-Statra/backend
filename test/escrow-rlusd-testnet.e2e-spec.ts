@@ -265,7 +265,7 @@ describe("RLUSD 에스크로 결제 테스트넷 통합 테스트", () => {
     const paymentId = payment._id.toString();
     const escrowItemId = payment.escrows[0]._id.toString();
 
-    expect(payment.status).toBe("DRAFT");
+    expect(payment.status).toBe("PENDING_APPROVAL");
     expect(payment.buyerApproved).toBe(true);
     expect(payment.buyerApprovedAt).toBeDefined();
     expect(payment.currency).toBe("RLUSD");

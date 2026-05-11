@@ -338,7 +338,7 @@ describe("EscrowPayments (e2e)", () => {
   // ── POST /escrow-payments ─────────────────────────────────────────────────
 
   describe("POST /escrow-payments", () => {
-    it("정상 데이터 → 201, DRAFT 상태로 생성", async () => {
+    it("정상 데이터 → 201, PENDING_APPROVAL 상태로 생성", async () => {
       const res = await request(app.getHttpServer())
         .post("/escrow-payments")
         .set(asBuyer())
@@ -346,7 +346,7 @@ describe("EscrowPayments (e2e)", () => {
         .expect(201);
 
       expect(res.body._id).toBeDefined();
-      expect(res.body.status).toBe("DRAFT");
+      expect(res.body.status).toBe("PENDING_APPROVAL");
       expect(res.body.totalAmountXrp).toBe(500);
       expect(res.body.buyerApproved).toBe(true);
       expect(res.body.buyerApprovedAt).toBeDefined();
@@ -448,7 +448,7 @@ describe("EscrowPayments (e2e)", () => {
       });
     });
 
-    it("group=ongoing → DRAFT/PENDING_APPROVAL/APPROVED/PROCESSING/ACTIVE 만 포함", async () => {
+    it("group=ongoing → PENDING_APPROVAL/APPROVED/PROCESSING/ACTIVE 만 포함", async () => {
       const res = await request(app.getHttpServer())
         .get("/escrow-payments?group=ongoing")
         .set(asBuyer())
@@ -456,7 +456,6 @@ describe("EscrowPayments (e2e)", () => {
 
       for (const p of res.body.data) {
         expect([
-          "DRAFT",
           "PENDING_APPROVAL",
           "APPROVED",
           "PROCESSING",
@@ -735,15 +734,15 @@ describe("EscrowPayments (e2e)", () => {
         .expect(403);
     });
 
-    it("APPROVED 아닌 결제(DRAFT) → 400", async () => {
-      const draftRes = await request(app.getHttpServer())
+    it("APPROVED 아닌 결제(PENDING_APPROVAL) → 400", async () => {
+      const pendingRes = await request(app.getHttpServer())
         .post("/escrow-payments")
         .set(asBuyer())
         .send(baseCreatePayload());
-      const draftId = draftRes.body._id;
+      const pendingId = pendingRes.body._id;
 
       await request(app.getHttpServer())
-        .post(`/escrow-payments/${draftId}/pay`)
+        .post(`/escrow-payments/${pendingId}/pay`)
         .set(asBuyer())
         .expect(400);
     });

@@ -3,7 +3,6 @@ import { Document, Types } from "mongoose";
 
 export type EscrowPaymentDocument = EscrowPayment & Document;
 export type EscrowPaymentStatus =
-  | "DRAFT"
   | "PENDING_APPROVAL"
   | "APPROVED"
   | "PROCESSING"
@@ -94,7 +93,6 @@ export class EscrowPayment {
   @Prop({
     type: String,
     enum: [
-      "DRAFT",
       "PENDING_APPROVAL",
       "APPROVED",
       "PROCESSING",
@@ -102,7 +100,7 @@ export class EscrowPayment {
       "COMPLETED",
       "CANCELLED",
     ],
-    default: "DRAFT",
+    default: "PENDING_APPROVAL",
     index: true,
   })
   status: EscrowPaymentStatus;
