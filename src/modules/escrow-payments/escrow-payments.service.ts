@@ -54,7 +54,7 @@ export class EscrowPaymentsService {
     const isSeller = payment.sellerId.toString() === userId;
     if (!isBuyer && !isSeller) throw new UnauthorizedPaymentActionException();
 
-    if (payment.status !== "DRAFT" && payment.status !== "PENDING_APPROVAL") {
+    if (payment.status !== "PENDING_APPROVAL") {
       throw new InvalidPaymentStatusException(payment.status);
     }
 

@@ -40,7 +40,7 @@ describe("EscrowPaymentsService › approvePayment", () => {
   describe("buyer가 생성한 결제", () => {
     it("seller 승인 → APPROVED, sellerApproved=true", async () => {
       const payment = makePayment({
-        status: "DRAFT",
+        status: "PENDING_APPROVAL",
         buyerApproved: true,
         buyerApprovedAt: new Date(),
       });
@@ -58,7 +58,10 @@ describe("EscrowPaymentsService › approvePayment", () => {
     });
 
     it("buyer 중복 승인 → AlreadyApprovedPaymentException, save 미호출", async () => {
-      const payment = makePayment({ status: "DRAFT", buyerApproved: true });
+      const payment = makePayment({
+        status: "PENDING_APPROVAL",
+        buyerApproved: true,
+      });
       ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
       await expect(
@@ -73,7 +76,7 @@ describe("EscrowPaymentsService › approvePayment", () => {
   describe("seller가 생성한 결제", () => {
     it("buyer 승인 → APPROVED, buyerApproved=true", async () => {
       const payment = makePayment({
-        status: "DRAFT",
+        status: "PENDING_APPROVAL",
         sellerApproved: true,
         sellerApprovedAt: new Date(),
       });
@@ -91,7 +94,10 @@ describe("EscrowPaymentsService › approvePayment", () => {
     });
 
     it("seller 중복 승인 → AlreadyApprovedPaymentException, save 미호출", async () => {
-      const payment = makePayment({ status: "DRAFT", sellerApproved: true });
+      const payment = makePayment({
+        status: "PENDING_APPROVAL",
+        sellerApproved: true,
+      });
       ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
       await expect(
@@ -113,7 +119,7 @@ describe("EscrowPaymentsService › approvePayment", () => {
   });
 
   it("buyer도 seller도 아닌 제3자 → UnauthorizedPaymentActionException", async () => {
-    const payment = makePayment({ status: "DRAFT" });
+    const payment = makePayment({ status: "PENDING_APPROVAL" });
     ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
     await expect(

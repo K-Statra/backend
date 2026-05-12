@@ -57,7 +57,7 @@ export class EscrowPaymentsController {
     summary: "내 에스크로 결제 목록 조회",
     description:
       "로그인한 유저가 buyer 또는 seller로 참여한 에스크로 결제 내역을 최신순으로 반환합니다. " +
-      "group=ongoing이면 진행중(DRAFT/PENDING_APPROVAL/ACTIVE), group=done이면 종료(COMPLETED/CANCELLED) 필터링.",
+      "group=ongoing이면 진행중(PENDING_APPROVAL/APPROVED/PROCESSING/ACTIVE), group=done이면 종료(COMPLETED/CANCELLED) 필터링.",
   })
   @ApiResponse({
     status: 200,
@@ -75,7 +75,7 @@ export class EscrowPaymentsController {
   @ApiOperation({
     summary: "에스크로 결제 내역 생성",
     description:
-      "buyer/seller 간 에스크로 결제 계획을 생성합니다. 생성 직후 상태는 DRAFT이며, 양측이 모두 승인해야 ACTIVE로 전환됩니다.",
+      "buyer/seller 간 에스크로 결제 계획을 생성합니다. 생성 직후 상태는 PENDING_APPROVAL이며, 양측이 모두 승인해야 APPROVED로 전환됩니다.",
   })
   @ApiBody({ type: CreateEscrowPaymentDto })
   @ApiResponse({ status: 201, description: "결제 내역 생성 성공" })
@@ -109,14 +109,15 @@ export class EscrowPaymentsController {
     summary: "결제 계획 승인",
     description:
       "세션 유저(buyer 또는 seller)가 결제 계획을 승인합니다. " +
-      "한 쪽만 승인하면 PENDING_APPROVAL, 양측 모두 승인하면 ACTIVE로 전환됩니다. " +
-      "ACTIVE 상태여야 XRPL 에스크로 실행이 가능합니다.",
+      "한 쪽만 승인하면 PENDING_APPROVAL, 양측 모두 승인하면 APPROVED로 전환됩니다. " +
+      "APPROVED 상태여야 XRPL 에스크로 실행이 가능합니다.",
   })
   @ApiParam({ name: "id", description: "에스크로 결제 ID (MongoDB ObjectId)" })
   @ApiResponse({ status: 201, description: "승인 처리 성공" })
   @ApiResponse({
     status: 400,
-    description: "이미 승인됐거나 승인 불가 상태 (ACTIVE/COMPLETED/CANCELLED)",
+    description:
+      "이미 승인됐거나 승인 불가 상태 (APPROVED/PROCESSING/ACTIVE/COMPLETED/CANCELLED)",
   })
   @ApiResponse({ status: 404, description: "결제 내역 없음" })
   approvePayment(

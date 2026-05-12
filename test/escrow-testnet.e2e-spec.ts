@@ -209,7 +209,7 @@ describe("XRPL Escrow Testnet (풀스택 통합 테스트)", () => {
     const paymentId = payment._id.toString();
     const escrowItemId = payment.escrows[0]._id.toString();
 
-    expect(payment.status).toBe("DRAFT");
+    expect(payment.status).toBe("PENDING_APPROVAL");
     expect(payment.buyerApproved).toBe(true);
     expect(payment.buyerApprovedAt).toBeDefined();
     expect(payment.totalAmountXrp).toBe(10);

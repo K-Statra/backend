@@ -277,7 +277,7 @@ describe("RLUSD 에스크로 결제 (mock e2e)", () => {
         .expect(201);
 
       expect(res.body.currency).toBe("RLUSD");
-      expect(res.body.status).toBe("DRAFT");
+      expect(res.body.status).toBe("PENDING_APPROVAL");
     });
 
     it("currency 미전달 → XRP 기본값", async () => {

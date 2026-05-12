@@ -80,6 +80,13 @@ describe("EscrowPaymentsCrudService › create", () => {
       expect(constructorArg.sellerApproved).toBe(false);
     });
 
+    it("상태를 PENDING_APPROVAL로 초기화", async () => {
+      await ctx.service.create(makeDto(), BUYER_ID.toString());
+
+      const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
+      expect(constructorArg.status).toBe("PENDING_APPROVAL");
+    });
+
     it("save() 호출", async () => {
       const instance = { save: jest.fn().mockResolvedValue({}) };
       ctx.escrowPaymentModel.mockReturnValue(instance);

@@ -34,7 +34,7 @@ describe("EscrowPaymentsCrudService › findAll", () => {
     );
   });
 
-  it("group=ongoing → DRAFT/PENDING_APPROVAL/APPROVED/PROCESSING/ACTIVE 필터", async () => {
+  it("group=ongoing → PENDING_APPROVAL/APPROVED/PROCESSING/ACTIVE 필터", async () => {
     await ctx.service.findAll(BUYER_ID.toString(), {
       group: "ongoing",
       page: 1,
@@ -44,7 +44,6 @@ describe("EscrowPaymentsCrudService › findAll", () => {
     const filter = ctx.escrowPaymentModel.find.mock.calls[0][0];
     expect(filter.status.$in).toEqual(
       expect.arrayContaining([
-        "DRAFT",
         "PENDING_APPROVAL",
         "APPROVED",
         "PROCESSING",
