@@ -23,6 +23,8 @@ export interface EscrowPaymentWithPartner extends Omit<
   buyerId: Types.ObjectId;
   sellerId: Types.ObjectId;
   partnerName: string;
+  partnerWalletAddress: string;
+  myWalletAddress: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,15 +46,17 @@ export class EscrowPaymentsCrudService {
     userId: string,
   ): Promise<EscrowPaymentDocument> {
     const creator = await this.userModel
-      .findById(userId, { type: 1, name: 1 })
+      .findById(userId, { type: 1, name: 1, wallet: 1 })
       .lean();
     if (!creator) throw new UnauthorizedPaymentActionException();
 
     const now = new Date();
     let buyerId: string;
     let buyerName: string;
+    let buyerWalletAddress: string | undefined;
     let sellerId: string;
     let sellerName: string;
+    let sellerWalletAddress: string | undefined;
     let buyerApproved = false;
     let buyerApprovedAt: Date | undefined;
     let sellerApproved = false;
@@ -62,7 +66,7 @@ export class EscrowPaymentsCrudService {
       const seller = await this.userModel
         .findOne(
           { "wallet.address": dto.counterpartyWalletAddress, type: "seller" },
-          { _id: 1, name: 1 },
+          { _id: 1, name: 1, wallet: 1 },
         )
         .lean();
       if (!seller)
@@ -70,15 +74,17 @@ export class EscrowPaymentsCrudService {
 
       buyerId = userId;
       buyerName = creator.name;
+      buyerWalletAddress = creator.wallet?.address;
       sellerId = seller._id.toString();
       sellerName = seller.name;
+      sellerWalletAddress = seller.wallet?.address;
       buyerApproved = true;
       buyerApprovedAt = now;
     } else if (creator.type === "seller") {
       const buyer = await this.userModel
         .findOne(
           { "wallet.address": dto.counterpartyWalletAddress, type: "buyer" },
-          { _id: 1, name: 1 },
+          { _id: 1, name: 1, wallet: 1 },
         )
         .lean();
       if (!buyer)
@@ -86,12 +92,18 @@ export class EscrowPaymentsCrudService {
 
       buyerId = buyer._id.toString();
       buyerName = buyer.name;
+      buyerWalletAddress = buyer.wallet?.address;
       sellerId = userId;
       sellerName = creator.name;
+      sellerWalletAddress = creator.wallet?.address;
       sellerApproved = true;
       sellerApprovedAt = now;
     } else {
       throw new UnauthorizedPaymentActionException();
+    }
+
+    if (!buyerWalletAddress || !sellerWalletAddress) {
+      throw new UnauthorizedPaymentActionException(); // Or a more specific exception if wallet is missing
     }
 
     const totalAmountXrp = dto.escrows.reduce((sum, e) => sum + e.amountXrp, 0);
@@ -99,8 +111,10 @@ export class EscrowPaymentsCrudService {
     const doc = new this.escrowPaymentModel({
       buyerId: new Types.ObjectId(buyerId),
       buyerName,
+      buyerWalletAddress,
       sellerId: new Types.ObjectId(sellerId),
       sellerName,
+      sellerWalletAddress,
       totalAmountXrp,
       buyerApproved,
       buyerApprovedAt,
@@ -168,9 +182,20 @@ export class EscrowPaymentsCrudService {
     const mappedData = data.map((item: any) => {
       const isBuyer = item.buyerId.toString() === userId;
       const partnerName = isBuyer ? item.sellerName : item.buyerName;
+      const partnerWalletAddress = isBuyer
+        ? item.sellerWalletAddress
+        : item.buyerWalletAddress;
+      const myWalletAddress = isBuyer
+        ? item.buyerWalletAddress
+        : item.sellerWalletAddress;
+      if (!partnerWalletAddress || !myWalletAddress) {
+        throw new UnauthorizedPaymentActionException();
+      }
       return {
         ...item,
         partnerName,
+        partnerWalletAddress,
+        myWalletAddress,
       };
     });
 
@@ -182,7 +207,10 @@ export class EscrowPaymentsCrudService {
     };
   }
 
-  async findById(id: string, userId: string): Promise<EscrowPaymentDocument> {
+  async findById(
+    id: string,
+    userId: string,
+  ): Promise<EscrowPaymentWithPartner> {
     const doc = await this.escrowPaymentModel.findById(id).lean();
     if (!doc) throw new EscrowPaymentNotFoundException();
 
@@ -192,7 +220,24 @@ export class EscrowPaymentsCrudService {
       throw new UnauthorizedPaymentActionException();
     }
 
-    return doc;
+    const isBuyer = doc.buyerId.toString() === userId;
+    const partnerName = isBuyer ? doc.sellerName : doc.buyerName;
+    const partnerWalletAddress = isBuyer
+      ? doc.sellerWalletAddress
+      : doc.buyerWalletAddress;
+    const myWalletAddress = isBuyer
+      ? doc.buyerWalletAddress
+      : doc.sellerWalletAddress;
+    if (!partnerWalletAddress || !myWalletAddress) {
+      throw new UnauthorizedPaymentActionException();
+    }
+
+    return {
+      ...(doc as any),
+      partnerName,
+      partnerWalletAddress,
+      myWalletAddress,
+    };
   }
 
   /**

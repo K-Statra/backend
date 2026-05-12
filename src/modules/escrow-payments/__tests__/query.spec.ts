@@ -107,8 +107,13 @@ describe("EscrowPaymentsCrudService › findById", () => {
     ctx = await makeCrudServiceTestingModule();
   });
 
-  it("존재하는 ID → 결제 내역 반환", async () => {
-    const payment = makePayment();
+  it("존재하는 ID → 결제 내역 반환 (지갑 정보 포함)", async () => {
+    const payment = makePayment({
+      buyerWalletAddress: "rBuyer123",
+      sellerWalletAddress: "rSeller456",
+      buyerName: "Buyer Corp",
+      sellerName: "Seller Corp",
+    });
     ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
     const result = await ctx.service.findById(
@@ -116,7 +121,10 @@ describe("EscrowPaymentsCrudService › findById", () => {
       BUYER_ID.toString(),
     );
 
-    expect(result).toEqual(payment);
+    expect(result.partnerName).toBe("Seller Corp");
+    expect(result.partnerWalletAddress).toBe("rSeller456");
+    expect(result.myWalletAddress).toBe("rBuyer123");
+    expect(result.buyerId).toEqual(payment.buyerId);
   });
 
   it("존재하지 않는 ID → EscrowPaymentNotFoundException", async () => {
