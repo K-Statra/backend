@@ -43,10 +43,18 @@ describe("EscrowPaymentsCrudService › create", () => {
     beforeEach(async () => {
       ctx = await makeCrudServiceTestingModule();
       ctx.userModel.findById.mockReturnValue(
-        makeQueryChain({ type: "buyer", name: "Buyer Corp" }),
+        makeQueryChain({
+          type: "buyer",
+          name: "Buyer Corp",
+          wallet: { address: BUYER_WALLET_ADDRESS },
+        }),
       );
       ctx.userModel.findOne.mockReturnValue(
-        makeQueryChain({ _id: SELLER_ID, name: "Seller Corp" }),
+        makeQueryChain({
+          _id: SELLER_ID,
+          name: "Seller Corp",
+          wallet: { address: SELLER_WALLET_ADDRESS },
+        }),
       );
     });
 
@@ -55,6 +63,8 @@ describe("EscrowPaymentsCrudService › create", () => {
 
       const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
       expect(constructorArg.totalAmountXrp).toBe(1000);
+      expect(constructorArg.buyerWalletAddress).toBe(BUYER_WALLET_ADDRESS);
+      expect(constructorArg.sellerWalletAddress).toBe(SELLER_WALLET_ADDRESS);
     });
 
     it("각 escrow 항목의 approvals를 requiredEventTypes로 초기화", async () => {
@@ -101,7 +111,7 @@ describe("EscrowPaymentsCrudService › create", () => {
 
       expect(ctx.userModel.findOne).toHaveBeenCalledWith(
         { "wallet.address": SELLER_WALLET_ADDRESS, type: "seller" },
-        { _id: 1, name: 1 },
+        { _id: 1, name: 1, wallet: 1 },
       );
 
       const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
@@ -129,10 +139,18 @@ describe("EscrowPaymentsCrudService › create", () => {
     beforeEach(async () => {
       ctx = await makeCrudServiceTestingModule();
       ctx.userModel.findById.mockReturnValue(
-        makeQueryChain({ type: "seller", name: "Seller Corp" }),
+        makeQueryChain({
+          type: "seller",
+          name: "Seller Corp",
+          wallet: { address: SELLER_WALLET_ADDRESS },
+        }),
       );
       ctx.userModel.findOne.mockReturnValue(
-        makeQueryChain({ _id: BUYER_ID, name: "Buyer Corp" }),
+        makeQueryChain({
+          _id: BUYER_ID,
+          name: "Buyer Corp",
+          wallet: { address: BUYER_WALLET_ADDRESS },
+        }),
       );
     });
 
@@ -143,6 +161,8 @@ describe("EscrowPaymentsCrudService › create", () => {
       expect(constructorArg.sellerApproved).toBe(true);
       expect(constructorArg.sellerApprovedAt).toBeInstanceOf(Date);
       expect(constructorArg.buyerApproved).toBe(false);
+      expect(constructorArg.buyerWalletAddress).toBe(BUYER_WALLET_ADDRESS);
+      expect(constructorArg.sellerWalletAddress).toBe(SELLER_WALLET_ADDRESS);
     });
 
     it("counterpartyWalletAddress로 buyer 조회 후 buyerId를 document에 주입", async () => {
@@ -150,7 +170,7 @@ describe("EscrowPaymentsCrudService › create", () => {
 
       expect(ctx.userModel.findOne).toHaveBeenCalledWith(
         { "wallet.address": BUYER_WALLET_ADDRESS, type: "buyer" },
-        { _id: 1, name: 1 },
+        { _id: 1, name: 1, wallet: 1 },
       );
 
       const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
