@@ -27,6 +27,11 @@ import {
 import { ParseMongoIdPipe } from "../../common/pipes/parse-mongo-id.pipe";
 import { ParseXrplAddressPipe } from "../../common/pipes/parse-xrpl-address.pipe";
 
+import {
+  EscrowPaymentListResponse,
+  EscrowPaymentResponse,
+} from "./dto/escrow-payment-response.dto";
+
 @ApiTags("Escrow Payments")
 @ApiCookieAuth()
 @UseGuards(SessionGuard)
@@ -61,8 +66,8 @@ export class EscrowPaymentsController {
   })
   @ApiResponse({
     status: 200,
-    description:
-      "{ data: EscrowPayment[], total: number, page: number, limit: number }",
+    description: "목록 조회 성공",
+    type: EscrowPaymentListResponse,
   })
   findAll(
     @Query() query: QueryEscrowPaymentDto,
@@ -78,7 +83,11 @@ export class EscrowPaymentsController {
       "buyer/seller 간 에스크로 결제 계획을 생성합니다. 생성 직후 상태는 PENDING_APPROVAL이며, 양측이 모두 승인해야 APPROVED로 전환됩니다.",
   })
   @ApiBody({ type: CreateEscrowPaymentDto })
-  @ApiResponse({ status: 201, description: "결제 내역 생성 성공" })
+  @ApiResponse({
+    status: 201,
+    description: "결제 내역 생성 성공",
+    type: EscrowPaymentResponse,
+  })
   @ApiResponse({ status: 400, description: "잘못된 요청 (유효성 검사 실패)" })
   @ApiResponse({ status: 401, description: "인증되지 않은 사용자" })
   create(
@@ -94,7 +103,11 @@ export class EscrowPaymentsController {
     description: "결제 ID로 에스크로 결제 내역 전체를 조회합니다.",
   })
   @ApiParam({ name: "id", description: "에스크로 결제 ID (MongoDB ObjectId)" })
-  @ApiResponse({ status: 200, description: "조회 성공" })
+  @ApiResponse({
+    status: 200,
+    description: "조회 성공",
+    type: EscrowPaymentResponse,
+  })
   @ApiResponse({ status: 401, description: "인증되지 않은 사용자" })
   @ApiResponse({ status: 404, description: "결제 내역 없음" })
   findById(

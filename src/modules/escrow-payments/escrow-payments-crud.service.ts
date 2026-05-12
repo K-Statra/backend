@@ -6,6 +6,7 @@ import {
   EscrowPaymentNotFoundException,
   SellerWalletNotFoundException,
   UnauthorizedPaymentActionException,
+  WalletUserNotFoundException,
 } from "../../common/exceptions";
 import {
   EscrowPayment,
@@ -15,25 +16,10 @@ import { User, UserDocument } from "../users/schemas/user.schema";
 import { CreateEscrowPaymentDto } from "./dto/create-escrow-payment.dto";
 import { QueryEscrowPaymentDto } from "./dto/query-escrow-payment.dto";
 
-export interface EscrowPaymentResponse extends Omit<
-  EscrowPayment,
-  | "buyerId"
-  | "sellerId"
-  | "buyerName"
-  | "sellerName"
-  | "buyerWalletAddress"
-  | "sellerWalletAddress"
-> {
-  _id: Types.ObjectId;
-  myId: Types.ObjectId;
-  partnerId: Types.ObjectId;
-  myName: string;
-  myWalletAddress: string;
-  partnerName: string;
-  partnerWalletAddress: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import {
+  EscrowPaymentListResponse,
+  EscrowPaymentResponse,
+} from "./dto/escrow-payment-response.dto";
 
 @Injectable()
 export class EscrowPaymentsCrudService {
@@ -50,7 +36,7 @@ export class EscrowPaymentsCrudService {
   async create(
     dto: CreateEscrowPaymentDto,
     userId: string,
-  ): Promise<EscrowPaymentDocument> {
+  ): Promise<EscrowPaymentResponse> {
     const creator = await this.userModel
       .findById(userId, { type: 1, name: 1, wallet: 1 })
       .lean();
@@ -109,7 +95,7 @@ export class EscrowPaymentsCrudService {
     }
 
     if (!buyerWalletAddress || !sellerWalletAddress) {
-      throw new UnauthorizedPaymentActionException(); // Or a more specific exception if wallet is missing
+      throw new UnauthorizedPaymentActionException();
     }
 
     const totalAmountXrp = dto.escrows.reduce((sum, e) => sum + e.amountXrp, 0);
@@ -142,7 +128,8 @@ export class EscrowPaymentsCrudService {
       })),
     });
 
-    return doc.save();
+    const saved = await doc.save();
+    return this.mapToResponse(saved.toObject(), userId);
   }
 
   /**
@@ -151,12 +138,7 @@ export class EscrowPaymentsCrudService {
   async findAll(
     userId: string,
     dto: QueryEscrowPaymentDto,
-  ): Promise<{
-    data: EscrowPaymentResponse[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
+  ): Promise<EscrowPaymentListResponse> {
     const { status, group, page = 1, limit = 5 } = dto;
     const uid = new Types.ObjectId(userId);
 
@@ -185,37 +167,9 @@ export class EscrowPaymentsCrudService {
       this.escrowPaymentModel.countDocuments(filter),
     ]);
 
-    const mappedData = data.map((item: any) => {
-      const isBuyer = item.buyerId.toString() === userId;
-      const myId = isBuyer ? item.buyerId : item.sellerId;
-      const partnerId = isBuyer ? item.sellerId : item.buyerId;
-      const myName = isBuyer ? item.buyerName : item.sellerName;
-      const partnerName = isBuyer ? item.sellerName : item.buyerName;
-      const myWalletAddress = isBuyer
-        ? item.buyerWalletAddress
-        : item.sellerWalletAddress;
-      const partnerWalletAddress = isBuyer
-        ? item.sellerWalletAddress
-        : item.buyerWalletAddress;
-
-      const rest = { ...item };
-      delete rest.buyerId;
-      delete rest.sellerId;
-      delete rest.buyerName;
-      delete rest.sellerName;
-      delete rest.buyerWalletAddress;
-      delete rest.sellerWalletAddress;
-
-      return {
-        ...rest,
-        myId,
-        partnerId,
-        myName,
-        myWalletAddress,
-        partnerName,
-        partnerWalletAddress,
-      };
-    });
+    const mappedData = data.map((item: any) =>
+      this.mapToResponse(item, userId),
+    );
 
     return {
       data: mappedData,
@@ -235,19 +189,34 @@ export class EscrowPaymentsCrudService {
       throw new UnauthorizedPaymentActionException();
     }
 
-    const isBuyer = doc.buyerId.toString() === userId;
-    const myId = isBuyer ? doc.buyerId : doc.sellerId;
-    const partnerId = isBuyer ? doc.sellerId : doc.buyerId;
-    const myName = isBuyer ? doc.buyerName : doc.sellerName;
-    const partnerName = isBuyer ? doc.sellerName : doc.buyerName;
-    const myWalletAddress = isBuyer
-      ? doc.buyerWalletAddress
-      : doc.sellerWalletAddress;
-    const partnerWalletAddress = isBuyer
-      ? doc.sellerWalletAddress
-      : doc.buyerWalletAddress;
+    return this.mapToResponse(doc, userId);
+  }
 
-    const rest = { ...(doc as any) };
+  /**
+   * XRPL 지갑 주소로 사용자 조회
+   */
+  async findUserByWalletAddress(walletAddress: string): Promise<UserDocument> {
+    const user = await this.userModel
+      .findOne({ "wallet.address": walletAddress })
+      .lean();
+    if (!user) throw new WalletUserNotFoundException(walletAddress);
+    return user as UserDocument;
+  }
+
+  private mapToResponse(item: any, userId: string): EscrowPaymentResponse {
+    const isBuyer = item.buyerId.toString() === userId;
+    const myId = isBuyer ? item.buyerId : item.sellerId;
+    const partnerId = isBuyer ? item.sellerId : item.buyerId;
+    const myName = isBuyer ? item.buyerName : item.sellerName;
+    const partnerName = isBuyer ? item.sellerName : item.buyerName;
+    const myWalletAddress = isBuyer
+      ? item.buyerWalletAddress
+      : item.sellerWalletAddress;
+    const partnerWalletAddress = isBuyer
+      ? item.sellerWalletAddress
+      : item.buyerWalletAddress;
+
+    const rest = { ...item };
     delete rest.buyerId;
     delete rest.sellerId;
     delete rest.buyerName;
@@ -264,16 +233,5 @@ export class EscrowPaymentsCrudService {
       partnerName,
       partnerWalletAddress,
     };
-  }
-
-  /**
-   * XRPL 지갑 주소로 사용자 조회
-   */
-  async findUserByWalletAddress(walletAddress: string): Promise<UserDocument> {
-    const user = await this.userModel
-      .findOne({ "wallet.address": walletAddress })
-      .lean();
-    if (!user) throw new SellerWalletNotFoundException(walletAddress);
-    return user;
   }
 }
