@@ -58,7 +58,7 @@ export class AuthController {
         if (err) {
           return reject(new SessionDestroyException());
         }
-        res.clearCookie("connect.sid");
+        res.clearCookie("sessionId");
         resolve({ message: "Success logout" });
       });
     });
