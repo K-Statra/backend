@@ -25,7 +25,7 @@ import { GetPartnersQueryDto } from "./dto/getPartnersQuery.dto";
 import { SavePartnerDto } from "./dto/save-partner.dto";
 
 @ApiTags("My Business")
-@ApiCookieAuth()
+@ApiCookieAuth("sessionId")
 @Controller("my-business")
 @UseGuards(SessionGuard)
 export class MyBusinessController {
