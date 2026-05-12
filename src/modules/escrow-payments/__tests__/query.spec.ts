@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import {
   BUYER_ID,
+  SELLER_ID,
   ESCROW_ID,
   PAYMENT_ID,
   makePayment,
@@ -109,10 +110,12 @@ describe("EscrowPaymentsCrudService › findById", () => {
 
   it("존재하는 ID → 결제 내역 반환 (지갑 정보 포함)", async () => {
     const payment = makePayment({
-      buyerWalletAddress: "rBuyer123",
-      sellerWalletAddress: "rSeller456",
+      buyerId: BUYER_ID,
+      sellerId: SELLER_ID,
       buyerName: "Buyer Corp",
       sellerName: "Seller Corp",
+      buyerWalletAddress: "rBuyer123",
+      sellerWalletAddress: "rSeller456",
     });
     ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
 
@@ -121,10 +124,17 @@ describe("EscrowPaymentsCrudService › findById", () => {
       BUYER_ID.toString(),
     );
 
+    expect(result.myId).toEqual(BUYER_ID);
+    expect(result.partnerId).toEqual(SELLER_ID);
+    expect(result.myName).toBe("Buyer Corp");
     expect(result.partnerName).toBe("Seller Corp");
-    expect(result.partnerWalletAddress).toBe("rSeller456");
     expect(result.myWalletAddress).toBe("rBuyer123");
-    expect(result.buyerId).toEqual(payment.buyerId);
+    expect(result.partnerWalletAddress).toBe("rSeller456");
+
+    // 절대적 필드 제외 확인
+    expect((result as any).buyerId).toBeUndefined();
+    expect((result as any).sellerId).toBeUndefined();
+    expect((result as any).buyerName).toBeUndefined();
   });
 
   it("존재하지 않는 ID → EscrowPaymentNotFoundException", async () => {

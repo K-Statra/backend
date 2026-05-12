@@ -15,16 +15,22 @@ import { User, UserDocument } from "../users/schemas/user.schema";
 import { CreateEscrowPaymentDto } from "./dto/create-escrow-payment.dto";
 import { QueryEscrowPaymentDto } from "./dto/query-escrow-payment.dto";
 
-export interface EscrowPaymentWithPartner extends Omit<
+export interface EscrowPaymentResponse extends Omit<
   EscrowPayment,
-  "buyerId" | "sellerId"
+  | "buyerId"
+  | "sellerId"
+  | "buyerName"
+  | "sellerName"
+  | "buyerWalletAddress"
+  | "sellerWalletAddress"
 > {
   _id: Types.ObjectId;
-  buyerId: Types.ObjectId;
-  sellerId: Types.ObjectId;
+  myId: Types.ObjectId;
+  partnerId: Types.ObjectId;
+  myName: string;
+  myWalletAddress: string;
   partnerName: string;
   partnerWalletAddress: string;
-  myWalletAddress: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -146,7 +152,7 @@ export class EscrowPaymentsCrudService {
     userId: string,
     dto: QueryEscrowPaymentDto,
   ): Promise<{
-    data: EscrowPaymentWithPartner[];
+    data: EscrowPaymentResponse[];
     total: number;
     page: number;
     limit: number;
@@ -181,21 +187,33 @@ export class EscrowPaymentsCrudService {
 
     const mappedData = data.map((item: any) => {
       const isBuyer = item.buyerId.toString() === userId;
+      const myId = isBuyer ? item.buyerId : item.sellerId;
+      const partnerId = isBuyer ? item.sellerId : item.buyerId;
+      const myName = isBuyer ? item.buyerName : item.sellerName;
       const partnerName = isBuyer ? item.sellerName : item.buyerName;
-      const partnerWalletAddress = isBuyer
-        ? item.sellerWalletAddress
-        : item.buyerWalletAddress;
       const myWalletAddress = isBuyer
         ? item.buyerWalletAddress
         : item.sellerWalletAddress;
-      if (!partnerWalletAddress || !myWalletAddress) {
-        throw new UnauthorizedPaymentActionException();
-      }
+      const partnerWalletAddress = isBuyer
+        ? item.sellerWalletAddress
+        : item.buyerWalletAddress;
+
+      const rest = { ...item };
+      delete rest.buyerId;
+      delete rest.sellerId;
+      delete rest.buyerName;
+      delete rest.sellerName;
+      delete rest.buyerWalletAddress;
+      delete rest.sellerWalletAddress;
+
       return {
-        ...item,
+        ...rest,
+        myId,
+        partnerId,
+        myName,
+        myWalletAddress,
         partnerName,
         partnerWalletAddress,
-        myWalletAddress,
       };
     });
 
@@ -207,10 +225,7 @@ export class EscrowPaymentsCrudService {
     };
   }
 
-  async findById(
-    id: string,
-    userId: string,
-  ): Promise<EscrowPaymentWithPartner> {
+  async findById(id: string, userId: string): Promise<EscrowPaymentResponse> {
     const doc = await this.escrowPaymentModel.findById(id).lean();
     if (!doc) throw new EscrowPaymentNotFoundException();
 
@@ -221,22 +236,33 @@ export class EscrowPaymentsCrudService {
     }
 
     const isBuyer = doc.buyerId.toString() === userId;
+    const myId = isBuyer ? doc.buyerId : doc.sellerId;
+    const partnerId = isBuyer ? doc.sellerId : doc.buyerId;
+    const myName = isBuyer ? doc.buyerName : doc.sellerName;
     const partnerName = isBuyer ? doc.sellerName : doc.buyerName;
-    const partnerWalletAddress = isBuyer
-      ? doc.sellerWalletAddress
-      : doc.buyerWalletAddress;
     const myWalletAddress = isBuyer
       ? doc.buyerWalletAddress
       : doc.sellerWalletAddress;
-    if (!partnerWalletAddress || !myWalletAddress) {
-      throw new UnauthorizedPaymentActionException();
-    }
+    const partnerWalletAddress = isBuyer
+      ? doc.sellerWalletAddress
+      : doc.buyerWalletAddress;
+
+    const rest = { ...(doc as any) };
+    delete rest.buyerId;
+    delete rest.sellerId;
+    delete rest.buyerName;
+    delete rest.sellerName;
+    delete rest.buyerWalletAddress;
+    delete rest.sellerWalletAddress;
 
     return {
-      ...(doc as any),
+      ...rest,
+      myId,
+      partnerId,
+      myName,
+      myWalletAddress,
       partnerName,
       partnerWalletAddress,
-      myWalletAddress,
     };
   }
 
