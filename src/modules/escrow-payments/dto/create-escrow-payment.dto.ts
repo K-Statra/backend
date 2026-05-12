@@ -9,10 +9,10 @@ import {
   IsOptional,
   IsPositive,
   IsString,
-  Matches,
   Min,
   ValidateNested,
 } from "class-validator";
+import { IsXrplAddress } from "../../../common/decorators/is-xrpl-address.decorator";
 
 export class EscrowItemDto {
   @ApiProperty({ description: "에스크로 항목 이름", example: "초기금" })
@@ -45,10 +45,7 @@ export class CreateEscrowPaymentDto {
       "상대방(거래 상대) XRPL 지갑 주소. buyer가 생성하면 seller 주소, seller가 생성하면 buyer 주소.",
     example: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
   })
-  @IsString()
-  @Matches(/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/, {
-    message: "counterpartyWalletAddress must be a valid XRPL address",
-  })
+  @IsXrplAddress()
   counterpartyWalletAddress: string;
 
   @ApiProperty({

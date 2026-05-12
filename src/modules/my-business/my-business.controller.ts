@@ -8,17 +8,24 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import {
+  ApiCookieAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
 import { MyBusinessService } from "./my-business.service";
 import { SessionGuard } from "../../common/guards/session.guard";
 import {
   CurrentUser,
   type SessionUser,
-} from "src/common/decorators/current-user.decorator";
+} from "../../common/decorators/current-user.decorator";
 import { GetPartnersQueryDto } from "./dto/getPartnersQuery.dto";
 import { SavePartnerDto } from "./dto/save-partner.dto";
 
 @ApiTags("My Business")
+@ApiCookieAuth()
 @Controller("my-business")
 @UseGuards(SessionGuard)
 export class MyBusinessController {
