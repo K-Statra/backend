@@ -27,7 +27,8 @@ export class MyBusinessService {
     contactName: 1,
     phone: 1,
     industries: 1,
-    wallet: 1,
+    "wallet.address": 1,
+    "wallet.publicKey": 1,
     status: 1,
     type: 1,
     // seller
