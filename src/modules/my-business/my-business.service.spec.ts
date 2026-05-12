@@ -91,6 +91,23 @@ describe("MyBusinessService", () => {
         NotFoundException,
       );
     });
+
+    it("프로필 조회 시 민감한 정보(wallet.seed)가 포함되지 않음", async () => {
+      const mockUser = {
+        _id: USER_ID,
+        wallet: { address: "rXXXXX", publicKey: "edXXXXX" },
+      };
+      userModel.findById.mockReturnValue(buildFindMock(mockUser));
+
+      await service.getProfile(USER_ID);
+
+      // findById 호출 시 전달된 프로젝션 확인
+      const projection = userModel.findById.mock.calls[0][1];
+      expect(projection).not.toHaveProperty("wallet");
+      expect(projection).toHaveProperty(["wallet.address"], 1);
+      expect(projection).toHaveProperty(["wallet.publicKey"], 1);
+      expect(projection).not.toHaveProperty(["wallet.seed"]);
+    });
   });
 
   // ── savePartner ───────────────────────────────────────────────────────────────
