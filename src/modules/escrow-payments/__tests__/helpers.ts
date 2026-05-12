@@ -95,6 +95,7 @@ export function makePayment(overrides: object = {}) {
     ...overrides,
   };
   doc.save = jest.fn().mockResolvedValue(doc);
+  doc.toObject = jest.fn().mockReturnValue(doc);
   return doc;
 }
 
@@ -129,6 +130,7 @@ export function makeEscrowPaymentModelMock() {
   const ModelMock: any = jest.fn().mockImplementation((data: any) => {
     const instance = { ...data };
     instance.save = jest.fn().mockResolvedValue(instance);
+    instance.toObject = jest.fn().mockReturnValue(instance);
     return instance;
   });
   ModelMock.findById = jest.fn().mockReturnValue(makeQueryChain(null));
