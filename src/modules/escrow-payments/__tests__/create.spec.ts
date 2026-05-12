@@ -98,7 +98,12 @@ describe("EscrowPaymentsCrudService › create", () => {
     });
 
     it("save() 호출", async () => {
-      const instance = { save: jest.fn().mockResolvedValue({}) };
+      const payment = { buyerId: BUYER_ID, sellerId: SELLER_ID };
+      const instance = {
+        save: jest.fn().mockReturnThis(),
+        toObject: jest.fn().mockReturnValue(payment),
+      };
+      instance.save.mockResolvedValue(instance);
       ctx.escrowPaymentModel.mockReturnValue(instance);
 
       await ctx.service.create(makeDto(), BUYER_ID.toString());
