@@ -188,6 +188,9 @@ export class EscrowPaymentsCrudService {
       const myWalletAddress = isBuyer
         ? item.buyerWalletAddress
         : item.sellerWalletAddress;
+      if (!partnerWalletAddress || !myWalletAddress) {
+        throw new UnauthorizedPaymentActionException();
+      }
       return {
         ...item,
         partnerName,
@@ -225,6 +228,9 @@ export class EscrowPaymentsCrudService {
     const myWalletAddress = isBuyer
       ? doc.buyerWalletAddress
       : doc.sellerWalletAddress;
+    if (!partnerWalletAddress || !myWalletAddress) {
+      throw new UnauthorizedPaymentActionException();
+    }
 
     return {
       ...(doc as any),
