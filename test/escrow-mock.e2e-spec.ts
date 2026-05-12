@@ -500,7 +500,7 @@ describe("EscrowPayments (e2e)", () => {
       targetId = res.body._id;
     });
 
-    it("존재하는 결제 → 200, 정확한 데이터 반환", async () => {
+    it("존재하는 결제 → 200, 정확한 데이터 반환 (추상화된 필드 확인)", async () => {
       const res = await request(app.getHttpServer())
         .get(`/escrow-payments/${targetId}`)
         .set(asBuyer())
@@ -508,6 +508,20 @@ describe("EscrowPayments (e2e)", () => {
 
       expect(res.body._id).toBe(targetId);
       expect(res.body.memo).toBe("단건 조회 테스트");
+
+      // 추상화된 필드 확인
+      expect(res.body.myId).toBe(buyerObjectId.toString());
+      expect(res.body.partnerId).toBe(sellerObjectId.toString());
+      expect(res.body.myName).toBe("Test Buyer Corp");
+      expect(res.body.partnerName).toBe("Test Seller Corp");
+      expect(res.body.myWalletAddress).toBe(BUYER_WALLET_ADDR);
+      expect(res.body.partnerWalletAddress).toBe(SELLER_WALLET_ADDR);
+
+      // 제거된 필드 확인
+      expect(res.body.buyerId).toBeUndefined();
+      expect(res.body.sellerId).toBeUndefined();
+      expect(res.body.buyerName).toBeUndefined();
+      expect(res.body.sellerName).toBeUndefined();
     });
 
     it("존재하지 않는 id → 404", async () => {
