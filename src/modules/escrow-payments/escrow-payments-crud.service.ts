@@ -36,6 +36,9 @@ export class EscrowPaymentsCrudService {
     private readonly userModel: Model<UserDocument>,
   ) {}
 
+  /**
+   * 에스크로 결제 내역 생성(xrp 결제 X)
+   */
   async create(
     dto: CreateEscrowPaymentDto,
     userId: string,
@@ -122,6 +125,9 @@ export class EscrowPaymentsCrudService {
     return doc.save();
   }
 
+  /**
+   * 사용자의 모든 결제 내역 조회
+   */
   async findAll(
     userId: string,
     dto: QueryEscrowPaymentDto,
@@ -189,6 +195,9 @@ export class EscrowPaymentsCrudService {
     return doc;
   }
 
+  /**
+   * XRPL 지갑 주소로 사용자 조회
+   */
   async findUserByWalletAddress(walletAddress: string): Promise<UserDocument> {
     const user = await this.userModel
       .findOne({ "wallet.address": walletAddress })

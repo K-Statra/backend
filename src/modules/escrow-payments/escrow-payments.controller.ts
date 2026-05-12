@@ -47,7 +47,7 @@ export class EscrowPaymentsController {
   @ApiResponse({ status: 400, description: "유효하지 않은 XRPL 지갑 주소" })
   @ApiResponse({ status: 404, description: "해당 지갑 주소를 가진 유저 없음" })
   findUserByWalletAddress(
-    @Param("address", ParseXrplAddressPipe) address: string,
+    @Param("address", ParseXrplAddressPipe) address: string, // pipe로 지갑주소 유효성 검사
   ) {
     return this.crudService.findUserByWalletAddress(address);
   }

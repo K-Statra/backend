@@ -29,8 +29,8 @@ import { User } from "../src/modules/users/schemas/user.schema";
 import { HttpExceptionFilter } from "../src/common/filters/http-exception.filter";
 import { InsufficientRlusdBalanceException } from "../src/common/exceptions";
 
-const BUYER_ADDRESS = "rBuyerR1usdTestAddress12345";
-const SELLER_ADDRESS = "rSe11erR1usdTestAddress5678";
+const BUYER_ADDRESS = "rPXachbQorqFQBPTRKU5FvujGrG56wMyGB";
+const SELLER_ADDRESS = "rL4Mp1CJWr3q534m5V4RG8fC3E6wBQifFJ";
 
 describe("RLUSD 에스크로 결제 (mock e2e)", () => {
   let app: INestApplication;

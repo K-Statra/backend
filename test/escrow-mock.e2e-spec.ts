@@ -39,8 +39,8 @@ describe("EscrowPayments (e2e)", () => {
   const sellerObjectId = new Types.ObjectId();
   const nonParticipantId = new Types.ObjectId();
 
-  const BUYER_WALLET_ADDR = "rBuyerE2ETestAddress12345";
-  const SELLER_WALLET_ADDR = "rSe11erE2ETestAddress5678";
+  const BUYER_WALLET_ADDR = "rPXachbQorqFQBPTRKU5FvujGrG56wMyGB";
+  const SELLER_WALLET_ADDR = "rL4Mp1CJWr3q534m5V4RG8fC3E6wBQifFJ";
 
   // XrplService 전체를 모의 객체로 대체 (실제 XRPL 네트워크 호출 없음)
   const mockXrplService = {

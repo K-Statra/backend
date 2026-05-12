@@ -124,7 +124,12 @@ describe("AuthController", () => {
       const result = await controller.logout(req, res as any);
 
       expect(req.session.destroy).toHaveBeenCalled();
-      expect(res.clearCookie).toHaveBeenCalledWith("connect.sid");
+      expect(res.clearCookie).toHaveBeenCalledWith("sessionId", {
+        path: "/",
+        httpOnly: true,
+        sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+        secure: process.env.NODE_ENV !== "development",
+      });
       expect(result).toEqual({ message: "Success logout" });
     });
 

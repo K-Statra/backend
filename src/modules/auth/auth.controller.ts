@@ -58,7 +58,12 @@ export class AuthController {
         if (err) {
           return reject(new SessionDestroyException());
         }
-        res.clearCookie("connect.sid");
+        res.clearCookie("sessionId", {
+          path: "/",
+          httpOnly: true,
+          sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+          secure: process.env.NODE_ENV !== "development",
+        });
         resolve({ message: "Success logout" });
       });
     });
