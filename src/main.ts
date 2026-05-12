@@ -53,6 +53,7 @@ async function bootstrap() {
       secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
+      proxy: !isLocal, // 리버스 프록시(Railway, Vercel 등) 신뢰 설정
       cookie: {
         httpOnly: true,
         // 배포 환경(test/production): 크로스 도메인 허용 — HTTPS reverse proxy 필수
