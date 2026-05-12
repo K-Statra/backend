@@ -32,3 +32,9 @@ export class WalletSeedUnavailableException extends InternalServerErrorException
     super("Buyer wallet seed not available for EscrowFinish");
   }
 }
+
+export class InvalidXRPWalletAddressException extends BadRequestException {
+  constructor() {
+    super("Invalid XRP wallet address");
+  }
+}
