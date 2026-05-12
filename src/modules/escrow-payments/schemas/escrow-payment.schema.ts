@@ -79,11 +79,17 @@ export class EscrowPayment {
   @Prop({ required: true })
   buyerName: string;
 
+  @Prop({ required: true })
+  buyerWalletAddress: string;
+
   @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
   sellerId: Types.ObjectId;
 
   @Prop({ required: true })
   sellerName: string;
+
+  @Prop({ required: true })
+  sellerWalletAddress: string;
 
   @Prop({ required: true, min: 0 }) totalAmountXrp: number;
 
