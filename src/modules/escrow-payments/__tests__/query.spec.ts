@@ -5,7 +5,6 @@ import {
   ESCROW_ID,
   PAYMENT_ID,
   makePayment,
-  makeQueryChain,
   makeCrudServiceTestingModule,
   makeServiceTestingModule,
 } from "./helpers";
@@ -25,14 +24,13 @@ describe("EscrowPaymentsCrudService › findAll", () => {
   it("buyerId OR sellerId 조건으로 조회", async () => {
     await ctx.service.findAll(BUYER_ID.toString(), { page: 1, limit: 5 });
 
-    expect(ctx.escrowPaymentModel.find).toHaveBeenCalledWith(
-      expect.objectContaining({
-        $or: [
-          { buyerId: expect.any(Types.ObjectId) },
-          { sellerId: expect.any(Types.ObjectId) },
-        ],
-      }),
-    );
+    const [filter] = ctx.escrowPaymentRepo.findMany.mock.calls[0];
+    expect(filter).toMatchObject({
+      $or: [
+        { buyerId: expect.any(Types.ObjectId) },
+        { sellerId: expect.any(Types.ObjectId) },
+      ],
+    });
   });
 
   it("group=ongoing → PENDING_APPROVAL/APPROVED/PROCESSING/ACTIVE 필터", async () => {
@@ -42,7 +40,7 @@ describe("EscrowPaymentsCrudService › findAll", () => {
       limit: 5,
     });
 
-    const filter = ctx.escrowPaymentModel.find.mock.calls[0][0];
+    const [filter] = ctx.escrowPaymentRepo.findMany.mock.calls[0];
     expect(filter.status.$in).toEqual(
       expect.arrayContaining([
         "PENDING_APPROVAL",
@@ -60,7 +58,7 @@ describe("EscrowPaymentsCrudService › findAll", () => {
       limit: 5,
     });
 
-    const filter = ctx.escrowPaymentModel.find.mock.calls[0][0];
+    const [filter] = ctx.escrowPaymentRepo.findMany.mock.calls[0];
     expect(filter.status.$in).toEqual(
       expect.arrayContaining(["COMPLETED", "CANCELLED"]),
     );
@@ -73,21 +71,21 @@ describe("EscrowPaymentsCrudService › findAll", () => {
       limit: 5,
     });
 
-    const filter = ctx.escrowPaymentModel.find.mock.calls[0][0];
+    const [filter] = ctx.escrowPaymentRepo.findMany.mock.calls[0];
     expect(filter.status).toBe("ACTIVE");
   });
 
   it("필터 없으면 status 조건 없이 조회", async () => {
     await ctx.service.findAll(BUYER_ID.toString(), { page: 1, limit: 5 });
 
-    const filter = ctx.escrowPaymentModel.find.mock.calls[0][0];
+    const [filter] = ctx.escrowPaymentRepo.findMany.mock.calls[0];
     expect(filter.status).toBeUndefined();
   });
 
   it("total, page, limit 포함한 응답 반환", async () => {
     const mockDocs = [makePayment(), makePayment()];
-    ctx.escrowPaymentModel.find.mockReturnValue(makeQueryChain(mockDocs));
-    ctx.escrowPaymentModel.countDocuments.mockResolvedValue(2);
+    ctx.escrowPaymentRepo.findMany.mockResolvedValue(mockDocs);
+    ctx.escrowPaymentRepo.countDocuments.mockResolvedValue(2);
 
     const result = await ctx.service.findAll(BUYER_ID.toString(), {
       page: 1,
@@ -117,7 +115,7 @@ describe("EscrowPaymentsCrudService › findById", () => {
       buyerWalletAddress: "rBuyer123",
       sellerWalletAddress: "rSeller456",
     });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+    ctx.escrowPaymentRepo.findByIdLean.mockResolvedValue(payment);
 
     const result = await ctx.service.findById(
       PAYMENT_ID.toString(),
@@ -138,7 +136,7 @@ describe("EscrowPaymentsCrudService › findById", () => {
   });
 
   it("존재하지 않는 ID → EscrowPaymentNotFoundException", async () => {
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(null));
+    ctx.escrowPaymentRepo.findByIdLean.mockResolvedValue(null);
 
     await expect(
       ctx.service.findById(PAYMENT_ID.toString(), BUYER_ID.toString()),
@@ -147,7 +145,7 @@ describe("EscrowPaymentsCrudService › findById", () => {
 
   it("buyer도 seller도 아닌 제3자 → UnauthorizedPaymentActionException", async () => {
     const payment = makePayment();
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+    ctx.escrowPaymentRepo.findByIdLean.mockResolvedValue(payment);
 
     await expect(
       ctx.service.findById(
@@ -167,7 +165,7 @@ describe("EscrowPaymentsService › getEscrowStatus", () => {
 
   it("정상 조회 → escrow 항목 반환", async () => {
     const payment = makePayment();
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+    ctx.escrowPaymentRepo.findByIdLean.mockResolvedValue(payment);
 
     const result = await ctx.service.getEscrowStatus(
       PAYMENT_ID.toString(),
@@ -179,7 +177,7 @@ describe("EscrowPaymentsService › getEscrowStatus", () => {
   });
 
   it("존재하지 않는 결제 → EscrowPaymentNotFoundException", async () => {
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(null));
+    ctx.escrowPaymentRepo.findByIdLean.mockResolvedValue(null);
 
     await expect(
       ctx.service.getEscrowStatus(PAYMENT_ID.toString(), ESCROW_ID.toString()),
@@ -188,7 +186,7 @@ describe("EscrowPaymentsService › getEscrowStatus", () => {
 
   it("존재하지 않는 escrowId → EscrowItemNotFoundException", async () => {
     const payment = makePayment();
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+    ctx.escrowPaymentRepo.findByIdLean.mockResolvedValue(payment);
 
     await expect(
       ctx.service.getEscrowStatus(
