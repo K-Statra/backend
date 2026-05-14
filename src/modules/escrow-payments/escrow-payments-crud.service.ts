@@ -7,7 +7,7 @@ import {
   UnauthorizedPaymentActionException,
   WalletUserNotFoundException,
 } from "../../common/exceptions";
-import { UserDocument } from "../users/schemas/user.schema";
+import { User } from "../users/schemas/user.schema";
 import { CreateEscrowPaymentDto } from "./dto/create-escrow-payment.dto";
 import { QueryEscrowPaymentDto } from "./dto/query-escrow-payment.dto";
 import {
@@ -174,10 +174,10 @@ export class EscrowPaymentsCrudService {
   /**
    * XRPL 지갑 주소로 사용자 조회
    */
-  async findUserByWalletAddress(walletAddress: string): Promise<UserDocument> {
+  async findUserByWalletAddress(walletAddress: string): Promise<User> {
     const user = await this.userFacade.findByWalletAddress(walletAddress);
     if (!user) throw new WalletUserNotFoundException(walletAddress);
-    return user as UserDocument;
+    return user;
   }
 
   private mapToResponse(item: any, userId: string): EscrowPaymentResponse {
