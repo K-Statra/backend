@@ -1,6 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
 import {
   AlreadyApprovedEventException,
   AlreadyApprovedPaymentException,
@@ -17,23 +15,21 @@ import {
   WalletSeedUnavailableException,
 } from "../../common/exceptions";
 import {
-  EscrowPayment,
   EscrowPaymentDocument,
   EscrowItem,
 } from "./schemas/escrow-payment.schema";
 import { XrplService, XrplWallet } from "../xrpl/xrpl.service";
-import { User, UserDocument } from "../users/schemas/user.schema";
 import { OutboxService } from "../outbox/outbox.service";
+import { EscrowPaymentRepository } from "./repositories/escrow-payment.repository";
+import { UserFacade } from "./repositories/user.facade";
 
 @Injectable()
 export class EscrowPaymentsService {
   private readonly logger = new Logger(EscrowPaymentsService.name);
 
   constructor(
-    @InjectModel(EscrowPayment.name)
-    private readonly escrowPaymentModel: Model<EscrowPaymentDocument>,
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
+    private readonly escrowPaymentRepo: EscrowPaymentRepository,
+    private readonly userFacade: UserFacade,
     private readonly xrplService: XrplService,
     private readonly outboxService: OutboxService,
   ) {}
@@ -47,7 +43,7 @@ export class EscrowPaymentsService {
     paymentId: string,
     userId: string,
   ): Promise<EscrowPaymentDocument> {
-    const payment = await this.escrowPaymentModel.findById(paymentId);
+    const payment = await this.escrowPaymentRepo.findById(paymentId);
     if (!payment) throw new EscrowPaymentNotFoundException();
 
     const isBuyer = payment.buyerId.toString() === userId;
@@ -75,7 +71,7 @@ export class EscrowPaymentsService {
 
     const bothApproved = payment.buyerApproved && payment.sellerApproved;
     payment.status = bothApproved ? "APPROVED" : "PENDING_APPROVAL";
-    await payment.save();
+    await this.escrowPaymentRepo.save(payment);
 
     return payment;
   }
@@ -88,7 +84,7 @@ export class EscrowPaymentsService {
     paymentId: string,
     userId: string,
   ): Promise<EscrowPaymentDocument> {
-    const payment = await this.escrowPaymentModel.findById(paymentId);
+    const payment = await this.escrowPaymentRepo.findById(paymentId);
     if (!payment) throw new EscrowPaymentNotFoundException();
 
     if (payment.status !== "APPROVED") {
@@ -108,13 +104,14 @@ export class EscrowPaymentsService {
     // RLUSD는 TrustSet 서명에 seed 필요 → +wallet.seed 포함 조회
     const withSeed = payment.currency === "RLUSD";
     const [buyerUser, sellerUser] = await Promise.all([
-      this.userModel
-        .findById(payment.buyerId)
-        .select(withSeed ? "+wallet.seed" : ""),
-      this.userModel
-        .findById(payment.sellerId)
-        .select(withSeed ? "+wallet.seed" : ""),
+      withSeed
+        ? this.userFacade.findByIdWithSeed(payment.buyerId)
+        : this.userFacade.findById(payment.buyerId),
+      withSeed
+        ? this.userFacade.findByIdWithSeed(payment.sellerId)
+        : this.userFacade.findById(payment.sellerId),
     ]);
+
     if (!buyerUser?.wallet?.address) {
       throw new WalletNotAvailableException("Buyer");
     }
@@ -145,13 +142,12 @@ export class EscrowPaymentsService {
     }
 
     let initiated: EscrowPaymentDocument | null = null;
-    const session = await this.escrowPaymentModel.db.startSession();
+    const session = await this.escrowPaymentRepo.startSession();
     try {
       await session.withTransaction(async () => {
-        initiated = await this.escrowPaymentModel.findOneAndUpdate(
-          { _id: paymentId, status: "APPROVED" },
-          { $set: { status: "PROCESSING" } },
-          { session, new: true },
+        initiated = await this.escrowPaymentRepo.markProcessing(
+          paymentId,
+          session,
         );
         if (!initiated) throw new PaymentNotApprovedForPayException("APPROVED");
         await this.outboxService.createPendingEvent(
@@ -182,7 +178,7 @@ export class EscrowPaymentsService {
    * PENDING_ESCROW → CANCELLED, ESCROWED/SUBMITTING → CANCELLING
    */
   async rollbackAllEscrows(paymentId: string): Promise<void> {
-    const payment = await this.escrowPaymentModel.findById(paymentId);
+    const payment = await this.escrowPaymentRepo.findById(paymentId);
     if (!payment) {
       this.logger.error(`rollbackAllEscrows: payment ${paymentId} not found`);
       return;
@@ -202,7 +198,7 @@ export class EscrowPaymentsService {
     }
 
     payment.status = "CANCELLED";
-    await payment.save();
+    await this.escrowPaymentRepo.save(payment);
     this.logger.warn(`Payment ${paymentId} rolled back to CANCELLED`);
   }
 
@@ -215,9 +211,8 @@ export class EscrowPaymentsService {
     eventType: string,
     userId: string,
   ): Promise<EscrowPaymentDocument> {
-    const payment = await this.escrowPaymentModel
-      .findById(paymentId)
-      .select("+escrows.fulfillment");
+    const payment =
+      await this.escrowPaymentRepo.findByIdWithFulfillment(paymentId);
     if (!payment) throw new EscrowPaymentNotFoundException();
 
     const isBuyer = payment.buyerId.toString() === userId;
@@ -262,7 +257,7 @@ export class EscrowPaymentsService {
     if (allEventsComplete) {
       await this.releaseEscrow(payment, escrow);
     } else {
-      await payment.save();
+      await this.escrowPaymentRepo.save(payment);
     }
 
     return payment;
@@ -273,12 +268,10 @@ export class EscrowPaymentsService {
     escrow: EscrowItem,
   ): Promise<void> {
     escrow.status = "RELEASING";
-    await payment.save();
+    await this.escrowPaymentRepo.save(payment);
 
     try {
-      const buyerUser = await this.userModel
-        .findById(payment.buyerId)
-        .select("+wallet.seed");
+      const buyerUser = await this.userFacade.findByIdWithSeed(payment.buyerId);
 
       if (!buyerUser?.wallet?.seed) {
         throw new WalletSeedUnavailableException();
@@ -317,12 +310,12 @@ export class EscrowPaymentsService {
         payment.status = "COMPLETED";
       }
 
-      await payment.save();
+      await this.escrowPaymentRepo.save(payment);
       this.logger.log(`EscrowFinish success: txHash=${txHash}`);
     } catch (err: any) {
       this.logger.error(`EscrowFinish failed: ${err.message}`, err.stack);
       escrow.status = "ESCROWED";
-      await payment.save();
+      await this.escrowPaymentRepo.save(payment);
       throw err;
     }
   }
@@ -331,7 +324,7 @@ export class EscrowPaymentsService {
     paymentId: string,
     escrowId: string,
   ): Promise<EscrowPaymentDocument> {
-    const payment = await this.escrowPaymentModel.findById(paymentId);
+    const payment = await this.escrowPaymentRepo.findById(paymentId);
     if (!payment) throw new EscrowPaymentNotFoundException();
 
     const escrow = payment.escrows.find((e) => e._id.toString() === escrowId);
@@ -342,14 +335,14 @@ export class EscrowPaymentsService {
     }
 
     escrow.status = "CANCELLED";
-    return payment.save();
+    return this.escrowPaymentRepo.save(payment);
   }
 
   async getEscrowStatus(
     paymentId: string,
     escrowId: string,
   ): Promise<EscrowItem> {
-    const payment = await this.escrowPaymentModel.findById(paymentId).lean();
+    const payment = await this.escrowPaymentRepo.findByIdLean(paymentId);
     if (!payment) throw new EscrowPaymentNotFoundException();
 
     const escrow = payment.escrows.find((e) => e._id.toString() === escrowId);

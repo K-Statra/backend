@@ -1,14 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model, Types } from "mongoose";
-import {
-  EscrowPayment,
-  EscrowPaymentDocument,
-} from "./schemas/escrow-payment.schema";
-import { User, UserDocument } from "../users/schemas/user.schema";
 import { EscrowPaymentsService } from "./escrow-payments.service";
 import { XrplService } from "../xrpl/xrpl.service";
+import { EscrowPaymentRepository } from "./repositories/escrow-payment.repository";
+import { UserFacade } from "./repositories/user.facade";
 
 // 이 시간보다 오래된 SUBMITTING만 처리 — 정상 진행 중인 요청과 구분
 const SUBMITTING_TIMEOUT_MS = 5 * 60 * 1000;
@@ -18,10 +13,8 @@ export class EscrowSubmitRecoveryScheduler {
   private readonly logger = new Logger(EscrowSubmitRecoveryScheduler.name);
 
   constructor(
-    @InjectModel(EscrowPayment.name)
-    private readonly escrowPaymentModel: Model<EscrowPaymentDocument>,
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
+    private readonly escrowPaymentRepo: EscrowPaymentRepository,
+    private readonly userFacade: UserFacade,
     private readonly xrplService: XrplService,
     private readonly escrowPaymentsService: EscrowPaymentsService,
   ) {}
@@ -33,12 +26,7 @@ export class EscrowSubmitRecoveryScheduler {
   @Cron(CronExpression.EVERY_MINUTE)
   async recoverStuckSubmittingEscrows(): Promise<void> {
     const cutoff = new Date(Date.now() - SUBMITTING_TIMEOUT_MS);
-
-    const payments = await this.escrowPaymentModel.find({
-      escrows: {
-        $elemMatch: { status: "SUBMITTING", submittingAt: { $lt: cutoff } },
-      },
-    });
+    const payments = await this.escrowPaymentRepo.findStuckSubmitting(cutoff);
 
     if (payments.length === 0) return;
 
@@ -47,7 +35,7 @@ export class EscrowSubmitRecoveryScheduler {
     );
 
     for (const payment of payments) {
-      const buyerUser = await this.userModel.findById(payment.buyerId);
+      const buyerUser = await this.userFacade.findById(payment.buyerId);
       if (!buyerUser?.wallet?.address) {
         this.logger.warn(
           `Buyer wallet unavailable for payment ${payment._id.toString()}`,
@@ -118,25 +106,11 @@ export class EscrowSubmitRecoveryScheduler {
 
     if (xrplResult) {
       // XRPL에 에스크로 존재 → DB만 업데이트하면 복구 완료
-      const result = await this.escrowPaymentModel.findOneAndUpdate(
-        {
-          _id: paymentId,
-          escrows: {
-            $elemMatch: {
-              _id: new Types.ObjectId(escrowId),
-              status: "SUBMITTING",
-            },
-          },
-        },
-        {
-          $set: {
-            "escrows.$.status": "ESCROWED",
-            "escrows.$.xrplSequence": xrplResult.sequence,
-            "escrows.$.txHashCreate": xrplResult.txHash,
-            "escrows.$.escrowedAt": new Date(),
-          },
-        },
-        { new: true },
+      const result = await this.escrowPaymentRepo.markEscrowed(
+        paymentId,
+        escrowId,
+        xrplResult.sequence,
+        xrplResult.txHash,
       );
       if (!result) return "recovered";
 
@@ -147,9 +121,7 @@ export class EscrowSubmitRecoveryScheduler {
           e.status === "CANCELLED",
       );
       if (allEscrowed) {
-        await this.escrowPaymentModel.findByIdAndUpdate(paymentId, {
-          $set: { status: "ACTIVE" },
-        });
+        await this.escrowPaymentRepo.markActive(paymentId);
       }
       return "recovered";
     }
@@ -165,14 +137,7 @@ export class EscrowSubmitRecoveryScheduler {
   ): Promise<void> {
     // XRPL에 없음이 확정된 SUBMITTING 에스크로를 CANCELLED로 직접 전환
     // (rollbackAllEscrows는 SUBMITTING → CANCELLING으로 처리하므로 별도 처리)
-    await this.escrowPaymentModel.findOneAndUpdate(
-      {
-        _id: paymentId,
-        "escrows._id": new Types.ObjectId(escrowId),
-        "escrows.status": "SUBMITTING",
-      },
-      { $set: { "escrows.$.status": "CANCELLED" } },
-    );
+    await this.escrowPaymentRepo.cancelSubmittingEscrow(paymentId, escrowId);
     await this.escrowPaymentsService.rollbackAllEscrows(paymentId);
   }
 }
