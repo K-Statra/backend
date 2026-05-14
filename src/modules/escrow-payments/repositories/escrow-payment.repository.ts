@@ -65,7 +65,7 @@ export class EscrowPaymentRepository {
       .exec();
   }
 
-  startSession() {
+  startSession(): Promise<ClientSession> {
     return this.model.db.startSession();
   }
 
@@ -116,6 +116,7 @@ export class EscrowPaymentRepository {
             "escrows.$.submittingAt": new Date(),
           },
         },
+        { new: true },
       )
       .exec();
   }
