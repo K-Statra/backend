@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model, Types } from "mongoose";
+import { Types } from "mongoose";
 import {
   BuyerWalletNotFoundException,
   EscrowPaymentNotFoundException,
@@ -8,26 +7,21 @@ import {
   UnauthorizedPaymentActionException,
   WalletUserNotFoundException,
 } from "../../common/exceptions";
-import {
-  EscrowPayment,
-  EscrowPaymentDocument,
-} from "./schemas/escrow-payment.schema";
-import { User, UserDocument } from "../users/schemas/user.schema";
+import { User } from "../users/schemas/user.schema";
 import { CreateEscrowPaymentDto } from "./dto/create-escrow-payment.dto";
 import { QueryEscrowPaymentDto } from "./dto/query-escrow-payment.dto";
-
 import {
   EscrowPaymentListResponse,
   EscrowPaymentResponse,
 } from "./dto/escrow-payment-response.dto";
+import { EscrowPaymentRepository } from "./repositories/escrow-payment.repository";
+import { UserFacade } from "./repositories/user.facade";
 
 @Injectable()
 export class EscrowPaymentsCrudService {
   constructor(
-    @InjectModel(EscrowPayment.name)
-    private readonly escrowPaymentModel: Model<EscrowPaymentDocument>,
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
+    private readonly escrowPaymentRepo: EscrowPaymentRepository,
+    private readonly userFacade: UserFacade,
   ) {}
 
   /**
@@ -37,9 +31,7 @@ export class EscrowPaymentsCrudService {
     dto: CreateEscrowPaymentDto,
     userId: string,
   ): Promise<EscrowPaymentResponse> {
-    const creator = await this.userModel
-      .findById(userId, { type: 1, name: 1, wallet: 1 })
-      .lean();
+    const creator = await this.userFacade.findByIdLean(userId);
     if (!creator) throw new UnauthorizedPaymentActionException();
 
     const now = new Date();
@@ -55,34 +47,30 @@ export class EscrowPaymentsCrudService {
     let sellerApprovedAt: Date | undefined;
 
     if (creator.type === "buyer") {
-      const seller = await this.userModel
-        .findOne(
-          { "wallet.address": dto.counterpartyWalletAddress, type: "seller" },
-          { _id: 1, name: 1, wallet: 1 },
-        )
-        .lean();
+      const seller = await this.userFacade.findByWalletAddressAndType(
+        dto.counterpartyWalletAddress,
+        "seller",
+      );
       if (!seller)
         throw new SellerWalletNotFoundException(dto.counterpartyWalletAddress);
 
       buyerId = userId;
       buyerName = creator.name;
       buyerWalletAddress = creator.wallet?.address;
-      sellerId = seller._id.toString();
+      sellerId = (seller as any)._id.toString();
       sellerName = seller.name;
       sellerWalletAddress = seller.wallet?.address;
       buyerApproved = true;
       buyerApprovedAt = now;
     } else if (creator.type === "seller") {
-      const buyer = await this.userModel
-        .findOne(
-          { "wallet.address": dto.counterpartyWalletAddress, type: "buyer" },
-          { _id: 1, name: 1, wallet: 1 },
-        )
-        .lean();
+      const buyer = await this.userFacade.findByWalletAddressAndType(
+        dto.counterpartyWalletAddress,
+        "buyer",
+      );
       if (!buyer)
         throw new BuyerWalletNotFoundException(dto.counterpartyWalletAddress);
 
-      buyerId = buyer._id.toString();
+      buyerId = (buyer as any)._id.toString();
       buyerName = buyer.name;
       buyerWalletAddress = buyer.wallet?.address;
       sellerId = userId;
@@ -100,7 +88,7 @@ export class EscrowPaymentsCrudService {
 
     const totalAmountXrp = dto.escrows.reduce((sum, e) => sum + e.amountXrp, 0);
 
-    const doc = new this.escrowPaymentModel({
+    const saved = await this.escrowPaymentRepo.create({
       buyerId: new Types.ObjectId(buyerId),
       buyerName,
       buyerWalletAddress,
@@ -128,7 +116,6 @@ export class EscrowPaymentsCrudService {
       })),
     });
 
-    const saved = await doc.save();
     return this.mapToResponse(saved.toObject(), userId);
   }
 
@@ -158,21 +145,12 @@ export class EscrowPaymentsCrudService {
 
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
-      this.escrowPaymentModel
-        .find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      this.escrowPaymentModel.countDocuments(filter),
+      this.escrowPaymentRepo.findMany(filter, skip, limit),
+      this.escrowPaymentRepo.countDocuments(filter),
     ]);
 
-    const mappedData = data.map((item: any) =>
-      this.mapToResponse(item, userId),
-    );
-
     return {
-      data: mappedData,
+      data: data.map((item: any) => this.mapToResponse(item, userId)),
       total,
       page,
       limit,
@@ -180,11 +158,12 @@ export class EscrowPaymentsCrudService {
   }
 
   async findById(id: string, userId: string): Promise<EscrowPaymentResponse> {
-    const doc = await this.escrowPaymentModel.findById(id).lean();
+    const doc = await this.escrowPaymentRepo.findByIdLean(id);
     if (!doc) throw new EscrowPaymentNotFoundException();
 
     const isParticipant =
-      doc.buyerId.toString() === userId || doc.sellerId.toString() === userId;
+      (doc as any).buyerId.toString() === userId ||
+      (doc as any).sellerId.toString() === userId;
     if (!isParticipant) {
       throw new UnauthorizedPaymentActionException();
     }
@@ -195,12 +174,10 @@ export class EscrowPaymentsCrudService {
   /**
    * XRPL 지갑 주소로 사용자 조회
    */
-  async findUserByWalletAddress(walletAddress: string): Promise<UserDocument> {
-    const user = await this.userModel
-      .findOne({ "wallet.address": walletAddress })
-      .lean();
+  async findUserByWalletAddress(walletAddress: string): Promise<User> {
+    const user = await this.userFacade.findByWalletAddress(walletAddress);
     if (!user) throw new WalletUserNotFoundException(walletAddress);
-    return user as UserDocument;
+    return user;
   }
 
   private mapToResponse(item: any, userId: string): EscrowPaymentResponse {

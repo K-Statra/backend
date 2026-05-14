@@ -13,7 +13,6 @@ import {
   makeEscrowItem,
   makeApproval,
   makeBuyerUser,
-  makeQueryChain,
   makeServiceTestingModule,
 } from "./helpers";
 import {
@@ -44,7 +43,7 @@ describe("EscrowPaymentsService › approvePayment", () => {
         buyerApproved: true,
         buyerApprovedAt: new Date(),
       });
-      ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+      ctx.escrowPaymentRepo.findById.mockResolvedValue(payment);
 
       await ctx.service.approvePayment(
         PAYMENT_ID.toString(),
@@ -54,7 +53,7 @@ describe("EscrowPaymentsService › approvePayment", () => {
       expect(payment.sellerApproved).toBe(true);
       expect(payment.sellerApprovedAt).toBeInstanceOf(Date);
       expect(payment.status).toBe("APPROVED");
-      expect(payment.save).toHaveBeenCalled();
+      expect(ctx.escrowPaymentRepo.save).toHaveBeenCalledWith(payment);
     });
 
     it("buyer 중복 승인 → AlreadyApprovedPaymentException, save 미호출", async () => {
@@ -62,12 +61,12 @@ describe("EscrowPaymentsService › approvePayment", () => {
         status: "PENDING_APPROVAL",
         buyerApproved: true,
       });
-      ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+      ctx.escrowPaymentRepo.findById.mockResolvedValue(payment);
 
       await expect(
         ctx.service.approvePayment(PAYMENT_ID.toString(), BUYER_ID.toString()),
       ).rejects.toThrow(AlreadyApprovedPaymentException);
-      expect(payment.save).not.toHaveBeenCalled();
+      expect(ctx.escrowPaymentRepo.save).not.toHaveBeenCalled();
     });
   });
 
@@ -80,7 +79,7 @@ describe("EscrowPaymentsService › approvePayment", () => {
         sellerApproved: true,
         sellerApprovedAt: new Date(),
       });
-      ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+      ctx.escrowPaymentRepo.findById.mockResolvedValue(payment);
 
       await ctx.service.approvePayment(
         PAYMENT_ID.toString(),
@@ -90,7 +89,7 @@ describe("EscrowPaymentsService › approvePayment", () => {
       expect(payment.buyerApproved).toBe(true);
       expect(payment.buyerApprovedAt).toBeInstanceOf(Date);
       expect(payment.status).toBe("APPROVED");
-      expect(payment.save).toHaveBeenCalled();
+      expect(ctx.escrowPaymentRepo.save).toHaveBeenCalledWith(payment);
     });
 
     it("seller 중복 승인 → AlreadyApprovedPaymentException, save 미호출", async () => {
@@ -98,12 +97,12 @@ describe("EscrowPaymentsService › approvePayment", () => {
         status: "PENDING_APPROVAL",
         sellerApproved: true,
       });
-      ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+      ctx.escrowPaymentRepo.findById.mockResolvedValue(payment);
 
       await expect(
         ctx.service.approvePayment(PAYMENT_ID.toString(), SELLER_ID.toString()),
       ).rejects.toThrow(AlreadyApprovedPaymentException);
-      expect(payment.save).not.toHaveBeenCalled();
+      expect(ctx.escrowPaymentRepo.save).not.toHaveBeenCalled();
     });
   });
 
@@ -111,7 +110,7 @@ describe("EscrowPaymentsService › approvePayment", () => {
 
   it("ACTIVE 상태에서 승인 시도 → InvalidPaymentStatusException", async () => {
     const payment = makePayment({ status: "ACTIVE" });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+    ctx.escrowPaymentRepo.findById.mockResolvedValue(payment);
 
     await expect(
       ctx.service.approvePayment(PAYMENT_ID.toString(), BUYER_ID.toString()),
@@ -120,7 +119,7 @@ describe("EscrowPaymentsService › approvePayment", () => {
 
   it("buyer도 seller도 아닌 제3자 → UnauthorizedPaymentActionException", async () => {
     const payment = makePayment({ status: "PENDING_APPROVAL" });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+    ctx.escrowPaymentRepo.findById.mockResolvedValue(payment);
 
     await expect(
       ctx.service.approvePayment(
@@ -131,7 +130,7 @@ describe("EscrowPaymentsService › approvePayment", () => {
   });
 
   it("존재하지 않는 결제 → EscrowPaymentNotFoundException", async () => {
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(null));
+    ctx.escrowPaymentRepo.findById.mockResolvedValue(null);
 
     await expect(
       ctx.service.approvePayment(PAYMENT_ID.toString(), BUYER_ID.toString()),
@@ -157,7 +156,7 @@ describe("EscrowPaymentsService › approveEvent", () => {
         }),
       ],
     });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+    ctx.escrowPaymentRepo.findByIdWithFulfillment.mockResolvedValue(payment);
     return payment;
   }
 
@@ -169,7 +168,7 @@ describe("EscrowPaymentsService › approveEvent", () => {
     const payment = makePayment({
       escrows: [makeEscrowItem({ status: "PENDING_ESCROW" })],
     });
-    ctx.escrowPaymentModel.findById.mockReturnValue(makeQueryChain(payment));
+    ctx.escrowPaymentRepo.findByIdWithFulfillment.mockResolvedValue(payment);
 
     await expect(
       ctx.service.approveEvent(
@@ -247,7 +246,7 @@ describe("EscrowPaymentsService › approveEvent", () => {
     expect(approval.buyerApproved).toBe(true);
     expect(approval.buyerApprovedAt).toBeInstanceOf(Date);
     expect(approval.completedAt).toBeUndefined();
-    expect(payment.save).toHaveBeenCalled();
+    expect(ctx.escrowPaymentRepo.save).toHaveBeenCalled();
   });
 
   it("양측 모두 승인 → completedAt 설정, EscrowFinish 자동 제출", async () => {
@@ -255,7 +254,7 @@ describe("EscrowPaymentsService › approveEvent", () => {
       buyerApproved: true,
       buyerApprovedAt: new Date(),
     });
-    ctx.userModel.findById.mockReturnValue(makeQueryChain(makeBuyerUser()));
+    ctx.userFacade.findByIdWithSeed.mockResolvedValue(makeBuyerUser());
 
     await ctx.service.approveEvent(
       PAYMENT_ID.toString(),
@@ -280,7 +279,7 @@ describe("EscrowPaymentsService › approveEvent", () => {
       buyerApproved: true,
       buyerApprovedAt: new Date(),
     });
-    ctx.userModel.findById.mockReturnValue(makeQueryChain(makeBuyerUser()));
+    ctx.userFacade.findByIdWithSeed.mockResolvedValue(makeBuyerUser());
 
     await ctx.service.approveEvent(
       PAYMENT_ID.toString(),
@@ -300,7 +299,7 @@ describe("EscrowPaymentsService › approveEvent", () => {
       buyerApproved: true,
       buyerApprovedAt: new Date(),
     });
-    ctx.userModel.findById.mockReturnValue(makeQueryChain(makeBuyerUser()));
+    ctx.userFacade.findByIdWithSeed.mockResolvedValue(makeBuyerUser());
 
     await ctx.service.approveEvent(
       PAYMENT_ID.toString(),
@@ -317,7 +316,7 @@ describe("EscrowPaymentsService › approveEvent", () => {
       buyerApproved: true,
       buyerApprovedAt: new Date(),
     });
-    ctx.userModel.findById.mockReturnValue(makeQueryChain(makeBuyerUser()));
+    ctx.userFacade.findByIdWithSeed.mockResolvedValue(makeBuyerUser());
     ctx.xrplService.finishEscrow.mockRejectedValue(
       new Error("XRPL network error"),
     );

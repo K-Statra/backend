@@ -123,3 +123,4 @@ export class EscrowPayment {
 
 export const EscrowPaymentSchema = SchemaFactory.createForClass(EscrowPayment);
 EscrowPaymentSchema.index({ createdAt: -1 });
+EscrowPaymentSchema.index({ "escrows.status": 1, "escrows.submittingAt": 1 });

@@ -1,18 +1,12 @@
 import { Processor, Process, OnQueueFailed } from "@nestjs/bull";
 import { Logger } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
 import type { Job } from "bull";
 import { EscrowPaymentsService } from "./escrow-payments.service";
 import {
   ESCROW_CREATE_QUEUE,
   EscrowCreateJobData,
 } from "./escrow-create.constants";
-import {
-  EscrowPayment,
-  EscrowPaymentDocument,
-} from "./schemas/escrow-payment.schema";
-import { User, UserDocument } from "../users/schemas/user.schema";
+import { EscrowPaymentDocument } from "./schemas/escrow-payment.schema";
 import { XrplService, XrplWallet } from "../xrpl/xrpl.service";
 import {
   EscrowItemNotFoundException,
@@ -21,6 +15,8 @@ import {
   PaymentNotActiveException,
   WalletNotAvailableException,
 } from "../../common/exceptions";
+import { EscrowPaymentRepository } from "./repositories/escrow-payment.repository";
+import { UserFacade } from "./repositories/user.facade";
 
 // 재시도해도 해결되지 않는 XRPL 오류 코드
 const NON_RETRYABLE_CODES = [
@@ -46,10 +42,8 @@ export class EscrowCreateProcessor {
   private readonly logger = new Logger(EscrowCreateProcessor.name);
 
   constructor(
-    @InjectModel(EscrowPayment.name)
-    private readonly escrowPaymentModel: Model<EscrowPaymentDocument>,
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
+    private readonly escrowPaymentRepo: EscrowPaymentRepository,
+    private readonly userFacade: UserFacade,
     private readonly xrplService: XrplService,
     private readonly escrowPaymentsService: EscrowPaymentsService,
   ) {}
@@ -132,7 +126,7 @@ export class EscrowCreateProcessor {
     paymentId: string,
     escrowId: string,
   ): Promise<EscrowPaymentDocument> {
-    const payment = await this.escrowPaymentModel.findById(paymentId);
+    const payment = await this.escrowPaymentRepo.findById(paymentId);
     if (!payment) throw new EscrowPaymentNotFoundException();
 
     if (payment.status !== "PROCESSING") {
@@ -148,14 +142,12 @@ export class EscrowCreateProcessor {
       );
     }
 
-    const buyerUser = await this.userModel
-      .findById(payment.buyerId)
-      .select("+wallet.seed");
+    const buyerUser = await this.userFacade.findByIdWithSeed(payment.buyerId);
     if (!buyerUser?.wallet?.seed) {
       throw new WalletNotAvailableException("Buyer");
     }
 
-    const sellerUser = await this.userModel.findById(payment.sellerId);
+    const sellerUser = await this.userFacade.findById(payment.sellerId);
     if (!sellerUser?.wallet?.address) {
       throw new WalletNotAvailableException("Seller");
     }
@@ -174,19 +166,11 @@ export class EscrowCreateProcessor {
 
     // Pre-flight: PENDING_ESCROW → SUBMITTING + condition/fulfillment 원자적 저장
     // XRPL 제출 전에 상태를 선점해 재시도 시 중복 EscrowCreate 방지
-    const preFlighted = await this.escrowPaymentModel.findOneAndUpdate(
-      {
-        _id: paymentId,
-        escrows: { $elemMatch: { _id: escrow._id, status: "PENDING_ESCROW" } },
-      },
-      {
-        $set: {
-          "escrows.$.status": "SUBMITTING",
-          "escrows.$.condition": condition,
-          "escrows.$.fulfillment": encryptedFulfillment,
-          "escrows.$.submittingAt": new Date(),
-        },
-      },
+    const preFlighted = await this.escrowPaymentRepo.preflight(
+      paymentId,
+      escrowId,
+      condition,
+      encryptedFulfillment,
     );
     if (!preFlighted) {
       throw new InvalidEscrowItemStatusException(
@@ -211,13 +195,7 @@ export class EscrowCreateProcessor {
       ));
     } catch (err) {
       // Case A: XRPL 제출 실패 — 에스크로 미생성 확정, SUBMITTING → PENDING_ESCROW 즉시 복구
-      await this.escrowPaymentModel.findOneAndUpdate(
-        {
-          _id: paymentId,
-          escrows: { $elemMatch: { _id: escrow._id, status: "SUBMITTING" } },
-        },
-        { $set: { "escrows.$.status": "PENDING_ESCROW" } },
-      );
+      await this.escrowPaymentRepo.revertSubmitting(paymentId, escrowId);
       throw err;
     }
 
@@ -225,28 +203,23 @@ export class EscrowCreateProcessor {
       `Submitting EscrowCreate: buyer=${buyerUser.wallet.address} ` +
         `seller=${sellerUser.wallet.address} amount=${escrow.amountXrp} ${currency}`,
     );
+
     // Case B: post-flight DB 저장 실패 시 최대 3회 재시도 (메모리의 txHash/sequence 활용)
     // 재시도 소진 시 SUBMITTING 유지 → 스케줄러가 XRPL 조회로 복구
     let result: EscrowPaymentDocument | null = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        result = await this.escrowPaymentModel.findOneAndUpdate(
-          { _id: paymentId, "escrows._id": escrow._id },
-          {
-            $set: {
-              "escrows.$.status": "ESCROWED",
-              "escrows.$.xrplSequence": sequence,
-              "escrows.$.txHashCreate": txHash,
-              "escrows.$.escrowedAt": new Date(),
-            },
-          },
-          { new: true },
+        result = await this.escrowPaymentRepo.markEscrowed(
+          paymentId,
+          escrowId,
+          sequence,
+          txHash,
         );
         if (result) break;
         // null 반환 = 다른 경로가 상태를 변경한 경우 (동시성 충돌)
         if (attempt === 3) {
           this.logger.error(
-            `Post-flight DB update missed for paymentId=${paymentId} escrowId=${escrow._id.toString()}; recovery scheduler must reconcile via condition lookup`,
+            `Post-flight DB update missed for paymentId=${paymentId} escrowId=${escrowId}; recovery scheduler must reconcile via condition lookup`,
           );
           throw new Error("Post-flight DB update did not match");
         }
@@ -264,9 +237,7 @@ export class EscrowCreateProcessor {
         e.status === "CANCELLED",
     );
     if (allEscrowed) {
-      await this.escrowPaymentModel.findByIdAndUpdate(paymentId, {
-        $set: { status: "ACTIVE" },
-      });
+      await this.escrowPaymentRepo.markActive(paymentId);
       result!.status = "ACTIVE";
     }
 

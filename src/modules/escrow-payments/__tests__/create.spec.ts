@@ -1,9 +1,4 @@
-import {
-  BUYER_ID,
-  SELLER_ID,
-  makeCrudServiceTestingModule,
-  makeQueryChain,
-} from "./helpers";
+import { BUYER_ID, SELLER_ID, makeCrudServiceTestingModule } from "./helpers";
 import {
   BuyerWalletNotFoundException,
   SellerWalletNotFoundException,
@@ -42,26 +37,22 @@ describe("EscrowPaymentsCrudService › create", () => {
 
     beforeEach(async () => {
       ctx = await makeCrudServiceTestingModule();
-      ctx.userModel.findById.mockReturnValue(
-        makeQueryChain({
-          type: "buyer",
-          name: "Buyer Corp",
-          wallet: { address: BUYER_WALLET_ADDRESS },
-        }),
-      );
-      ctx.userModel.findOne.mockReturnValue(
-        makeQueryChain({
-          _id: SELLER_ID,
-          name: "Seller Corp",
-          wallet: { address: SELLER_WALLET_ADDRESS },
-        }),
-      );
+      ctx.userFacade.findByIdLean.mockResolvedValue({
+        type: "buyer",
+        name: "Buyer Corp",
+        wallet: { address: BUYER_WALLET_ADDRESS },
+      });
+      ctx.userFacade.findByWalletAddressAndType.mockResolvedValue({
+        _id: SELLER_ID,
+        name: "Seller Corp",
+        wallet: { address: SELLER_WALLET_ADDRESS },
+      });
     });
 
     it("totalAmountXrp를 escrow 항목 합산으로 계산", async () => {
       await ctx.service.create(makeDto(), BUYER_ID.toString());
 
-      const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
+      const constructorArg = ctx.escrowPaymentRepo.create.mock.calls[0][0];
       expect(constructorArg.totalAmountXrp).toBe(1000);
       expect(constructorArg.buyerWalletAddress).toBe(BUYER_WALLET_ADDRESS);
       expect(constructorArg.sellerWalletAddress).toBe(SELLER_WALLET_ADDRESS);
@@ -70,7 +61,7 @@ describe("EscrowPaymentsCrudService › create", () => {
     it("각 escrow 항목의 approvals를 requiredEventTypes로 초기화", async () => {
       await ctx.service.create(makeDto(), BUYER_ID.toString());
 
-      const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
+      const constructorArg = ctx.escrowPaymentRepo.create.mock.calls[0][0];
       expect(constructorArg.escrows[0].approvals).toEqual([
         expect.objectContaining({
           eventType: "SHIPMENT_CONFIRMED",
@@ -84,7 +75,7 @@ describe("EscrowPaymentsCrudService › create", () => {
     it("생성자(buyer)의 buyerApproved를 true로 자동 설정", async () => {
       await ctx.service.create(makeDto(), BUYER_ID.toString());
 
-      const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
+      const constructorArg = ctx.escrowPaymentRepo.create.mock.calls[0][0];
       expect(constructorArg.buyerApproved).toBe(true);
       expect(constructorArg.buyerApprovedAt).toBeInstanceOf(Date);
       expect(constructorArg.sellerApproved).toBe(false);
@@ -93,38 +84,30 @@ describe("EscrowPaymentsCrudService › create", () => {
     it("상태를 PENDING_APPROVAL로 초기화", async () => {
       await ctx.service.create(makeDto(), BUYER_ID.toString());
 
-      const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
+      const constructorArg = ctx.escrowPaymentRepo.create.mock.calls[0][0];
       expect(constructorArg.status).toBe("PENDING_APPROVAL");
     });
 
-    it("save() 호출", async () => {
-      const payment = { buyerId: BUYER_ID, sellerId: SELLER_ID };
-      const instance = {
-        save: jest.fn().mockReturnThis(),
-        toObject: jest.fn().mockReturnValue(payment),
-      };
-      instance.save.mockResolvedValue(instance);
-      ctx.escrowPaymentModel.mockReturnValue(instance);
-
+    it("create() 호출", async () => {
       await ctx.service.create(makeDto(), BUYER_ID.toString());
 
-      expect(instance.save).toHaveBeenCalled();
+      expect(ctx.escrowPaymentRepo.create).toHaveBeenCalled();
     });
 
     it("counterpartyWalletAddress로 seller 조회 후 sellerId를 document에 주입", async () => {
       await ctx.service.create(makeDto(), BUYER_ID.toString());
 
-      expect(ctx.userModel.findOne).toHaveBeenCalledWith(
-        { "wallet.address": SELLER_WALLET_ADDRESS, type: "seller" },
-        { _id: 1, name: 1, wallet: 1 },
+      expect(ctx.userFacade.findByWalletAddressAndType).toHaveBeenCalledWith(
+        SELLER_WALLET_ADDRESS,
+        "seller",
       );
 
-      const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
+      const constructorArg = ctx.escrowPaymentRepo.create.mock.calls[0][0];
       expect(constructorArg.sellerId.toString()).toBe(SELLER_ID.toString());
     });
 
     it("존재하지 않는 seller 지갑 주소 → SellerWalletNotFoundException", async () => {
-      ctx.userModel.findOne.mockReturnValue(makeQueryChain(null));
+      ctx.userFacade.findByWalletAddressAndType.mockResolvedValue(null);
 
       await expect(
         ctx.service.create(makeDto(), BUYER_ID.toString()),
@@ -143,26 +126,22 @@ describe("EscrowPaymentsCrudService › create", () => {
 
     beforeEach(async () => {
       ctx = await makeCrudServiceTestingModule();
-      ctx.userModel.findById.mockReturnValue(
-        makeQueryChain({
-          type: "seller",
-          name: "Seller Corp",
-          wallet: { address: SELLER_WALLET_ADDRESS },
-        }),
-      );
-      ctx.userModel.findOne.mockReturnValue(
-        makeQueryChain({
-          _id: BUYER_ID,
-          name: "Buyer Corp",
-          wallet: { address: BUYER_WALLET_ADDRESS },
-        }),
-      );
+      ctx.userFacade.findByIdLean.mockResolvedValue({
+        type: "seller",
+        name: "Seller Corp",
+        wallet: { address: SELLER_WALLET_ADDRESS },
+      });
+      ctx.userFacade.findByWalletAddressAndType.mockResolvedValue({
+        _id: BUYER_ID,
+        name: "Buyer Corp",
+        wallet: { address: BUYER_WALLET_ADDRESS },
+      });
     });
 
     it("생성자(seller)의 sellerApproved를 true로 자동 설정", async () => {
       await ctx.service.create(makeDto(), SELLER_ID.toString());
 
-      const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
+      const constructorArg = ctx.escrowPaymentRepo.create.mock.calls[0][0];
       expect(constructorArg.sellerApproved).toBe(true);
       expect(constructorArg.sellerApprovedAt).toBeInstanceOf(Date);
       expect(constructorArg.buyerApproved).toBe(false);
@@ -173,17 +152,17 @@ describe("EscrowPaymentsCrudService › create", () => {
     it("counterpartyWalletAddress로 buyer 조회 후 buyerId를 document에 주입", async () => {
       await ctx.service.create(makeDto(), SELLER_ID.toString());
 
-      expect(ctx.userModel.findOne).toHaveBeenCalledWith(
-        { "wallet.address": BUYER_WALLET_ADDRESS, type: "buyer" },
-        { _id: 1, name: 1, wallet: 1 },
+      expect(ctx.userFacade.findByWalletAddressAndType).toHaveBeenCalledWith(
+        BUYER_WALLET_ADDRESS,
+        "buyer",
       );
 
-      const constructorArg = ctx.escrowPaymentModel.mock.calls[0][0];
+      const constructorArg = ctx.escrowPaymentRepo.create.mock.calls[0][0];
       expect(constructorArg.buyerId.toString()).toBe(BUYER_ID.toString());
     });
 
     it("존재하지 않는 buyer 지갑 주소 → BuyerWalletNotFoundException", async () => {
-      ctx.userModel.findOne.mockReturnValue(makeQueryChain(null));
+      ctx.userFacade.findByWalletAddressAndType.mockResolvedValue(null);
 
       await expect(
         ctx.service.create(makeDto(), SELLER_ID.toString()),
@@ -195,7 +174,7 @@ describe("EscrowPaymentsCrudService › create", () => {
 
   it("DB에 없는 userId → UnauthorizedPaymentActionException", async () => {
     ctx = await makeCrudServiceTestingModule();
-    // findById 기본값: null (makeUserModelMock 참고)
+    // findByIdLean 기본값: null (makeUserFacadeMock 참고)
 
     await expect(
       ctx.service.create(

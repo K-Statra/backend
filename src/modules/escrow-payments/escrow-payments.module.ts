@@ -8,26 +8,30 @@ import {
   EscrowPayment,
   EscrowPaymentSchema,
 } from "./schemas/escrow-payment.schema";
+import { User, UserSchema } from "../users/schemas/user.schema";
 import { XrplModule } from "../xrpl/xrpl.module";
-import { UsersModule } from "../users/users.module";
 import { ESCROW_CREATE_QUEUE } from "./escrow-create.constants";
 import { EscrowCreateProcessor } from "./escrow-create.processor";
 import { EscrowCancelScheduler } from "./escrow-cancel.scheduler";
 import { EscrowSubmitRecoveryScheduler } from "./escrow-submit-recovery.scheduler";
 import { OutboxModule } from "../outbox/outbox.module";
+import { EscrowPaymentRepository } from "./repositories/escrow-payment.repository";
+import { UserFacade } from "./repositories/user.facade";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: EscrowPayment.name, schema: EscrowPaymentSchema },
+      { name: User.name, schema: UserSchema },
     ]),
     BullModule.registerQueue({ name: ESCROW_CREATE_QUEUE }),
     XrplModule,
-    UsersModule,
     OutboxModule,
   ],
   controllers: [EscrowPaymentsController],
   providers: [
+    EscrowPaymentRepository,
+    UserFacade,
     EscrowPaymentsCrudService,
     EscrowPaymentsService,
     EscrowCreateProcessor,

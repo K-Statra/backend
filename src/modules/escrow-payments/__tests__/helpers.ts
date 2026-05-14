@@ -1,11 +1,10 @@
 import { Test } from "@nestjs/testing";
-import { getModelToken } from "@nestjs/mongoose";
 import { Types } from "mongoose";
 import { EscrowPaymentsCrudService } from "../escrow-payments-crud.service";
 import { EscrowPaymentsService } from "../escrow-payments.service";
 import { EscrowCreateProcessor } from "../escrow-create.processor";
-import { EscrowPayment } from "../schemas/escrow-payment.schema";
-import { User } from "../../users/schemas/user.schema";
+import { EscrowPaymentRepository } from "../repositories/escrow-payment.repository";
+import { UserFacade } from "../repositories/user.facade";
 import { XrplService } from "../../xrpl/xrpl.service";
 import { OutboxService } from "../../outbox/outbox.service";
 
@@ -26,21 +25,6 @@ export const TX_HASH_FINISH = "FINISH_TX_HASH_XYZ";
 export const XRPL_SEQUENCE = 42;
 
 // ── 픽스처 헬퍼 ───────────────────────────────────────────────────────────────
-
-export function makeQueryChain(value: any) {
-  const promise = Promise.resolve(value);
-  const chain: any = {
-    select: jest.fn().mockReturnThis(),
-    lean: jest.fn().mockResolvedValue(value),
-    sort: jest.fn().mockReturnThis(),
-    skip: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    then: promise.then.bind(promise),
-    catch: promise.catch.bind(promise),
-    finally: promise.finally.bind(promise),
-  };
-  return chain;
-}
 
 export function makeApproval(eventType: string, overrides: object = {}) {
   return {
@@ -119,7 +103,7 @@ export function makeSellerUser() {
 
 // ── 모킹 팩토리 ───────────────────────────────────────────────────────────────
 
-export function makeEscrowPaymentModelMock() {
+export function makeEscrowPaymentRepoMock() {
   const session = {
     withTransaction: jest
       .fn()
@@ -127,26 +111,34 @@ export function makeEscrowPaymentModelMock() {
     endSession: jest.fn().mockResolvedValue(undefined),
   };
 
-  const ModelMock: any = jest.fn().mockImplementation((data: any) => {
-    const instance = { ...data };
-    instance.save = jest.fn().mockResolvedValue(instance);
-    instance.toObject = jest.fn().mockReturnValue(instance);
-    return instance;
-  });
-  ModelMock.findById = jest.fn().mockReturnValue(makeQueryChain(null));
-  ModelMock.find = jest.fn().mockReturnValue(makeQueryChain([]));
-  ModelMock.countDocuments = jest.fn().mockResolvedValue(0);
-  ModelMock.findOneAndUpdate = jest.fn().mockResolvedValue(null);
-  ModelMock.findByIdAndUpdate = jest.fn().mockResolvedValue(null);
-  ModelMock.db = { startSession: jest.fn().mockResolvedValue(session) };
-  return ModelMock;
+  return {
+    findById: jest.fn().mockResolvedValue(null),
+    findByIdWithFulfillment: jest.fn().mockResolvedValue(null),
+    findByIdLean: jest.fn().mockResolvedValue(null),
+    save: jest.fn().mockImplementation((doc: any) => Promise.resolve(doc)),
+    create: jest.fn().mockResolvedValue(makePayment()),
+    findMany: jest.fn().mockResolvedValue([]),
+    countDocuments: jest.fn().mockResolvedValue(0),
+    findCancelling: jest.fn().mockResolvedValue([]),
+    findStuckSubmitting: jest.fn().mockResolvedValue([]),
+    startSession: jest.fn().mockResolvedValue(session),
+    markProcessing: jest.fn().mockResolvedValue(null),
+    markActive: jest.fn().mockResolvedValue(undefined),
+    preflight: jest.fn().mockResolvedValue(null),
+    revertSubmitting: jest.fn().mockResolvedValue(undefined),
+    markEscrowed: jest.fn().mockResolvedValue(null),
+    cancelSubmittingEscrow: jest.fn().mockResolvedValue(undefined),
+  };
 }
 
-export function makeUserModelMock() {
-  const ModelMock: any = jest.fn();
-  ModelMock.findById = jest.fn().mockReturnValue(makeQueryChain(null));
-  ModelMock.findOne = jest.fn().mockReturnValue(makeQueryChain(null));
-  return ModelMock;
+export function makeUserFacadeMock() {
+  return {
+    findById: jest.fn().mockResolvedValue(null),
+    findByIdLean: jest.fn().mockResolvedValue(null),
+    findByIdWithSeed: jest.fn().mockResolvedValue(null),
+    findByWalletAddressAndType: jest.fn().mockResolvedValue(null),
+    findByWalletAddress: jest.fn().mockResolvedValue(null),
+  };
 }
 
 export function makeXrplServiceMock() {
@@ -179,30 +171,27 @@ export function makeOutboxServiceMock() {
 // ── NestJS 테스팅 모듈 ────────────────────────────────────────────────────────
 
 export async function makeCrudServiceTestingModule() {
-  const escrowPaymentModel = makeEscrowPaymentModelMock();
-  const userModel = makeUserModelMock();
+  const escrowPaymentRepo = makeEscrowPaymentRepoMock();
+  const userFacade = makeUserFacadeMock();
 
   const module = await Test.createTestingModule({
     providers: [
       EscrowPaymentsCrudService,
-      {
-        provide: getModelToken(EscrowPayment.name),
-        useValue: escrowPaymentModel,
-      },
-      { provide: getModelToken(User.name), useValue: userModel },
+      { provide: EscrowPaymentRepository, useValue: escrowPaymentRepo },
+      { provide: UserFacade, useValue: userFacade },
     ],
   }).compile();
 
   return {
     service: module.get<EscrowPaymentsCrudService>(EscrowPaymentsCrudService),
-    escrowPaymentModel,
-    userModel,
+    escrowPaymentRepo,
+    userFacade,
   };
 }
 
 export async function makeProcessorTestingModule() {
-  const escrowPaymentModel = makeEscrowPaymentModelMock();
-  const userModel = makeUserModelMock();
+  const escrowPaymentRepo = makeEscrowPaymentRepoMock();
+  const userFacade = makeUserFacadeMock();
   const xrplService = makeXrplServiceMock();
   const escrowPaymentsService = {
     getEscrowStatus: jest.fn(),
@@ -212,11 +201,8 @@ export async function makeProcessorTestingModule() {
   const module = await Test.createTestingModule({
     providers: [
       EscrowCreateProcessor,
-      {
-        provide: getModelToken(EscrowPayment.name),
-        useValue: escrowPaymentModel,
-      },
-      { provide: getModelToken(User.name), useValue: userModel },
+      { provide: EscrowPaymentRepository, useValue: escrowPaymentRepo },
+      { provide: UserFacade, useValue: userFacade },
       { provide: XrplService, useValue: xrplService },
       { provide: EscrowPaymentsService, useValue: escrowPaymentsService },
     ],
@@ -224,27 +210,24 @@ export async function makeProcessorTestingModule() {
 
   return {
     processor: module.get<EscrowCreateProcessor>(EscrowCreateProcessor),
-    escrowPaymentModel,
-    userModel,
+    escrowPaymentRepo,
+    userFacade,
     xrplService,
     escrowPaymentsService,
   };
 }
 
 export async function makeServiceTestingModule() {
-  const escrowPaymentModel = makeEscrowPaymentModelMock();
-  const userModel = makeUserModelMock();
+  const escrowPaymentRepo = makeEscrowPaymentRepoMock();
+  const userFacade = makeUserFacadeMock();
   const xrplService = makeXrplServiceMock();
   const outboxService = makeOutboxServiceMock();
 
   const module = await Test.createTestingModule({
     providers: [
       EscrowPaymentsService,
-      {
-        provide: getModelToken(EscrowPayment.name),
-        useValue: escrowPaymentModel,
-      },
-      { provide: getModelToken(User.name), useValue: userModel },
+      { provide: EscrowPaymentRepository, useValue: escrowPaymentRepo },
+      { provide: UserFacade, useValue: userFacade },
       { provide: XrplService, useValue: xrplService },
       { provide: OutboxService, useValue: outboxService },
     ],
@@ -252,8 +235,8 @@ export async function makeServiceTestingModule() {
 
   return {
     service: module.get<EscrowPaymentsService>(EscrowPaymentsService),
-    escrowPaymentModel,
-    userModel,
+    escrowPaymentRepo,
+    userFacade,
     xrplService,
     outboxService,
   };

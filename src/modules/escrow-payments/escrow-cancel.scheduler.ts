@@ -1,23 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
-import {
-  EscrowPayment,
-  EscrowPaymentDocument,
-} from "./schemas/escrow-payment.schema";
-import { User, UserDocument } from "../users/schemas/user.schema";
 import { XrplService, XrplWallet } from "../xrpl/xrpl.service";
+import { EscrowPaymentRepository } from "./repositories/escrow-payment.repository";
+import { UserFacade } from "./repositories/user.facade";
 
 @Injectable()
 export class EscrowCancelScheduler {
   private readonly logger = new Logger(EscrowCancelScheduler.name);
 
   constructor(
-    @InjectModel(EscrowPayment.name)
-    private readonly escrowPaymentModel: Model<EscrowPaymentDocument>,
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
+    private readonly escrowPaymentRepo: EscrowPaymentRepository,
+    private readonly userFacade: UserFacade,
     private readonly xrplService: XrplService,
   ) {}
 
@@ -27,9 +20,7 @@ export class EscrowCancelScheduler {
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async processCancellingEscrows(): Promise<void> {
-    const payments = await this.escrowPaymentModel.find({
-      "escrows.status": "CANCELLING",
-    });
+    const payments = await this.escrowPaymentRepo.findCancelling();
 
     if (payments.length === 0) return;
 
@@ -38,9 +29,7 @@ export class EscrowCancelScheduler {
     );
 
     for (const payment of payments) {
-      const buyerUser = await this.userModel
-        .findById(payment.buyerId)
-        .select("+wallet.seed");
+      const buyerUser = await this.userFacade.findByIdWithSeed(payment.buyerId);
 
       if (!buyerUser?.wallet?.seed) {
         this.logger.warn(
@@ -67,7 +56,7 @@ export class EscrowCancelScheduler {
           );
 
           escrow.status = "CANCELLED";
-          await payment.save();
+          await this.escrowPaymentRepo.save(payment);
           this.logger.log(
             `EscrowCancel success: seq=${escrow.xrplSequence} payment=${payment._id.toString()}`,
           );
