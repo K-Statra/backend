@@ -130,11 +130,11 @@ export class OutboxWatcherService
     if (!acquired) return; // 다른 인스턴스가 먼저 처리함
 
     // 금액 오류는 프로세서에서 즉시 중단, 그 외(네트워크 등)는 적극 재시도
-    // 10회, 초기 60초 지수 백오프 → 최대 누적 대기 ~17시간
+    // 10회, 초기 5초 지수 백오프 → 최대 누적 대기 ~43분
     try {
       await this.escrowCreateQueue.add(doc.payload as EscrowCreateJobData, {
         attempts: 10,
-        backoff: { type: "exponential", delay: 60_000 },
+        backoff: { type: "exponential", delay: 5_000 },
       });
     } catch (err: any) {
       this.logger.error(
