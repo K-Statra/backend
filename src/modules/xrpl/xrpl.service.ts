@@ -92,20 +92,31 @@ export class XrplService implements OnModuleInit, OnModuleDestroy {
 
   // 중복 websocket 중복 연결 방지 및 재연결 로직
   private async connect() {
-    if (!this.client) {
-      this.client = new Client(this.wsUrl);
-    }
-    if (this.client.isConnected()) {
+    if (this.client?.isConnected()) {
       return;
     }
     if (!this.connectPromise) {
-      this.connectPromise = this.client.connect().finally(() => {
-        this.connectPromise = undefined;
-      });
+      // 연결이 끊긴 상태에서 재연결 시 기존 Client를 버리고 새로 생성
+      // 기존 Client를 재사용하면 "Websocket connection never cleaned up" 에러 발생
+      this.client = new Client(this.wsUrl, { connectionTimeout: 3_000 });
+      this.logger.log(`[XRPL] Connecting to ${this.wsUrl}`);
+      this.connectPromise = this.client
+        .connect()
+        .then(() => {
+          this.logger.log(`[XRPL] Connected to ${this.wsUrl}`);
+        })
+        .catch((err: Error) => {
+          this.logger.error(
+            `[XRPL] Connection failed (${this.wsUrl}): ${err.message}`,
+          );
+          throw err;
+        })
+        .finally(() => {
+          this.connectPromise = undefined;
+        });
     }
 
     await this.connectPromise;
-    this.logger.log(`Connected to XRPL: ${this.wsUrl}`);
   }
 
   // 신규 지갑 생성
