@@ -68,7 +68,7 @@ src/modules/
 ```
 
 ## 아키텍처
-
+```mermaid
 graph LR
     %% Client Zone
     Client((Client\nBuyer/Seller))
@@ -113,7 +113,9 @@ graph LR
     Queue -->|Consume| Worker
     Worker <-->|EscrowCreate / Approve| XRPL
     Worker -->|Update Status| Mongo
+```
 ---
+
 
 ## 빠른 시작
 
