@@ -716,6 +716,7 @@ export class PartnersService {
         forceWebSearch,
         tavilyQuery: tavilyQuery || null,
         hydeDocument,
+        aiKeywords,
         duration: `${totalDuration}ms`,
       },
     };
