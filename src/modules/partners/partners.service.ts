@@ -386,57 +386,47 @@ export class PartnersService {
       await Promise.all([textSearchTask, vectorSearchTask]);
     }
 
-    // 1.3 Merge Results
+    // 1.3 Merge Results (Reciprocal Rank Fusion)
     let dbResults: any[] = [];
     if (vectorResults.length > 0 || textResults.length > 0) {
-      const resultMap = new Map<string, any>();
-      const boostKeywords = (aiKeywords || q || "")
-        .split(/[\s,]+/)
-        .map((w) => w.replace(/[.,]/g, "").trim())
-        .filter((w) => w.length > 1);
+      const K = 60;
 
-      // Add vector results first
-      vectorResults.forEach((r) => {
-        resultMap.set(r._id.toString(), {
-          ...r,
-          vectorScore: r.score,
-          textScore: 0,
-          score: r.score * 0.7,
-        });
-      });
+      const vectorRankMap = new Map(
+        [...vectorResults]
+          .sort((a, b) => b.score - a.score)
+          .map((r, i) => [r._id.toString(), i + 1]),
+      );
+      const textRankMap = new Map(
+        [...textResults]
+          .sort((a, b) => b.textScore - a.textScore)
+          .map((r, i) => [r._id.toString(), i + 1]),
+      );
 
-      textResults.forEach((r) => {
-        const id = r._id.toString();
-        const normText = Math.min(1.0, r.textScore / 12);
-        if (resultMap.has(id)) {
-          const existing = resultMap.get(id);
-          existing.textScore = r.textScore;
-          existing.score = existing.vectorScore * 0.4 + normText * 0.4 + 0.2;
-        } else {
-          resultMap.set(id, {
-            ...r,
-            vectorScore: 0,
-            textScore: r.textScore,
-            score: normText * 0.7,
-          });
-        }
-      });
+      const allIds = new Set([
+        ...vectorResults.map((r) => r._id.toString()),
+        ...textResults.map((r) => r._id.toString()),
+      ]);
 
-      // Post-Processing: Boost items whose names or industry contain AI keywords
-      resultMap.forEach((item) => {
-        const name = (item.name || "").toLowerCase();
-        const industryText = (item.industry || "").toLowerCase();
-        const hasKeywordMatch = boostKeywords.some((kw) => {
-          const kL = kw.toLowerCase();
-          const match = name.includes(kL) || industryText.includes(kL);
-          return match;
-        });
+      const vectorDocMap = new Map<string, any>();
+      vectorResults.forEach((r) => vectorDocMap.set(r._id.toString(), r));
+      const textDocMap = new Map<string, any>();
+      textResults.forEach((r) => textDocMap.set(r._id.toString(), r));
 
-        if (hasKeywordMatch) {
-          item.score = Math.min(1.0, item.score + 0.3);
-        }
-      });
-      dbResults = Array.from(resultMap.values())
+      dbResults = [...allIds]
+        .map((id) => {
+          const GHOST_RANK = 500;
+          const vRank = vectorRankMap.get(id) ?? GHOST_RANK;
+          const tRank = textRankMap.get(id) ?? GHOST_RANK;
+          const base = vectorDocMap.get(id) ?? textDocMap.get(id);
+          return {
+            ...base,
+            vectorScore: vectorDocMap.get(id)?.score ?? 0,
+            textScore: textDocMap.get(id)?.textScore ?? 0,
+            score: 1 / (K + vRank) + 1 / (K + tRank),
+            vectorRank: vRank,
+            textRank: tRank,
+          };
+        })
         .sort((a, b) => b.score - a.score)
         .slice(0, Number(limit));
     }
