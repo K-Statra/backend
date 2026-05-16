@@ -217,7 +217,7 @@ export class PartnersService {
       // 1.0 AI Query Understanding (HyDE + Keywords)
       const aiAnalysis = await this.generateHyDEAndKeywords(q, detectedIntent);
       hydeDocument = aiAnalysis.profile;
-      aiKeywords = aiAnalysis.keywords;
+      aiKeywords = filterGenericKeywords(aiAnalysis.keywords);
 
       this.logger.log(
         `[Step 2.AI Analysis] took ${Math.round(performance.now() - aiStartTime)}ms. Keywords: "${aiKeywords}"`,
@@ -881,6 +881,64 @@ Output in JSON: { "profile": "...", "keywords": "..." }`,
 
     return scores;
   }
+}
+
+// --- Generic keyword filter ---
+const GENERIC_KEYWORD_BLOCKLIST = new Set([
+  "솔루션",
+  "기술",
+  "서비스",
+  "시스템",
+  "플랫폼",
+  "제품",
+  "제품군",
+  "글로벌",
+  "혁신",
+  "스마트",
+  "디지털",
+  "자동화",
+  "인공지능",
+  "분야",
+  "전문",
+  "개발",
+  "공급",
+  "사업",
+  "기업",
+  "회사",
+  "산업",
+  "solution",
+  "solutions",
+  "technology",
+  "technologies",
+  "service",
+  "services",
+  "system",
+  "systems",
+  "platform",
+  "platforms",
+  "product",
+  "products",
+  "global",
+  "innovation",
+  "smart",
+  "digital",
+  "automation",
+  "ai",
+  "company",
+  "business",
+  "industry",
+  "development",
+  "supply",
+]);
+
+function filterGenericKeywords(keywords: string): string {
+  const filtered = keywords
+    .split(/\s*,\s*/) // 쉼표 기준으로만 분리 — 복합어("Smart Farm") 보존
+    .map((w) => w.trim())
+    .filter(
+      (w) => w.length > 0 && !GENERIC_KEYWORD_BLOCKLIST.has(w.toLowerCase()),
+    );
+  return filtered.join(" ") || keywords; // 전부 걸리면 원본 fallback
 }
 
 // --- Keyword constants ---
