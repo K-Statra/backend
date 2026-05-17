@@ -933,6 +933,7 @@ const GENERIC_KEYWORD_BLOCKLIST = new Set([
 ]);
 
 function filterGenericKeywords(keywords: string): string {
+  if (!keywords) return keywords ?? "";
   const filtered = keywords
     .split(/\s*,\s*/) // 쉼표 기준으로만 분리 — 복합어("Smart Farm") 보존
     .map((w) => w.trim())
