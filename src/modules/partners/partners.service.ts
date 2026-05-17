@@ -390,6 +390,7 @@ export class PartnersService {
     let dbResults: any[] = [];
     if (vectorResults.length > 0 || textResults.length > 0) {
       const K = 60;
+      const GHOST_RANK = 500;
 
       const vectorRankMap = new Map(
         [...vectorResults]
@@ -414,7 +415,6 @@ export class PartnersService {
 
       dbResults = [...allIds]
         .map((id) => {
-          const GHOST_RANK = 500;
           const vRank = vectorRankMap.get(id) ?? GHOST_RANK;
           const tRank = textRankMap.get(id) ?? GHOST_RANK;
           const base = vectorDocMap.get(id) ?? textDocMap.get(id);
