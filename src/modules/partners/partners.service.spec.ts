@@ -146,7 +146,7 @@ describe("PartnersService", () => {
       expect(result.provider).toBe("db");
     });
 
-    it("embed 빈 벡터 → 텍스트 검색 폴백, 스코어 정규화 및 부스트", async () => {
+    it("embed 빈 벡터 → 텍스트 검색 폴백, RRF 점수 적용", async () => {
       embeddingsService.embed.mockResolvedValue([]);
       sellerModel.find.mockReturnValue(
         buildQueryMock([
@@ -162,8 +162,10 @@ describe("PartnersService", () => {
       const result = await service.search({ q: "화장품" });
 
       expect(sellerModel.find).toHaveBeenCalled();
-      // 계산: (min(1, 12/12) * 0.7) + 0.3(부스트) = 0.7 + 0.3 = 1.0
-      expect(result.data[0].score).toBeCloseTo(1.0);
+      // RRF: 텍스트 rank=1, 벡터 없음(GHOST_RANK=500)
+      // score = 1/(60+500) + 1/(60+1) ≈ 0.0182
+      const expected = 1 / (60 + 500) + 1 / (60 + 1);
+      expect(result.data[0].score).toBeCloseTo(expected, 4);
     });
 
     it("벡터 검색 결과 0건 → 텍스트 검색 폴백", async () => {
