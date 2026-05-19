@@ -21,7 +21,7 @@
 ---
 
 ## 주요 기능
-ㅌ₩
+
 ### 1. AI 기반 파트너 매칭
 - MongoDB Atlas Vector Search를 활용한 벡터 유사도 검색
 - 벡터 검색 → 텍스트 폴백 → 웹검색 + LLM 인텐트 분석 순으로 동작
@@ -158,6 +158,7 @@ docker-compose up -d
 |------|------|
 | Buyer | `rJvbMhFjmfAd5DZAVhXe7kuPBKmhBMkaCH` |
 | Seller | `ra7MVxG3MUCqym6opZBQXj9bSx5P7s5B4Y` |
+
 
 ---
 
