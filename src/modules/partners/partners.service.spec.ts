@@ -117,6 +117,8 @@ describe("PartnersService", () => {
       embeddingsService.embed.mockResolvedValue(new Array(64).fill(0.1));
       sellerModel.aggregate.mockResolvedValue([
         { _id: "c1", name: "Acme", score: 0.9 },
+        { _id: "c2", name: "Beta", score: 0.8 },
+        { _id: "c3", name: "Gamma", score: 0.7 },
       ]);
 
       const result = await service.search({ q: "화장품 제조사" });
@@ -136,6 +138,8 @@ describe("PartnersService", () => {
             industry: "Beauty / Consumer Goods / Food",
             score: 12,
           },
+          { _id: "c2", name: "Alpha Corp", score: 8 },
+          { _id: "c3", name: "Beta Corp", score: 4 },
         ]),
       );
 
@@ -152,12 +156,16 @@ describe("PartnersService", () => {
       embeddingsService.embed.mockResolvedValue(new Array(64).fill(0.1));
       sellerModel.aggregate.mockResolvedValue([]); // 벡터 결과 없음
       sellerModel.find.mockReturnValue(
-        buildQueryMock([{ _id: "c2", name: "Beta", score: 3 }]),
+        buildQueryMock([
+          { _id: "c2", name: "Beta", score: 3 },
+          { _id: "c3", name: "Alpha", score: 2 },
+          { _id: "c4", name: "Gamma", score: 1 },
+        ]),
       );
 
       const result = await service.search({ q: "식품" });
 
-      expect(result.data).toHaveLength(1);
+      expect(result.data).toHaveLength(3);
       expect(result.data[0].name).toBe("Beta");
     });
   });
@@ -169,6 +177,8 @@ describe("PartnersService", () => {
       buyerModel.find.mockReturnValue(
         buildQueryMock([
           { _id: "b1", name_kr: "라온바이어", country: "US", score: 10 },
+          { _id: "b2", name_kr: "서울바이어", country: "KR", score: 8 },
+          { _id: "b3", name_kr: "부산바이어", country: "KR", score: 6 },
         ]),
       );
 
