@@ -38,24 +38,11 @@ describe("PartnersController", () => {
     it("모든 파라미터를 서비스에 전달", async () => {
       mockPartnersService.search.mockResolvedValue({ data: [] });
 
-      await controller.search(
-        null,
-        "acme",
-        5,
-        "Automotive",
-        "Korea",
-        "OEM",
-        "1-10",
-        "buyer-id",
-      );
+      await controller.search(null, "acme", 5, "buyer-id");
 
       expect(mockPartnersService.search).toHaveBeenCalledWith({
         q: "acme",
         limit: 5,
-        industry: "Automotive",
-        country: "Korea",
-        partnership: "OEM",
-        size: "1-10",
         buyerId: "buyer-id",
       });
     });

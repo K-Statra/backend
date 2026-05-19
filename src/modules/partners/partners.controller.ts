@@ -32,18 +32,6 @@ export class PartnersController {
     type: Number,
     description: "결과 수 (기본 10)",
   })
-  @ApiQuery({ name: "industry", required: false, description: "산업 필터" })
-  @ApiQuery({ name: "country", required: false, description: "국가 필터" })
-  @ApiQuery({
-    name: "partnership",
-    required: false,
-    description: "파트너십 태그 필터",
-  })
-  @ApiQuery({
-    name: "size",
-    required: false,
-    description: "기업 규모 (예: 1-10, 11-50, 51-200)",
-  })
   @ApiQuery({
     name: "buyerId",
     required: false,
@@ -60,19 +48,11 @@ export class PartnersController {
     @OptionalCurrentUser() user: SessionUser | null,
     @Query("q") q: string,
     @Query("limit", new DefaultValuePipe(10), ParseIntPipe) limit?: number,
-    @Query("industry") industry?: string,
-    @Query("country") country?: string,
-    @Query("partnership") partnership?: string,
-    @Query("size") size?: string,
     @Query("buyerId") buyerId?: string,
   ) {
     return this.partnersService.search({
       q,
       limit,
-      industry,
-      country,
-      partnership,
-      size,
       buyerId,
       userId: user?.userId,
     });
