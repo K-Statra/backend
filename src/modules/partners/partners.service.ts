@@ -7,52 +7,9 @@ import { Buyer, BuyerDocument } from "../buyers/schemas/buyer.schema";
 import { User, UserDocument } from "../users/schemas/user.schema";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 
-const INDUSTRY_MAPPING: Record<string, string[]> = {
-  "Automotive / EV Parts": [
-    "Mobility / Automation / Manufacturing",
-    "Industrial & Manufacturing",
-    "Mobility",
-    "Automotive",
-    "Car parts",
-    "EV",
-  ],
-  "IT / AI / SaaS": ["IT / AI / SaaS", "Tech & Electronics", "Software"],
-  "Healthcare / Bio / Medical": [
-    "Healthcare / Bio / Medical",
-    "Health & Bio",
-    "Medical",
-  ],
-  "Green Energy / Climate Tech / Smart City": [
-    "Green Energy / Climate Tech / Smart City",
-    "Energy & Environment",
-  ],
-  "Mobility / Automation / Manufacturing": [
-    "Mobility / Automation / Manufacturing",
-    "Industrial & Manufacturing",
-    "Mobility",
-  ],
-  "Beauty / Consumer Goods / Food": [
-    "Beauty / Consumer Goods / Food",
-    "Beauty & Cosmetics",
-    "Food & Beverage",
-    "Consumer Goods",
-  ],
-  "Content / Culture / Edutech": [
-    "Content / Culture / Edutech",
-    "Content",
-    "Education",
-  ],
-  "Fintech / Smart Finance": ["Fintech / Smart Finance", "Finance"],
-  Other: ["Other", "(Unspecified)"],
-};
-
 export interface SearchOptions {
   q: string;
   limit?: number;
-  industry?: string;
-  country?: string;
-  partnership?: string;
-  size?: string;
   buyerId?: string;
   userId?: string;
 }
@@ -95,8 +52,6 @@ const mapBuyerToCommon = (b: any) => ({
   updatedAt: b.updatedAt,
 });
 
-const escapeRegex = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 @Injectable()
 export class PartnersService {
   private readonly logger = new Logger(PartnersService.name);
@@ -113,25 +68,16 @@ export class PartnersService {
 
   async search(opts: SearchOptions): Promise<SearchResult> {
     const startTime = performance.now();
-    const {
-      q,
-      limit = 10,
-      industry,
-      country,
-      partnership,
-      size,
-      buyerId,
-    } = opts;
+    const { q, limit = 10, buyerId } = opts;
 
     let forceWebSearch = false;
     let tavilyQuery = q ?? "";
     let detectedIntent = "seller";
     let intentData: any = null;
     let aiResponse = "";
+    let detectedCountry: string | null = null;
 
-    this.logger.log(
-      `[Search Start] query: "${q}", industry: ${industry}, country: ${country}`,
-    );
+    this.logger.log(`[Search Start] query: "${q}"`);
 
     if (q) {
       const intentStartTime = performance.now();
@@ -184,8 +130,10 @@ export class PartnersService {
         forceWebSearch = true;
       }
 
+      detectedCountry = detectCountryFromQuery(qLower);
+
       this.logger.log(
-        `[Step 1: Intent Analysis] took ${Math.round(performance.now() - intentStartTime)}ms. detectedIntent: ${detectedIntent}, forceWebSearch: ${forceWebSearch}`,
+        `[Step 1: Intent Analysis] took ${Math.round(performance.now() - intentStartTime)}ms. detectedIntent: ${detectedIntent}, forceWebSearch: ${forceWebSearch}, detectedCountry: ${detectedCountry}`,
       );
     }
 
@@ -211,7 +159,7 @@ export class PartnersService {
     let hydeDocument: string | null = null;
     let aiKeywords: string | null = null;
 
-    if (!forceWebSearch && q) {
+    if (q) {
       const aiStartTime = performance.now();
 
       // 1.0 AI Query Understanding (HyDE + Keywords)
@@ -227,36 +175,10 @@ export class PartnersService {
       const textSearchTask = (async () => {
         const textStartTime = performance.now();
         const filter: Record<string, any> = { $text: { $search: aiKeywords } };
-        if (industry) {
-          if (isBuyerSearch) {
-            filter.$and = [
-              { $text: { $search: aiKeywords } },
-              {
-                $or: [
-                  {
-                    industry_kr: {
-                      $regex: escapeRegex(industry),
-                      $options: "i",
-                    },
-                  },
-                  {
-                    industry_en: {
-                      $regex: escapeRegex(industry),
-                      $options: "i",
-                    },
-                  },
-                ],
-              },
-            ];
-          } else {
-            filter.industry = INDUSTRY_MAPPING[industry]
-              ? { $in: INDUSTRY_MAPPING[industry] }
-              : industry;
-          }
-        }
-        if (country) {
-          if (isBuyerSearch) filter.country = country;
-          else filter["location.country"] = country;
+        if (detectedCountry) {
+          const countryRegex = new RegExp(detectedCountry, "i");
+          if (isBuyerSearch) filter.country = countryRegex;
+          else filter["location.country"] = countryRegex;
         }
         if (excludeObjectIds.length > 0)
           filter._id = { $nin: excludeObjectIds };
@@ -319,28 +241,17 @@ export class PartnersService {
               index: indexName,
               path: "embedding",
               queryVector: vector,
-              numCandidates: 100,
-              limit: 100,
+              numCandidates: 500, // 데이터 규모에 따라 조정해야함
+              limit: 200, // 데이터 규모에 따라 조정해야함
             },
           },
         ];
 
         const matchStage: Record<string, any> = {};
-        if (industry) {
-          if (isBuyerSearch) {
-            matchStage.$or = [
-              { industry_kr: { $regex: industry, $options: "i" } },
-              { industry_en: { $regex: industry, $options: "i" } },
-            ];
-          } else {
-            matchStage.industry = INDUSTRY_MAPPING[industry]
-              ? { $in: INDUSTRY_MAPPING[industry] }
-              : industry;
-          }
-        }
-        if (country) {
-          if (isBuyerSearch) matchStage.country = country;
-          else matchStage["location.country"] = country;
+        if (detectedCountry) {
+          const countryRegex = new RegExp(detectedCountry, "i");
+          if (isBuyerSearch) matchStage.country = countryRegex;
+          else matchStage["location.country"] = countryRegex;
         }
         if (excludeObjectIds.length > 0)
           matchStage._id = { $nin: excludeObjectIds };
@@ -372,6 +283,9 @@ export class PartnersService {
           });
         }
 
+        this.logger.log(
+          `[Step 2.Vector] queryVector dim=${vector.length}, index=${indexName}`,
+        );
         try {
           const raw = await activeModel.aggregate(pipeline);
           vectorResults = isBuyerSearch ? raw.map(mapBuyerToCommon) : raw;
@@ -379,7 +293,9 @@ export class PartnersService {
             `[Step 2.Vector] Found ${vectorResults.length} items`,
           );
         } catch (err: any) {
-          this.logger.error(`[Search] Vector search error: ${err.message}`);
+          this.logger.error(
+            `[Search] Vector search error: ${JSON.stringify(err)}`,
+          );
         }
       })();
 
@@ -413,6 +329,7 @@ export class PartnersService {
       const textDocMap = new Map<string, any>();
       textResults.forEach((r) => textDocMap.set(r._id.toString(), r));
 
+      const seenNames = new Set<string>();
       dbResults = [...allIds]
         .map((id) => {
           const vRank = vectorRankMap.get(id) ?? GHOST_RANK;
@@ -428,62 +345,13 @@ export class PartnersService {
           };
         })
         .sort((a, b) => b.score - a.score)
+        .filter((r) => {
+          const key = (r.name || r.name_kr || "").trim();
+          if (!key || seenNames.has(key)) return false;
+          seenNames.add(key);
+          return true;
+        })
         .slice(0, Number(limit));
-    }
-
-    // --- 1.8. Filter-only browsing ---
-    if (
-      !forceWebSearch &&
-      !q &&
-      (industry || country || (isBuyerSearch ? false : partnership || size))
-    ) {
-      const filter: Record<string, any> = {};
-      if (industry) {
-        if (isBuyerSearch) {
-          filter.$or = [
-            { industry_kr: { $regex: industry, $options: "i" } },
-            { industry_en: { $regex: industry, $options: "i" } },
-          ];
-        } else {
-          filter.industry = INDUSTRY_MAPPING[industry]
-            ? { $in: INDUSTRY_MAPPING[industry] }
-            : industry;
-        }
-      }
-      if (country) {
-        if (isBuyerSearch) filter.country = country;
-        else filter["location.country"] = country;
-      }
-      if (!isBuyerSearch) {
-        if (partnership) filter.tags = partnership;
-        if (size) filter.sizeBucket = size;
-      }
-      if (excludeObjectIds.length > 0) filter._id = { $nin: excludeObjectIds };
-
-      const projection = isBuyerSearch
-        ? {
-            name_kr: 1,
-            name_en: 1,
-            industry_kr: 1,
-            industry_en: 1,
-            country: 1,
-            intro_kr: 1,
-            intro_en: 1,
-            website: 1,
-            email: 1,
-            updatedAt: 1,
-          }
-        : SEARCH_PROJECTION;
-
-      const raw = await activeModel
-        .find(filter as any, projection as any)
-        .limit(Number(limit))
-        .sort({ updatedAt: -1 } as any)
-        .lean();
-      dbResults = raw.map((r) => {
-        const common = isBuyerSearch ? mapBuyerToCommon(r) : r;
-        return { ...common, score: 1.0 };
-      });
     }
 
     // --- 1.9. Default show-all ---
@@ -519,7 +387,7 @@ export class PartnersService {
     }
 
     // --- 2. Web search fallback ---
-    const shouldFallbackToWeb = forceWebSearch || dbResults.length === 0;
+    const shouldFallbackToWeb = dbResults.length < 3;
 
     if (shouldFallbackToWeb && q) {
       const webStartTime = performance.now();
@@ -1068,6 +936,87 @@ const REGION_KEYWORDS = [
   "europe",
   "north america",
 ];
+
+const COUNTRY_QUERY_MAP: { kr: string; en: string }[] = [
+  { kr: "미국", en: "USA" },
+  { kr: "캐나다", en: "Canada" },
+  { kr: "멕시코", en: "Mexico" },
+  { kr: "브라질", en: "Brazil" },
+  { kr: "칠레", en: "Chile" },
+  { kr: "아르헨티나", en: "Argentina" },
+  { kr: "콜롬비아", en: "Colombia" },
+  { kr: "페루", en: "Peru" },
+  { kr: "영국", en: "UK" },
+  { kr: "독일", en: "Germany" },
+  { kr: "프랑스", en: "France" },
+  { kr: "이탈리아", en: "Italy" },
+  { kr: "스페인", en: "Spain" },
+  { kr: "네덜란드", en: "Netherlands" },
+  { kr: "벨기에", en: "Belgium" },
+  { kr: "러시아", en: "Russia" },
+  { kr: "폴란드", en: "Poland" },
+  { kr: "터키", en: "Turkey" },
+  { kr: "일본", en: "Japan" },
+  { kr: "중국", en: "China" },
+  { kr: "인도", en: "India" },
+  { kr: "베트남", en: "Vietnam" },
+  { kr: "태국", en: "Thailand" },
+  { kr: "인도네시아", en: "Indonesia" },
+  { kr: "인니", en: "Indonesia" },
+  { kr: "필리핀", en: "Philippines" },
+  { kr: "말레이시아", en: "Malaysia" },
+  { kr: "싱가포르", en: "Singapore" },
+  { kr: "호주", en: "Australia" },
+  { kr: "대만", en: "Taiwan" },
+  { kr: "사우디", en: "Saudi Arabia" },
+  { kr: "uae", en: "UAE" },
+  { kr: "이집트", en: "Egypt" },
+  { kr: "남아공", en: "South Africa" },
+  { kr: "나이지리아", en: "Nigeria" },
+  { kr: "우즈베키스탄", en: "Uzbekistan" },
+  { kr: "카자흐스탄", en: "Kazakhstan" },
+  { kr: "아제르바이잔", en: "Azerbaijan" },
+  { kr: "이란", en: "Iran" },
+  { kr: "이라크", en: "Iraq" },
+  { kr: "파키스탄", en: "Pakistan" },
+  { kr: "방글라데시", en: "Bangladesh" },
+  { kr: "스리랑카", en: "Sri Lanka" },
+  { kr: "미얀마", en: "Myanmar" },
+  { kr: "캄보디아", en: "Cambodia" },
+  { kr: "라오스", en: "Laos" },
+  { kr: "몽골", en: "Mongolia" },
+  { kr: "이스라엘", en: "Israel" },
+  { kr: "스웨덴", en: "Sweden" },
+  { kr: "핀란드", en: "Finland" },
+  { kr: "노르웨이", en: "Norway" },
+  { kr: "덴마크", en: "Denmark" },
+  { kr: "체코", en: "Czech Republic" },
+  { kr: "헝가리", en: "Hungary" },
+  { kr: "루마니아", en: "Romania" },
+  { kr: "우크라이나", en: "Ukraine" },
+  { kr: "포르투갈", en: "Portugal" },
+  { kr: "그리스", en: "Greece" },
+  { kr: "뉴질랜드", en: "New Zealand" },
+  { kr: "남아프리카", en: "South Africa" },
+  { kr: "에티오피아", en: "Ethiopia" },
+  { kr: "케냐", en: "Kenya" },
+  { kr: "가나", en: "Ghana" },
+  { kr: "모로코", en: "Morocco" },
+  { kr: "튀니지", en: "Tunisia" },
+  { kr: "알제리", en: "Algeria" },
+];
+
+function detectCountryFromQuery(qLower: string): string | null {
+  for (const { kr, en } of COUNTRY_QUERY_MAP) {
+    if (
+      qLower.includes(kr.toLowerCase()) ||
+      qLower.includes(en.toLowerCase())
+    ) {
+      return en;
+    }
+  }
+  return null;
+}
 
 function buildTavilyQuery(originalQuery: string, intent: string): string {
   const qL = originalQuery.toLowerCase();

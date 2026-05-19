@@ -97,36 +97,16 @@ describe("PartnersService", () => {
 
   // ── browse 모드 ───────────────────────────────────────────────────────────────
 
-  describe("browse 모드 (필터만, 쿼리 없음)", () => {
-    it("industry 매핑 필터 적용 후 score=1.0", async () => {
-      // AI 분석 모킹
-      jest.spyOn(service as any, "generateHyDEAndKeywords").mockResolvedValue({
-        profile: "",
-        keywords: "",
-      });
-
+  describe("browse 모드 (쿼리 없음, 전체 조회)", () => {
+    it("쿼리 없을 때 전체 조회 후 score=1.0", async () => {
       sellerModel.find.mockReturnValue(
         buildQueryMock([{ _id: "c1", name: "Acme" }]),
       );
 
-      const result = await service.search({
-        q: "",
-        industry: "IT / AI / SaaS",
-      });
+      const result = await service.search({ q: "" });
 
       expect(sellerModel.find).toHaveBeenCalled();
       expect(result.data[0].score).toBe(1.0);
-    });
-
-    it("country 필터 적용", async () => {
-      sellerModel.find.mockReturnValue(buildQueryMock([]));
-
-      await service.search({ q: "", country: "Korea" });
-
-      expect(sellerModel.find).toHaveBeenCalledWith(
-        expect.objectContaining({ "location.country": "Korea" }),
-        expect.any(Object),
-      );
     });
   });
 
@@ -286,7 +266,6 @@ describe("PartnersService", () => {
 
       await service.search({
         q: "",
-        industry: "IT / AI / SaaS",
         userId: USER_ID,
       });
 
