@@ -346,7 +346,13 @@ export class PartnersService {
         })
         .sort((a, b) => b.score - a.score)
         .filter((r) => {
-          const key = (r.name || r.name_kr || "").trim();
+          const key = (
+            r.name ||
+            r.name_kr ||
+            r.name_en ||
+            r.nameEn ||
+            ""
+          ).trim();
           if (!key || seenNames.has(key)) return false;
           seenNames.add(key);
           return true;
@@ -1006,12 +1012,18 @@ const COUNTRY_QUERY_MAP: { kr: string; en: string }[] = [
   { kr: "알제리", en: "Algeria" },
 ];
 
+function includesCountryToken(qLower: string, token: string): boolean {
+  const t = token.toLowerCase();
+  if (/^[a-z\s]+$/.test(t)) {
+    const escaped = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?:^|\\b)${escaped}(?:\\b|$)`, "i").test(qLower);
+  }
+  return qLower.includes(t);
+}
+
 function detectCountryFromQuery(qLower: string): string | null {
   for (const { kr, en } of COUNTRY_QUERY_MAP) {
-    if (
-      qLower.includes(kr.toLowerCase()) ||
-      qLower.includes(en.toLowerCase())
-    ) {
+    if (includesCountryToken(qLower, kr) || includesCountryToken(qLower, en)) {
       return en;
     }
   }
