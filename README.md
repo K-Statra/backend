@@ -159,7 +159,6 @@ docker-compose up -d
 | Buyer | `rJvbMhFjmfAd5DZAVhXe7kuPBKmhBMkaCH` |
 | Seller | `ra7MVxG3MUCqym6opZBQXj9bSx5P7s5B4Y` |
 
-> Testnet Faucet: https://xrpl.org/xrp-testnet-faucet.html
 
 ---
 
