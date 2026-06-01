@@ -120,7 +120,9 @@ describe("EscrowPayments Benchmark — API Latency & Fault Recovery Rate", () =>
       next();
     });
 
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     app.useGlobalFilters(new HttpExceptionFilter());
     await app.init();
 
@@ -179,9 +181,10 @@ describe("EscrowPayments Benchmark — API Latency & Fault Recovery Rate", () =>
 
   function printBenchmarkReport() {
     const hr = "─".repeat(60);
-    const speedup = apiLatencyMs > 0
-      ? `${Math.round(SIMULATED_XRPL_DELAY_MS / apiLatencyMs)}x`
-      : "N/A";
+    const speedup =
+      apiLatencyMs > 0
+        ? `${Math.round(SIMULATED_XRPL_DELAY_MS / apiLatencyMs)}x`
+        : "N/A";
     const passed = recoveryResults.filter((r) => r.outcome !== "FAILED").length;
     const total = recoveryResults.length;
     const rate = total > 0 ? Math.round((passed / total) * 100) : 0;
@@ -336,37 +339,33 @@ describe("EscrowPayments Benchmark — API Latency & Fault Recovery Rate", () =>
   // ── [1] API Latency Benchmark ─────────────────────────────────────────────
 
   describe("[1] API Latency — XRPL 3s 시뮬레이션 vs 비동기 응답", () => {
-    it(
-      `POST /pay 응답은 XRPL ${SIMULATED_XRPL_DELAY_MS}ms 딜레이와 무관하게 즉시 반환`,
-      async () => {
-        // XRPL 실 환경 레저 클로즈 타임 시뮬레이션
-        mockXrplService.createEscrow.mockImplementation(async () => {
-          await new Promise((r) => setTimeout(r, SIMULATED_XRPL_DELAY_MS));
-          return { txHash: "LATENCY_BENCH_TX", sequence: 99 };
-        });
+    it(`POST /pay 응답은 XRPL ${SIMULATED_XRPL_DELAY_MS}ms 딜레이와 무관하게 즉시 반환`, async () => {
+      // XRPL 실 환경 레저 클로즈 타임 시뮬레이션
+      mockXrplService.createEscrow.mockImplementation(async () => {
+        await new Promise((r) => setTimeout(r, SIMULATED_XRPL_DELAY_MS));
+        return { txHash: "LATENCY_BENCH_TX", sequence: 99 };
+      });
 
-        const { paymentId, escrowId } = await createApprovedPayment();
+      const { paymentId, escrowId } = await createApprovedPayment();
 
-        // ── API 응답 시간 측정 ──
-        const t0 = Date.now();
-        const payRes = await request(app.getHttpServer())
-          .post(`/escrow-payments/${paymentId}/pay`)
-          .set(asBuyer())
-          .expect(201);
-        apiLatencyMs = Date.now() - t0;
+      // ── API 응답 시간 측정 ──
+      const t0 = Date.now();
+      const payRes = await request(app.getHttpServer())
+        .post(`/escrow-payments/${paymentId}/pay`)
+        .set(asBuyer())
+        .expect(201);
+      apiLatencyMs = Date.now() - t0;
 
-        // 비동기: Outbox insert 후 즉시 PROCESSING 반환 — XRPL 완료를 기다리지 않음
-        expect(payRes.body.status).toBe("PROCESSING");
-        expect(payRes.body.escrows[0].status).toBe("PENDING_ESCROW");
-        expect(apiLatencyMs).toBeLessThan(1_000);
+      // 비동기: Outbox insert 후 즉시 PROCESSING 반환 — XRPL 완료를 기다리지 않음
+      expect(payRes.body.status).toBe("PROCESSING");
+      expect(payRes.body.escrows[0].status).toBe("PENDING_ESCROW");
+      expect(apiLatencyMs).toBeLessThan(1_000);
 
-        // ── 백그라운드 처리 완료 시간 측정 (Change Stream → Bull → XRPL mock 3s → DB) ──
-        await waitForEscrowStatus(paymentId, escrowId, "ESCROWED", 12_000);
-        await waitForPaymentStatus(paymentId, "ACTIVE");
-        asyncTotalMs = Date.now() - t0;
-      },
-      20_000,
-    );
+      // ── 백그라운드 처리 완료 시간 측정 (Change Stream → Bull → XRPL mock 3s → DB) ──
+      await waitForEscrowStatus(paymentId, escrowId, "ESCROWED", 12_000);
+      await waitForPaymentStatus(paymentId, "ACTIVE");
+      asyncTotalMs = Date.now() - t0;
+    }, 20_000);
   });
 
   // ── [2] Fault Recovery Rate ───────────────────────────────────────────────
@@ -376,174 +375,155 @@ describe("EscrowPayments Benchmark — API Latency & Fault Recovery Rate", () =>
       await resumeTokenModel.deleteMany({});
     });
 
-    it(
-      "[1/5] 서버 다운 중 누락된 PENDING 이벤트 → 재시작 시 processPendingEvents로 복구",
-      async () => {
-        const { paymentId, escrowId, escrowIds } = await createApprovedPayment();
-        await escrowPaymentModel.findByIdAndUpdate(paymentId, {
-          status: "PROCESSING",
-        });
+    it("[1/5] 서버 다운 중 누락된 PENDING 이벤트 → 재시작 시 processPendingEvents로 복구", async () => {
+      const { paymentId, escrowId, escrowIds } = await createApprovedPayment();
+      await escrowPaymentModel.findByIdAndUpdate(paymentId, {
+        status: "PROCESSING",
+      });
 
-        // Change Stream 중단 → 서버 다운 시뮬레이션
-        await (watcher as any).changeStream.close();
-        await new Promise((r) => setTimeout(r, 200));
+      // Change Stream 중단 → 서버 다운 시뮬레이션
+      await (watcher as any).changeStream.close();
+      await new Promise((r) => setTimeout(r, 200));
 
-        // 다운타임 중 생성됐을 Outbox 이벤트 직접 삽입
-        await outboxModel.create({
-          eventType: "ESCROW_PAY_INITIATED",
-          status: "PENDING",
-          payload: { paymentId, escrowIds },
-        });
+      // 다운타임 중 생성됐을 Outbox 이벤트 직접 삽입
+      await outboxModel.create({
+        eventType: "ESCROW_PAY_INITIATED",
+        status: "PENDING",
+        payload: { paymentId, escrowIds },
+      });
 
-        // onApplicationBootstrap이 호출하는 경로와 동일
-        await (watcher as any).processPendingEvents();
+      // onApplicationBootstrap이 호출하는 경로와 동일
+      await (watcher as any).processPendingEvents();
 
-        await waitForEscrowStatus(paymentId, escrowId, "ESCROWED");
-        await waitForPaymentStatus(paymentId, "ACTIVE");
+      await waitForEscrowStatus(paymentId, escrowId, "ESCROWED");
+      await waitForPaymentStatus(paymentId, "ACTIVE");
 
-        // 이후 테스트를 위해 Change Stream 복구
-        await (watcher as any).startWatcher();
+      // 이후 테스트를 위해 Change Stream 복구
+      await (watcher as any).startWatcher();
 
-        recoveryResults.push({
-          scenario: "서버 다운 중 PENDING 이벤트 누락",
-          outcome: "RECOVERED",
-          detail: "processPendingEvents() → ESCROWED → ACTIVE",
-        });
-      },
-      25_000,
-    );
+      recoveryResults.push({
+        scenario: "서버 다운 중 PENDING 이벤트 누락",
+        outcome: "RECOVERED",
+        detail: "processPendingEvents() → ESCROWED → ACTIVE",
+      });
+    }, 25_000);
 
-    it(
-      "[2/5] XRPL 네트워크 오류 → Bull 지수 백오프 재시도 → 성공",
-      async () => {
-        // 1회 실패 후 성공
-        mockXrplService.createEscrow
-          .mockRejectedValueOnce(new Error("WebSocket connection timeout"))
-          .mockResolvedValue({ txHash: "RETRY_SUCCESS_TX", sequence: 200 });
+    it("[2/5] XRPL 네트워크 오류 → Bull 지수 백오프 재시도 → 성공", async () => {
+      // 1회 실패 후 성공
+      mockXrplService.createEscrow
+        .mockRejectedValueOnce(new Error("WebSocket connection timeout"))
+        .mockResolvedValue({ txHash: "RETRY_SUCCESS_TX", sequence: 200 });
 
-        const { paymentId, escrowId, escrowIds } = await createApprovedPayment();
+      const { paymentId, escrowId, escrowIds } = await createApprovedPayment();
 
-        // 벤치마크 속도를 위해 500ms fixed backoff으로 직접 주입
-        await injectJobDirectly(paymentId, escrowIds, {
-          attempts: 3,
-          backoff: { type: "fixed", delay: 500 },
-        });
+      // 벤치마크 속도를 위해 500ms fixed backoff으로 직접 주입
+      await injectJobDirectly(paymentId, escrowIds, {
+        attempts: 3,
+        backoff: { type: "fixed", delay: 500 },
+      });
 
-        await waitForEscrowStatus(paymentId, escrowId, "ESCROWED", 10_000);
-        await waitForPaymentStatus(paymentId, "ACTIVE");
+      await waitForEscrowStatus(paymentId, escrowId, "ESCROWED", 10_000);
+      await waitForPaymentStatus(paymentId, "ACTIVE");
 
-        // 1회 실패 + 1회 성공 = 정확히 2회 호출
-        expect(mockXrplService.createEscrow).toHaveBeenCalledTimes(2);
+      // 1회 실패 + 1회 성공 = 정확히 2회 호출
+      expect(mockXrplService.createEscrow).toHaveBeenCalledTimes(2);
 
-        recoveryResults.push({
-          scenario: "XRPL 네트워크 오류 (WebSocket timeout)",
-          outcome: "RECOVERED",
-          detail: "Bull retry 1회 → ESCROWED (createEscrow 2회 호출 검증)",
-        });
-      },
-      20_000,
-    );
+      recoveryResults.push({
+        scenario: "XRPL 네트워크 오류 (WebSocket timeout)",
+        outcome: "RECOVERED",
+        detail: "Bull retry 1회 → ESCROWED (createEscrow 2회 호출 검증)",
+      });
+    }, 20_000);
 
-    it(
-      "[3/5] 모든 재시도 소진 → OnQueueFailed → 결정론적 CANCELLED",
-      async () => {
-        mockXrplService.createEscrow.mockRejectedValue(
-          new Error("XRPL network unavailable"),
-        );
+    it("[3/5] 모든 재시도 소진 → OnQueueFailed → 결정론적 CANCELLED", async () => {
+      mockXrplService.createEscrow.mockRejectedValue(
+        new Error("XRPL network unavailable"),
+      );
 
-        const { paymentId, escrowIds } = await createApprovedPayment();
+      const { paymentId, escrowIds } = await createApprovedPayment();
 
-        await injectJobDirectly(paymentId, escrowIds, {
-          attempts: 3,
-          backoff: { type: "fixed", delay: 100 },
-        });
+      await injectJobDirectly(paymentId, escrowIds, {
+        attempts: 3,
+        backoff: { type: "fixed", delay: 100 },
+      });
 
-        await waitForPaymentStatus(paymentId, "CANCELLED", 8_000);
-        expect(mockXrplService.createEscrow).toHaveBeenCalledTimes(3);
+      await waitForPaymentStatus(paymentId, "CANCELLED", 8_000);
+      expect(mockXrplService.createEscrow).toHaveBeenCalledTimes(3);
 
-        recoveryResults.push({
-          scenario: "3회 연속 XRPL 오류 (재시도 소진)",
-          outcome: "HANDLED",
-          detail:
-            "OnQueueFailed → rollbackAllEscrows → CANCELLED (결정론적 처리, 미확정 상태 없음)",
-        });
-      },
-      15_000,
-    );
+      recoveryResults.push({
+        scenario: "3회 연속 XRPL 오류 (재시도 소진)",
+        outcome: "HANDLED",
+        detail:
+          "OnQueueFailed → rollbackAllEscrows → CANCELLED (결정론적 처리, 미확정 상태 없음)",
+      });
+    }, 15_000);
 
-    it(
-      "[4/5] Change Stream 네트워크 단절 → backoff 재시작 → 신규 이벤트 정상 처리",
-      async () => {
-        // 일반 네트워크 단절 에러 (code 없음 = 재연결 가능 에러)
-        (watcher as any).changeStream.emit(
-          "error",
-          new Error("simulated network disconnect"),
-        );
+    it("[4/5] Change Stream 네트워크 단절 → backoff 재시작 → 신규 이벤트 정상 처리", async () => {
+      // 일반 네트워크 단절 에러 (code 없음 = 재연결 가능 에러)
+      (watcher as any).changeStream.emit(
+        "error",
+        new Error("simulated network disconnect"),
+      );
 
-        // attempt 0 → delay = min(1000*2^0, 30000) = 1s 대기 후 재시작
-        await new Promise((r) => setTimeout(r, 2_500));
+      // attempt 0 → delay = min(1000*2^0, 30000) = 1s 대기 후 재시작
+      await new Promise((r) => setTimeout(r, 2_500));
 
-        // 재시작 완료 후 정상 파이프라인 검증
-        const { paymentId, escrowId } = await createApprovedPayment();
-        await request(app.getHttpServer())
-          .post(`/escrow-payments/${paymentId}/pay`)
-          .set(asBuyer())
-          .expect(201);
+      // 재시작 완료 후 정상 파이프라인 검증
+      const { paymentId, escrowId } = await createApprovedPayment();
+      await request(app.getHttpServer())
+        .post(`/escrow-payments/${paymentId}/pay`)
+        .set(asBuyer())
+        .expect(201);
 
-        await waitForEscrowStatus(paymentId, escrowId, "ESCROWED", 15_000);
-        await waitForPaymentStatus(paymentId, "ACTIVE");
+      await waitForEscrowStatus(paymentId, escrowId, "ESCROWED", 15_000);
+      await waitForPaymentStatus(paymentId, "ACTIVE");
 
-        recoveryResults.push({
-          scenario: "Change Stream 네트워크 단절",
-          outcome: "RECOVERED",
-          detail: "restartWithBackoff(1s) → 스트림 재시작 → 신규 이벤트 정상 처리",
-        });
-      },
-      30_000,
-    );
+      recoveryResults.push({
+        scenario: "Change Stream 네트워크 단절",
+        outcome: "RECOVERED",
+        detail:
+          "restartWithBackoff(1s) → 스트림 재시작 → 신규 이벤트 정상 처리",
+      });
+    }, 30_000);
 
-    it(
-      "[5/5] ChangeStreamHistoryLost (OpLog 만료) → resume token 삭제 + 재시작",
-      async () => {
-        // 만료된 resume token 삽입 (OpLog가 밀려서 해당 지점부터 재개 불가 상황)
-        await resumeTokenModel.findOneAndUpdate(
-          { streamId: "outbox" },
-          { token: { _data: "stale_opaque_resume_token" } },
-          { upsert: true },
-        );
+    it("[5/5] ChangeStreamHistoryLost (OpLog 만료) → resume token 삭제 + 재시작", async () => {
+      // 만료된 resume token 삽입 (OpLog가 밀려서 해당 지점부터 재개 불가 상황)
+      await resumeTokenModel.findOneAndUpdate(
+        { streamId: "outbox" },
+        { token: { _data: "stale_opaque_resume_token" } },
+        { upsert: true },
+      );
 
-        // HistoryLost 발생 → error 핸들러가 token 삭제 + processPendingEvents + 재시작
-        const historyLostErr = Object.assign(
-          new Error("ChangeStreamHistoryLost"),
-          { code: 286, codeName: "ChangeStreamHistoryLost" },
-        );
-        (watcher as any).changeStream.emit("error", historyLostErr);
+      // HistoryLost 발생 → error 핸들러가 token 삭제 + processPendingEvents + 재시작
+      const historyLostErr = Object.assign(
+        new Error("ChangeStreamHistoryLost"),
+        { code: 286, codeName: "ChangeStreamHistoryLost" },
+      );
+      (watcher as any).changeStream.emit("error", historyLostErr);
 
-        // backoff(1s) + processPendingEvents 완료 대기
-        await new Promise((r) => setTimeout(r, 3_000));
+      // backoff(1s) + processPendingEvents 완료 대기
+      await new Promise((r) => setTimeout(r, 3_000));
 
-        // resume token이 삭제됐는지 검증
-        const token = await resumeTokenModel.findOne({ streamId: "outbox" });
-        expect(token).toBeNull();
+      // resume token이 삭제됐는지 검증
+      const token = await resumeTokenModel.findOne({ streamId: "outbox" });
+      expect(token).toBeNull();
 
-        // 재시작 후 신규 이벤트 처리 정상 여부 검증
-        const { paymentId, escrowId } = await createApprovedPayment();
-        await request(app.getHttpServer())
-          .post(`/escrow-payments/${paymentId}/pay`)
-          .set(asBuyer())
-          .expect(201);
+      // 재시작 후 신규 이벤트 처리 정상 여부 검증
+      const { paymentId, escrowId } = await createApprovedPayment();
+      await request(app.getHttpServer())
+        .post(`/escrow-payments/${paymentId}/pay`)
+        .set(asBuyer())
+        .expect(201);
 
-        await waitForEscrowStatus(paymentId, escrowId, "ESCROWED", 15_000);
-        await waitForPaymentStatus(paymentId, "ACTIVE");
+      await waitForEscrowStatus(paymentId, escrowId, "ESCROWED", 15_000);
+      await waitForPaymentStatus(paymentId, "ACTIVE");
 
-        recoveryResults.push({
-          scenario: "ChangeStreamHistoryLost (code=286, OpLog 만료)",
-          outcome: "RECOVERED",
-          detail:
-            "resume token 삭제 + processPendingEvents + 스트림 재시작 → ACTIVE",
-        });
-      },
-      30_000,
-    );
+      recoveryResults.push({
+        scenario: "ChangeStreamHistoryLost (code=286, OpLog 만료)",
+        outcome: "RECOVERED",
+        detail:
+          "resume token 삭제 + processPendingEvents + 스트림 재시작 → ACTIVE",
+      });
+    }, 30_000);
   });
 });
