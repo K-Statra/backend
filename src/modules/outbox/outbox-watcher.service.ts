@@ -107,6 +107,13 @@ export class OutboxWatcherService
           .catch(() => {});
       }
       await this.restartWithBackoff();
+      if (isTokenInvalid) {
+        await this.processPendingEvents().catch((e: Error) =>
+          this.logger.error(
+            `Pending backfill after HistoryLost failed: ${e.message}`,
+          ),
+        );
+      }
     });
 
     this.logger.log("Outbox change stream watcher started");
